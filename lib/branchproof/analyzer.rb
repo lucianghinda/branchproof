@@ -16,6 +16,11 @@ module Branchproof
       @vectors_by_decision = @vectors.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |vector, hash|
         hash[id(vector, :decision_id)] << vector
       end
+      @decisions = records(@inventory, :decisions)
+      @decisions_by_id = @decisions.each_with_object({}) do |decision, hash|
+        key = id(decision, :id)
+        hash[key] = decision unless hash.key?(key)
+      end
       @constraint_states = Hash.new(0)
       @missing_cache = {}
       @invalid_diagnostics = []
@@ -24,7 +29,7 @@ module Branchproof
     end
 
     def call
-      decisions = records(@inventory, :decisions).map { analyze_decision(_1) }
+      decisions = @decisions.map { analyze_decision(_1) }
       proven = decisions.sum { |decision| decision[:condition_results].count { |result| result[:status] == "PROVEN" } }
       eligible = decisions.sum { |decision| decision[:unsupported] ? 0 : decision[:conditions].length }
       {
@@ -53,7 +58,7 @@ module Branchproof
       cache_key = [decision_id, condition_index]
       return @missing_cache[cache_key] if @missing_cache.key?(cache_key)
 
-      decision = records(@inventory, :decisions).find { id(_1, :id) == decision_id }
+      decision = @decisions_by_id[decision_id]
       return @missing_cache[cache_key] = nil unless decision
 
       return @missing_cache[cache_key] = nil if alternative_decision?(decision)
@@ -226,7 +231,7 @@ module Branchproof
     end
 
     def alternative_decision_for_id?(decision_id)
-      decision = records(@inventory, :decisions).find { |item| id(item, :id) == decision_id }
+      decision = @decisions_by_id[decision_id]
       decision && alternative_decision?(decision)
     end
 
@@ -436,7 +441,7 @@ module Branchproof
     end
 
     def effective_mask(vector, decision_id, tree = nil)
-      decision = records(@inventory, :decisions).find { id(_1, :id) == decision_id } unless tree
+      decision = @decisions_by_id[decision_id] unless tree
       tree ||= decision && decision[:tree]
       raise ArgumentError, "unknown decision" unless tree
 
