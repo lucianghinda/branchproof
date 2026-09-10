@@ -14,9 +14,7 @@ module Branchproof
     def rewrite(unit:)
       bytes = unit.fetch(:original_bytes).dup.force_encoding(Encoding::BINARY)
       reasons = Array(unit[:support_reasons])
-      unless supported_unit?(unit, reasons)
-        return result(bytes, diagnostics: [diagnostic("unsupported_source", reasons.join(", "))])
-      end
+      return result(bytes, diagnostics: [diagnostic("unsupported_source", reasons.join(", "))]) unless supported?(unit)
 
       decisions = Array(unit[:decisions]).select { |decision| supported?(decision) }
       encloses, enclosed = build_enclosures(decisions)
@@ -43,13 +41,8 @@ module Branchproof
 
     private
 
-    def supported_unit?(unit, _reasons)
-      status = unit[:support_status]
-      status.nil? || status.to_s.casecmp("supported").zero?
-    end
-
-    def supported?(decision)
-      status = decision[:support_status]
+    def supported?(record)
+      status = record[:support_status]
       status.nil? || status.to_s.casecmp("supported").zero?
     end
 
