@@ -25,7 +25,7 @@ module Branchproof
       return help if [["--help"], ["help"], ["analyze", "--help"]].include?(argv)
       return offline(argv) if %w[report compare].include?(argv.first)
 
-      options = parse(Array(argv))
+      options = parse(argv)
       return usage_error("expected analyze, report, or compare; use branchproof --help") unless options
 
       inventory = build_inventory(options)
