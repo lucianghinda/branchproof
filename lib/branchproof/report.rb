@@ -32,8 +32,8 @@ module Branchproof
 
     def self.from_document(document:, level: nil, view: :decisions, missing_only: false)
       data = document || {}
-      new(inventory: data[:source_inventory] || data["source_inventory"] || data[:inventory] || data["inventory"],
-          evidence: data[:observations] || data["observations"] || data[:evidence] || data["evidence"],
+      new(inventory: data[:source_inventory] || data["source_inventory"],
+          evidence: data[:observations] || data["observations"],
           analysis: data[:analysis] || data["analysis"], minima: data[:minima] || data["minima"],
           baseline: data[:baseline] || data["baseline"], diagnostics: data[:diagnostics] || data["diagnostics"],
           level: level || (data[:analysis] || data["analysis"] ? 3 : 1), view: view, missing_only: missing_only,
