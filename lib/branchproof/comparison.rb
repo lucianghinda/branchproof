@@ -191,11 +191,11 @@ module Branchproof
         results = Array(value(value(document, :analysis), :decisions)).flat_map do |decision|
           Array(value(decision, :condition_results))
         end
+        vectors = Array(value(value(document, :observations), :vectors))
         { conditions: index.conditions.to_h { |row| [row[:id].to_s, row] }, tests: tests, test_rows: rows,
           test_keys: keys, key_owners: keys.keys.group_by { |id| keys[id] },
-          vectors: Array(value(value(document, :observations), :vectors)).to_h do |vector|
-            [value(vector, :id).to_s, vector]
-          end,
+          vectors: vectors.to_h { |vector| [value(vector, :id).to_s, vector] },
+          vectors_by_decision: vectors.group_by { |vector| value(vector, :decision_id).to_s },
           decisions: Array(value(value(document, :source_inventory), :decisions)).to_h do |decision|
             [value(decision, :id).to_s, decision]
           end,
@@ -214,10 +214,9 @@ module Branchproof
           key = before[:test_keys][id.to_s]
           unique = key && before[:key_owners][key]&.length == 1 && after[:key_owners][key]&.length == 1
           current_id = unique ? after[:key_owners][key].first : nil
-          observed = current_id && after[:vectors].values.any? do |current|
-            value(current, :decision_id) == value(decision, :id) &&
-              value(current,
-                    :values) == value(vector, :values) && value(current, :outcome) == value(vector, :outcome) &&
+          decision_vectors = after[:vectors_by_decision][value(decision, :id).to_s]
+          observed = current_id && Array(decision_vectors).any? do |current|
+            value(current, :values) == value(vector, :values) && value(current, :outcome) == value(vector, :outcome) &&
               Array(value(current, :test_ids)).include?(current_id)
           end
           test_status = current_id ? "present in current run" : "not observed in current run (no unique test match)"
