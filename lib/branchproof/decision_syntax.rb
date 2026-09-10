@@ -1,21 +1,30 @@
 # frozen_string_literal: true
 
+require "prism"
+
 module Branchproof
   # Discovers control-flow expressions whose truth is not represented by an
   # ordinary Prism IfNode.  The records intentionally contain byte ranges and
   # scalar metadata only; Prism nodes must not escape the source pass.
   module DecisionSyntax
-    OR_WRITE_NODE_NAMES = %w[
-      CallOrWriteNode ClassVariableOrWriteNode ConstantOrWriteNode
-      ConstantPathOrWriteNode GlobalVariableOrWriteNode IndexOrWriteNode
-      InstanceVariableOrWriteNode LocalVariableOrWriteNode
-    ].freeze
+    # Some of these node classes were added in later Prism 1.x releases, so
+    # look them up by name and skip any that this Prism version lacks.
+    def self.node_classes(*names)
+      names.filter_map { |name| Prism.const_get(name) if Prism.const_defined?(name) }.to_set.freeze
+    end
+    private_class_method :node_classes
 
-    AND_WRITE_NODE_NAMES = %w[
-      CallAndWriteNode ClassVariableAndWriteNode ConstantAndWriteNode
-      ConstantPathAndWriteNode GlobalVariableAndWriteNode IndexAndWriteNode
-      InstanceVariableAndWriteNode LocalVariableAndWriteNode
-    ].freeze
+    OR_WRITE_NODE_CLASSES = node_classes(
+      :CallOrWriteNode, :ClassVariableOrWriteNode, :ConstantOrWriteNode,
+      :ConstantPathOrWriteNode, :GlobalVariableOrWriteNode, :IndexOrWriteNode,
+      :InstanceVariableOrWriteNode, :LocalVariableOrWriteNode
+    )
+
+    AND_WRITE_NODE_CLASSES = node_classes(
+      :CallAndWriteNode, :ClassVariableAndWriteNode, :ConstantAndWriteNode,
+      :ConstantPathAndWriteNode, :GlobalVariableAndWriteNode, :IndexAndWriteNode,
+      :InstanceVariableAndWriteNode, :LocalVariableAndWriteNode
+    )
 
     def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
       nodes = []
@@ -38,8 +47,7 @@ module Branchproof
     end
 
     def assignment_node?(node)
-      OR_WRITE_NODE_NAMES.include?(node.class.name.split("::").last) ||
-        AND_WRITE_NODE_NAMES.include?(node.class.name.split("::").last)
+      OR_WRITE_NODE_CLASSES.include?(node.class) || AND_WRITE_NODE_CLASSES.include?(node.class)
     end
 
     def build_flow_decision(node, bytes, source_id, file_reasons, encoding)
