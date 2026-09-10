@@ -18,7 +18,7 @@ Not documented.
 ### `exit_code()` <a id="method-i-exit_code"></a> <a id="exit_code-instance_method"></a>
 Not documented.
 
-### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@raise** [ArgumentError]
 - **@return** [Report] a new instance of Report
 

@@ -25,6 +25,19 @@ class TestReport < Minitest::Test
     assert_equal 1, report.exit_code
   end
 
+  def test_missing_filter_preserves_json_and_exit_status_after_terminal_rendering
+    filtered = base_report(missing_only: true)
+    full = base_report
+    filtered.write(io: StringIO.new, format: :terminal)
+    filtered_json = StringIO.new
+    full_json = StringIO.new
+    filtered.write(io: filtered_json, format: :json)
+    full.write(io: full_json, format: :json)
+
+    assert_equal JSON.parse(full_json.string), JSON.parse(filtered_json.string)
+    assert_equal full.exit_code, filtered.exit_code
+  end
+
   def test_incomplete_baseline_returns_runner_exit
     report = base_report(baseline: { status: "INCOMPLETE" })
     assert_equal 2, report.exit_code
@@ -280,5 +293,106 @@ class TestReport < Minitest::Test
 
     assert_equal false,
                  document.fetch("completeness").fetch("analysis")
+  end
+
+  def test_terminal_explains_missing_counterpart_without_raw_constraint_hashes
+    inventory = { source_units: [{ source_id: "source", relative_path: "lib/example.rb" }],
+                  decisions: [{ id: "decision", source_id: "source", line: 8, expression: "left && right",
+                                conditions: [{ id: "left", index: 0, expression: "left" },
+                                             { id: "right", index: 1, expression: 'command == "install"' }] }] }
+    existing = { id: "observed", decision_id: "decision", values: [true, true], outcome: true,
+                 test_ids: ["test-existing"], count: 1 }
+    candidate = { id: "candidate-1-false", decision_id: "decision", values: [true, false], outcome: false }
+    analysis = { proven_count: 0, completeness: { observation: true, attribution: true, analysis: true },
+                 decisions: [{ decision_id: "decision", condition_results: [
+                   { condition_id: "left", status: "NOT_PROVEN" },
+                   { condition_id: "right", status: "NOT_PROVEN",
+                     constraint_result: { constraints: [{ condition_index: 1, value: false }],
+                                          candidate_vectors: [candidate], existing_vector_id: "observed",
+                                          feasibility_statement: "Boolean requirement; application-level feasibility unknown" } }
+                 ] }] }
+    report = Branchproof::Report.new(
+      inventory: inventory,
+      evidence: { tests: [{ id: "test-existing", class_name: "ExampleTest", method_name: "test_existing" }],
+                  vectors: [existing], completeness: { observation: true, attribution: true, analysis: true } },
+      analysis: analysis, minima: [], baseline: { status: "PASSED" }, diagnostics: []
+    )
+    output = StringIO.new
+
+    report.write(io: output, format: :terminal)
+
+    assert_includes output.string, 'command == "install" is falsey'
+    assert_includes output.string, "Need an observation where:\n        left is truthy\n        command == \"install\" is falsey"
+    assert_includes output.string, "Expected decision: false [TF]"
+    assert_includes output.string, "ExampleTest#test_existing"
+    assert_includes output.string, "Boolean requirement; application-level feasibility unknown"
+    refute_includes output.string, "condition_index"
+    refute_includes output.string, "candidate_vectors"
+  end
+
+  def test_missing_only_renders_only_missing_conditions_and_context
+    inventory = { decisions: [
+      { id: "proven-decision", expression: "ready", conditions: [{ id: "proven", index: 0, expression: "ready" }] },
+      { id: "missing-decision", expression: "left && right",
+        conditions: [{ id: "missing", index: 0, expression: "left" }, { id: "proven-too", index: 1, expression: "right" }] }
+    ] }
+    analysis = { proven_count: 2, completeness: { observation: true, attribution: true, analysis: true },
+                 decisions: [
+                   { decision_id: "proven-decision", condition_results: [{ condition_id: "proven", status: "PROVEN" }] },
+                   { decision_id: "missing-decision", condition_results: [
+                     { condition_id: "missing", status: "NOT_PROVEN", constraint_result: { constraints: [] } },
+                     { condition_id: "proven-too", status: "PROVEN" }
+                   ] }
+                 ] }
+    report = Branchproof::Report.new(inventory: inventory, evidence: { vectors: [] }, analysis: analysis,
+                                     minima: [{ objective: "tests", status: "EXACT_MINIMUM", selected_ids: ["test"] }],
+                                     baseline: { status: "PASSED" }, diagnostics: [], missing_only: true)
+    output = StringIO.new
+
+    report.write(io: output, format: :terminal)
+
+    assert_includes output.string, "Missing conditions: 1 across 1 decision"
+    assert_includes output.string, "Decision missing-"
+    assert_includes output.string, "Condition 0: left"
+    refute_includes output.string, "Decision proven-decision"
+    refute_includes output.string, "Condition 1: right"
+    refute_includes output.string, "Supporting sets:"
+  end
+
+  def test_missing_case_lists_both_required_observations_when_no_effective_observation_exists
+    decision = { id: "decision", expression: "left || right",
+                 conditions: [{ id: "left", index: 0, expression: "left" },
+                              { id: "right", index: 1, expression: "right" }] }
+    candidates = [{ values: [false, true], outcome: true }, { values: [false, false], outcome: false }]
+    result = { condition_id: "right", status: "NOT_PROVEN",
+               constraint_result: { status: "CANDIDATE", candidate_vectors: candidates } }
+    report = base_report(inventory: { decisions: [decision] }, missing_only: true,
+                         analysis: { decisions: [{ decision_id: "decision", condition_results: [result] }] })
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+
+    assert_includes output.string, "Expected decision: true [FT]"
+    assert_includes output.string, "Expected decision: false [FF]"
+    assert_includes output.string, "right is truthy"
+    assert_includes output.string, "right is falsey"
+  end
+
+  def test_missing_only_distinguishes_unavailable_analysis_from_no_missing_conditions
+    unavailable = base_report(level: 1, analysis: nil, missing_only: true,
+                              evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: false } })
+    unavailable_output = StringIO.new
+    unavailable.write(io: unavailable_output, format: :terminal)
+    assert_includes unavailable_output.string, "Cannot identify missing conditions"
+    refute_includes unavailable_output.string, "No missing conditions"
+
+    complete = base_report(inventory: { decisions: [{ id: "decision", conditions: [{ id: "condition", index: 0 }] }] },
+                           missing_only: true,
+                           analysis: { proven_count: 1,
+                                       completeness: { observation: true, attribution: true, analysis: true },
+                                       decisions: [{ decision_id: "decision",
+                                                     condition_results: [{ condition_id: "condition", status: "PROVEN" }] }] })
+    complete_output = StringIO.new
+    complete.write(io: complete_output, format: :terminal)
+    assert_includes complete_output.string, "No missing conditions"
   end
 end

@@ -69,7 +69,7 @@ module Branchproof
       minima = options[:level] == 1 ? [] : Array(value(baseline, :minima))
       report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || evidence.snapshot,
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
-                          level: options[:level])
+                          level: options[:level], missing_only: options[:missing_only])
       output_report(report, options)
       report.exit_code
     rescue ArgumentError => e
@@ -88,10 +88,12 @@ module Branchproof
       runner_args = delimiter ? args[(delimiter + 1)..] : []
       args = args[0...delimiter] if delimiter
       options = { level: 3, format: :terminal, output: nil, tests: [], source_paths: [], limits: Limits.default,
-                  runner_args: runner_args, project: nil }
+                  runner_args: runner_args, project: nil, missing_only: false }
       until args.empty?
         token = args.shift
         case token
+        when "--missing-only"
+          options[:missing_only] = true
         when "--level"
           level = Integer(args.shift.to_s, 10)
           raise ArgumentError, "level must be 1, 2, or 3" unless (1..3).cover?(level)
@@ -126,6 +128,10 @@ module Branchproof
           options[:source_paths] << token
         end
       end
+      if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
+        raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
+      end
+
       options[:project] ||= Project.new(root: Dir.pwd, mode: "auto").to_h
       options[:source_paths] = default_sources if options[:source_paths].empty?
       options[:tests] = default_tests if options[:tests].empty?

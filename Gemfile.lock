@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    branchproof (0.2.0)
+    branchproof (0.3.0)
       minitest (>= 5.25.5, < 6)
       prism (>= 1.0, < 2)
 
@@ -85,7 +85,7 @@ DEPENDENCIES
 
 CHECKSUMS
   ast (2.4.3)
-  branchproof (0.2.0)
+  branchproof (0.3.0)
   bundler (4.0.19) sha256=b48056e4c77fb3853cc47775b5447ede44aaa4f53c32f168014ab4fe86587d47
   csv (3.3.6)
   erb (6.0.7)

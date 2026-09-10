@@ -181,7 +181,7 @@ module Branchproof
       end
 
       effective_mask(vector, id(decision, :id), decision[:tree])
-      vector
+      decision_source.nil? ? vector : vector.merge(source_id: decision_source)
     rescue ArgumentError
       @analysis_invalid = true
       add_diagnostic("invalid_vector", "error", id(vector, :id))

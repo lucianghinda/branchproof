@@ -10,7 +10,7 @@ class TestPackaging < Minitest::Test
     spec = Gem::Specification.load(File.join(ROOT, "branchproof.gemspec"))
 
     assert_equal "branchproof", spec.name
-    assert_equal "0.2.0", spec.version.to_s
+    assert_equal Branchproof::VERSION, spec.version.to_s
     assert_includes spec.files, "README.md"
     assert_includes spec.files, "CHANGELOG.md"
     assert_includes spec.files, "LICENSE.txt"

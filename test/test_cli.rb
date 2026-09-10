@@ -26,6 +26,50 @@ class TestCLI < Minitest::Test
     assert_includes stderr.string, "level"
   end
 
+  def test_missing_only_rejects_observation_only_and_json_reports
+    [["--level", "1"], ["--format", "json"]].each do |options|
+      stdout = StringIO.new
+      stderr = StringIO.new
+      status = Branchproof::CLI.new(stdout: stdout, stderr: stderr).call(["analyze", "--missing-only", *options])
+
+      assert_equal 2, status
+      assert_empty stdout.string
+      assert_includes stderr.string, "--missing-only requires terminal format and level 2 or 3"
+    end
+  end
+
+  def test_missing_only_reports_a_missing_case_without_proven_condition_noise
+    Dir.mktmpdir do |root|
+      source = File.join(root, "decision.rb")
+      File.binwrite(source, File.binread(File.join(FIXTURE_ROOT, "decision.rb")))
+      test_file = File.join(root, "test_decision.rb")
+      File.write(test_file, <<~RUBY)
+        require #{source.inspect}
+        require "minitest/autorun"
+        class MissingCaseTest < Minitest::Test
+          def test_present
+            assert_equal :yes, CliFixture.decide(true, true)
+          end
+          def test_absent
+            assert_equal :no, CliFixture.decide(false, true)
+          end
+        end
+      RUBY
+      stdout = StringIO.new
+      stderr = StringIO.new
+      status = Branchproof::CLI.new(stdout: stdout, stderr: stderr).call([
+                                                                           "analyze", source, "--test", test_file, "--missing-only"
+                                                                         ])
+
+      assert_equal 0, status, stderr.string
+      assert_includes stdout.string, "Tests: PASSED (2 tests"
+      assert_includes stdout.string, "Condition 1: right"
+      refute_includes stdout.string, "Condition 0: left"
+      refute_includes stdout.string, "Supporting sets:"
+      refute_includes stdout.string, "INFEASIBLE_IN_MODEL"
+    end
+  end
+
   def test_positive_fixture_runs_once_and_reports_vectors_and_witnesses
     Dir.mktmpdir do |root|
       source = File.join(root, "decision.rb")

@@ -8,7 +8,7 @@ module Branchproof
     SCHEMA_VERSION = "1.0"
     CRITERION_VERSION = "masking_occurrence_v1"
 
-    def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3)
+    def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false)
       raise ArgumentError, "level must be 1, 2, or 3" unless [1, 2, 3].include?(level.to_i)
 
       @inventory = inventory || {}
@@ -18,6 +18,7 @@ module Branchproof
       @baseline = baseline || {}
       @diagnostics = Array(diagnostics)
       @level = level.to_i
+      @missing_only = !!missing_only
     end
 
     def write(io:, format:)
@@ -64,10 +65,11 @@ module Branchproof
                "Observations: #{metrics[:completed]} completed, #{metrics[:aborted]} aborted, " \
                "#{metrics[:unattributed]} unattributed",
                "Values: T=true, F=false, -=short-circuited"]
+      lines << missing_summary_line if @missing_only
       lines << "Scope: supported decisions and conditions"
       lines << ""
-      inventory_decisions.each { |decision| render_decision(lines, decision) }
-      render_minima(lines)
+      decisions_to_render.each { |decision| render_decision(lines, decision) }
+      render_minima(lines) unless @missing_only
       unless @diagnostics.empty?
         lines << "Diagnostics:"
         @diagnostics.each { |diagnostic| lines << "  - #{value(diagnostic, :message) || value(diagnostic, :code)}" }
@@ -82,9 +84,9 @@ module Branchproof
       lines << decision_label
       lines << "  Decision: #{value(decision, :expression)}"
       lines << "  Status: #{value(decision, :support_status) || "SUPPORTED"}"
-      Array(value(decision, :conditions)).each do |condition|
+      conditions_to_render(decision).each do |condition|
         result = condition_result(decision, condition)
-        detail = condition_detail(result)
+        detail = condition_detail(decision, condition, result)
         status = if @analysis.nil? || @level == 1
                    "NOT CALCULATED"
                  else
@@ -93,7 +95,7 @@ module Branchproof
         lines << "  Condition #{value(condition, :index)}: #{value(condition, :expression)}"
         lines << "    #{status}#{detail}"
       end
-      vectors_for(decision).each do |vector|
+      vectors_to_render(decision).each do |vector|
         values = Array(value(vector, :values)).map do |item|
           if item.nil?
             "-"
@@ -167,6 +169,11 @@ module Branchproof
       ids.concat(Array(value(@analysis, :decisions)).flat_map do |decision|
         Array(value(decision, :condition_results)).flat_map do |result|
           [value(result, :condition_id), *Array(value(result, :canonical_pair))]
+        end
+      end)
+      ids.concat(Array(value(@analysis, :decisions)).flat_map do |decision|
+        Array(value(decision, :condition_results)).flat_map do |result|
+          Array(value(value(result, :constraint_result), :candidate_vectors)).map { |vector| value(vector, :id) }
         end
       end)
       ids = ids.compact.map(&:to_s).reject(&:empty?).uniq
@@ -264,22 +271,102 @@ module Branchproof
       end
     end
 
-    def condition_detail(result)
-      return "" unless result && @level == 3
+    def condition_detail(decision, _condition, result)
+      return "" unless result && (@level == 3 || @missing_only)
 
       pair = value(result, :canonical_pair)
       return " (witness #{Array(pair).map { |id| short_id(id) }.join(" + ")})" if pair
 
       constraint = value(result, :constraint_result)
       if constraint
-        constraints = Array(value(constraint, :constraints)).map { |item| item.is_a?(Hash) ? item.inspect : item.to_s }
+        constraints = readable_constraints(decision, constraint)
         detail = constraints.empty? ? value(constraint, :status) : constraints.join(", ")
         statement = value(constraint, :feasibility_statement)
         detail = [detail, statement].compact.reject(&:empty?).join("; ")
+        candidates = Array(value(constraint, :candidate_vectors))
+        existing = existing_vector_for(constraint)
+        unless candidates.empty?
+          detail_lines = [" — missing observation"]
+          candidates.each do |candidate|
+            detail_lines << "      Need an observation where:"
+            detail_lines.concat(candidate_requirements(decision, candidate).map { |item| "        #{item}" })
+            outcome = value(candidate, :outcome) ? "true" : "false"
+            detail_lines << "        Expected decision: #{outcome} [#{vector_values(candidate)}]"
+          end
+          detail_lines << "      #{statement}" unless statement.to_s.empty?
+          detail_lines << "      Compare with: #{existing_vector_context(existing)}"
+          return detail_lines.join("\n")
+        end
+        unless existing.nil?
+          owner_ids = Array(value(existing, :test_ids))
+          owners = owner_ids.first(2).map { |id| test_label(id) }
+          owners << "#{owner_ids.length - 2} more" if owner_ids.length > 2
+          owner_detail = owners.empty? ? nil : " (#{owners.join(", ")})"
+          detail = [detail, "existing observation: #{short_id(value(existing, :id))}#{owner_detail}"].compact.join("; ")
+        end
         return " (missing counterpart: #{detail})" unless detail.empty?
       end
 
       ""
+    end
+
+    def readable_constraints(decision, constraint)
+      Array(value(constraint, :constraints)).filter_map do |item|
+        if item.respond_to?(:key?)
+          index = value(item, :condition_index)
+          expression = condition_expression(decision, index) || "condition #{index}"
+          required = value(item, :required)
+          required = value(item, :value) if required.nil?
+          "requires #{expression}=#{required ? "true" : "false"}"
+        else
+          item.to_s
+        end
+      end
+    end
+
+    def condition_expression(decision, index)
+      condition = Array(value(decision, :conditions)).find { |item| value(item, :index).to_i == index.to_i }
+      value(condition, :expression)
+    end
+
+    def candidate_requirements(decision, candidate)
+      Array(value(candidate, :values)).each_with_index.map do |required, index|
+        expression = condition_expression(decision, index) || "condition #{index}"
+        if required.nil?
+          "#{expression} is not evaluated (short-circuited)"
+        else
+          "#{expression} is #{required ? "truthy" : "falsey"}"
+        end
+      end
+    end
+
+    def vector_values(vector)
+      Array(value(vector, :values)).map do |item|
+        if item.nil?
+          "-"
+        elsif item
+          "T"
+        else
+          "F"
+        end
+      end.join
+    end
+
+    def existing_vector_context(existing)
+      return "no existing effective observation" unless existing
+
+      owner_ids = Array(value(existing, :test_ids))
+      owners = owner_ids.first(2).map { |id| test_label(id) }
+      owners << "#{owner_ids.length - 2} more" if owner_ids.length > 2
+      context = "[#{vector_values(existing)}] => #{value(existing, :outcome) ? "true" : "false"}"
+      owners.empty? ? context : "#{context} (#{owners.join(", ")})"
+    end
+
+    def existing_vector_for(constraint)
+      id = value(constraint, :existing_vector_id).to_s
+      return if id.empty?
+
+      vectors.find { |vector| value(vector, :id).to_s == id }
     end
 
     def metrics
@@ -347,6 +434,50 @@ module Branchproof
       vectors.select do |vector|
         value(vector, :decision_id).to_s == value(decision, :id).to_s
       end
+    end
+
+    def decisions_to_render
+      return inventory_decisions unless @missing_only
+      return [] unless analysis_available?
+
+      inventory_decisions
+        .reject { |decision| unsupported?(decision) }
+        .select { |decision| conditions_to_render(decision).any? }
+    end
+
+    def conditions_to_render(decision)
+      conditions = Array(value(decision, :conditions))
+      return conditions unless @missing_only && analysis_available?
+
+      conditions.reject { |condition| value(condition_result(decision, condition), :status).to_s.upcase == "PROVEN" }
+    end
+
+    def vectors_to_render(decision)
+      return vectors_for(decision) unless @missing_only
+
+      []
+    end
+
+    def analysis_available?
+      !@analysis.nil? && @level > 1
+    end
+
+    def analysis_complete?
+      analysis_available? && baseline_status == "PASSED" && completeness.values.all?
+    end
+
+    def missing_condition_count
+      decisions_to_render.sum { |decision| conditions_to_render(decision).length }
+    end
+
+    def missing_summary_line
+      return "Missing conditions: Cannot identify missing conditions (analysis unavailable)" unless analysis_available?
+      return "Missing conditions: Cannot identify missing conditions (analysis incomplete)" unless analysis_complete?
+      return "No eligible conditions" if metrics[:eligible_conditions].zero?
+      return "No missing conditions" if analysis_complete? && missing_condition_count.zero?
+
+      count = decisions_to_render.length
+      "Missing conditions: #{missing_condition_count} across #{count} #{count == 1 ? "decision" : "decisions"}"
     end
 
     def analysis_for(decision)

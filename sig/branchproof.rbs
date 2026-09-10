@@ -102,7 +102,7 @@ module Branchproof
   class Report
     SCHEMA_VERSION: String
     CRITERION_VERSION: String
-    def initialize: (inventory: record, evidence: record, analysis: record?, minima: Array[record], baseline: record, diagnostics: Array[record]) -> void
+    def initialize: (inventory: record, evidence: record, analysis: record?, minima: Array[record], baseline: record, diagnostics: Array[record], ?level: Integer, ?missing_only: bool) -> void
     def write: (io: _WriteIO, format: Symbol | String) -> nil
     def exit_code: () -> Integer
   end

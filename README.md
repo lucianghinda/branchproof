@@ -97,7 +97,7 @@ For example, running the contents of the small `decision.rb` /
 with the terminal format produces a summary like this:
 
 ```text
-Branchproof 0.2.0
+Branchproof 0.3.0
 Tests: PASSED (3 tests, 0 failed, 0 skipped)
 MC/DC: 100.0% (2/2 conditions proven)
 Analysis: COMPLETE
@@ -125,6 +125,53 @@ Additional tests outside this MC/DC evidence set may improve coverage.
 
 The test execution still runs once for the selected level. Use `--format
 json` when a consumer needs the complete identifiers and versioned schema.
+
+### Find missing cases
+
+Use `--missing-only` to focus the terminal report on conditions that still
+lack independence evidence:
+
+```sh
+bundle exec mcdc analyze 'lib/**/*.rb' --missing-only
+```
+
+This keeps the overall summary and diagnostics, hides proven conditions and
+supporting-set lists, and shows missing scenarios using the source expressions.
+It works with levels 2 and 3 (the default). JSON remains the complete report;
+`--missing-only` cannot be combined with `--format json` or `--level 1`.
+
+For example, given this decision:
+
+```ruby
+content && Instruction.installed?(content)
+```
+
+Observing `[TT]` and `[F-]` proves the effect of `content`, but does not prove
+the effect of `Instruction.installed?(content)`. The missing case is `[TF]`:
+`content` must be truthy and `Instruction.installed?(content)` must be falsey,
+making the decision false. The missing condition is presented as:
+
+```text
+  Condition 1: Instruction.installed?(content)
+    NOT_PROVEN — missing observation
+      Need an observation where:
+        content is truthy
+        Instruction.installed?(content) is falsey
+        Expected decision: false [TF]
+```
+
+An existing file without the instruction block
+may produce this case; the test must reach the reported line. The report
+describes required truth values, not application inputs or guaranteed
+reachable paths. In Ruby, only `false` and `nil` are falsey; an empty string
+is truthy.
+
+`NOT_PROVEN` means analysis ran but did not find the required pair of
+observations. `NOT CALCULATED` means analysis was not available or was not
+requested; check the test status and diagnostics before adding tests.
+`Analysis: COMPLETE` means the analysis finished, not that every condition
+was proven. Missing conditions may require new tests or changes to existing
+test inputs; they do not by themselves prove a bug in the application.
 
 The levels select how much of the one-run result is displayed:
 

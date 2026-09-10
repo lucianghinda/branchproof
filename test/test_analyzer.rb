@@ -171,4 +171,38 @@ class TestAnalyzer < Minitest::Test
     limited.missing(decision_id: "d", condition_index: 0)
     assert_equal "LIMIT_REACHED", limited.missing(decision_id: "d", condition_index: 1)[:status]
   end
+
+  def test_missing_and_reports_candidate_when_source_evidence_has_no_source_id
+    tree = { type: :and, left: atom(0), right: atom(1) }
+    decision = { id: "d", source_id: "source", tree: tree,
+                 conditions: [{ id: "c0", index: 0 }, { id: "c1", index: 1 }] }
+    vectors = [{ id: "tt", decision_id: "d", values: [true, true], outcome: true },
+               { id: "f", decision_id: "d", values: [false, nil], outcome: false }]
+
+    result = Branchproof::Analyzer.new(inventory: { decisions: [decision] }, evidence: { vectors: vectors }, limits: {})
+                                  .missing(decision_id: "d", condition_index: 1)
+
+    assert_equal "CANDIDATE", result[:status]
+    assert_equal [true, false], result[:candidate_vectors].first[:values]
+    assert(vectors.none? { |vector| vector.key?(:source_id) }, "analysis must not mutate captured evidence")
+
+    incompatible = vectors.map { |vector| vector.merge(source_id: "different-source") }
+    rejected = Branchproof::Analyzer.new(inventory: { decisions: [decision] }, evidence: { vectors: incompatible }, limits: {}).call
+    assert_equal false, rejected[:completeness][:analysis]
+    assert_includes rejected[:diagnostics].map { |diagnostic| diagnostic[:code] }, "incompatible_evidence"
+  end
+
+  def test_missing_or_reports_candidate_when_source_evidence_has_no_source_id
+    tree = { type: :or, left: atom(0), right: atom(1) }
+    decision = { id: "d", source_id: "source", tree: tree,
+                 conditions: [{ id: "c0", index: 0 }, { id: "c1", index: 1 }] }
+    vectors = [{ id: "ff", decision_id: "d", values: [false, false], outcome: false }]
+
+    analyzer = Branchproof::Analyzer.new(inventory: { decisions: [decision] }, evidence: { vectors: vectors }, limits: {})
+    result = analyzer.missing(decision_id: "d", condition_index: 1)
+
+    assert_equal "CANDIDATE", result[:status]
+    assert_equal [false, true], result[:candidate_vectors].first[:values]
+    assert_equal [true, nil], analyzer.missing(decision_id: "d", condition_index: 0)[:candidate_vectors].first[:values]
+  end
 end

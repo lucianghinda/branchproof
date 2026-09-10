@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-10
+
+- Add `--missing-only` to focus terminal reports on unproven conditions.
+- Explain missing observations with required truth values and comparison tests.
+- Fix incorrect `INFEASIBLE_IN_MODEL` results caused by missing source identifiers.
+
 ## [0.2.0] - 2026-09-09
 
 - Prepared the initial public-release candidate.
