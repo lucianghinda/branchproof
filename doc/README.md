@@ -1,10 +1,10 @@
 # Branchproof
 
-Branchproof measures modified condition/decision coverage (MC/DC) from one
-serial Minitest run. It inventories supported `if`, `unless`, `elsif`,
-modifier, and ordinary ternary (`?:`) decisions, records observed vectors,
-and reports independence evidence, missing counterpart constraints, and
-smaller supporting test sets.
+Branchproof measures decision, condition, and modified condition/decision
+coverage (MC/DC) from one serial Minitest run. It discovers Ruby decisions
+through Prism, records their runtime paths, and attributes evidence to tests.
+Boolean decisions receive the coverage ladder; `case`, pattern alternatives,
+safe navigation, and conditional assignments receive alternative coverage.
 
 The gem and primary command are named `branchproof`. The `mcdc` command and
 `MCDC` namespace remain compatibility aliases with the same behavior.
@@ -321,26 +321,77 @@ short-circuited or masked rather than fixed to the same observed values. For exa
 short-circuits it once, but does not prove `right`; `[TF]` is also required.
 The condition and test views preserve that distinction.
 
-### Supported conditional forms
+### Supported decision forms
 
-Ordinary Ruby ternaries use the same predicate instrumentation and `&&`/`||`
-condition trees as supported `if` decisions. For example:
+Every decision has a stable `kind` and `context` in JSON. The Boolean ladder
+applies to the following forms:
 
-```ruby
-value = ready ? false : true
-```
+| Construct | Kind | Context |
+| --- | --- | --- |
+| `if`, modifier `if`, `elsif`, `unless`, ternary | `boolean` | `if`, `elsif`, `unless`, `ternary` |
+| `while`, `until`, including modifier and post-test loops | `boolean` | `while`, `until` |
+| Each subjectless `case` candidate | `boolean` | `case_when` |
+| Standalone `value in pattern` | `boolean` | `pattern_in` |
+| Evaluated pattern guard predicate | `boolean` | `pattern_guard` |
+| Standalone `&&`, `||`, `and`, `or` | `boolean` | `short_circuit` |
 
-Branchproof records `ready` as the ternary predicate. The decision outcome is
-therefore the truth value of `ready`, even though the selected branch returns
-`false` or `true`; branch selection, returned values, object identity, and
-evaluation order are unchanged. Ternaries nested inside other predicates are
-also inventoried at their own level, including all executed nested levels.
-Expanding the supported syntax increases the eligible-condition denominator,
-so percentages should be compared with that changed scope in mind.
+Prism determines precedence. `!` and `not` appear as NOT nodes in the Boolean
+tree; their operands remain the conditions. Short-circuited operands remain
+not evaluated. A Boolean subtree already decomposed in a decision is not
+inventoried again as a standalone decision.
 
-The existing predicate exclusions and analysis limits still apply. Keyword
-`and`/`or` expressions, contextual syntax, unsafe or ambiguous predicates,
-and limit overflows remain diagnostics rather than eligible coverage.
+Loop outcomes describe the predicate as written: an `until` predicate that
+returns true ends the loop. Every predicate evaluation receives an execution
+ID. Repeated equivalent executions aggregate into a vector's `count`, retaining
+the supporting tests. Ternary outcomes likewise describe the predicate, not
+the value returned by the chosen branch.
+
+Other constructs use alternative coverage, separate from MC/DC:
+
+| Construct | Kind | Context | Required alternatives |
+| --- | --- | --- | --- |
+| `case subject` | `multiway` | `case` | Each `when` candidate and `else` (or implicit no-match path) |
+| `case/in` | `pattern` | `case_in` | Each pattern clause and explicit `else`, if present |
+| `receiver&.method` | `implicit` | `safe_navigation` | Receiver nil / non-nil |
+| `lhs ||= rhs` | `implicit` | `or_assignment` | RHS skipped / executed |
+| `lhs &&= rhs` | `implicit` | `and_assignment` | RHS skipped / executed |
+
+Each safe-navigation operation in a chain is a distinct decision. Assignment
+instrumentation preserves Ruby's native local, instance, class, global,
+constant, method, and indexed assignment operations, including receiver and
+index evaluation order. Safe navigation distinguishes nil from false.
+
+For multiway decisions, vector values mean selected (`true`), evaluated but
+not selected (`false`), and skipped (`null`). Later alternatives remain skipped
+when an earlier candidate matches. Implicit vectors record the selected path
+and its unselected complement. Their `outcome` is a selection marker, not the
+truthiness of the application's return value. Reports label these as paths,
+not Boolean outcomes. Each alternative exposes selected, not-selected, and
+skipped evidence with test and vector IDs. The alternative denominator is the
+number of supported selectable alternatives; these decisions do not enter
+Boolean-ladder or MC/DC denominators.
+
+A `case/in` without `else` retains Ruby's native no-match exception. An execution
+that fails before choosing a branch is aborted, not counted as a selected
+alternative. Selected branches and assignment paths remain observed even when
+their bodies or right-hand sides subsequently raise or return.
+
+Unsupported syntax stays visible and outside coverage denominators. Current
+exclusions include guarded `case/in` (`unsupported_pattern_guard`), dynamic
+`when` splats (`unsupported_case_splat`), safe-navigation compound assignment
+(`unsupported_assignment_target`), and rescue alternatives
+(`unsupported_rescue_control_flow`). A guard predicate can still supply Boolean
+evidence when Ruby evaluates it; an unsupported guarded case does not claim
+pattern-match coverage from that evidence. Flip-flops remain
+`unsupported_flip_flop`. Decisions inside `defined?`, contextual regular
+expressions, heredocs, unsafe predicates, and limit overflows retain explicit
+exclusions. Ruby-defined custom `!` methods keep their runtime behavior;
+evidence that contradicts Boolean negation is rejected instead of proving
+coverage with an invalid logical model.
+
+New reports use schema `1.2`; saved schema `1.0` and `1.1` reports remain
+readable. Expanded discovery changes coverage denominators, so compare reports
+with their supported syntax scope in mind.
 
 ### Limits
 

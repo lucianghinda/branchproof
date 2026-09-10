@@ -14,6 +14,12 @@ Not documented.
 ### `CRITERION_VERSION` <a id="constant-CRITERION_VERSION"></a> <a id="CRITERION_VERSION-constant"></a>
 Not documented.
 
+### `DECISION_KINDS` <a id="constant-DECISION_KINDS"></a> <a id="DECISION_KINDS-constant"></a>
+Not documented.
+
+### `NONBOOLEAN_KINDS` <a id="constant-NONBOOLEAN_KINDS"></a> <a id="NONBOOLEAN_KINDS-constant"></a>
+Not documented.
+
 ### `REQUIRED_FIELDS` <a id="constant-REQUIRED_FIELDS"></a> <a id="REQUIRED_FIELDS-constant"></a>
 Not documented.
 

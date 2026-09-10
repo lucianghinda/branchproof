@@ -8,6 +8,9 @@
 Derives condition- and test-oriented rows from one report document.
 
 ## Attributes
+### `alternatives` [R] <a id="attribute-i-alternatives"></a> <a id="alternatives-instance_method"></a>
+Returns the value of attribute alternatives.
+
 ### `conditions` [R] <a id="attribute-i-conditions"></a> <a id="conditions-instance_method"></a>
 Returns the value of attribute conditions.
 
