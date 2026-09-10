@@ -59,6 +59,8 @@ module Branchproof
         return nil
       end
 
+      return rewritten[:iseq] if reusable_iseq?(unit, rewritten)
+
       RubyVM::InstructionSequence.compile(
         rewritten[:bytes], unit[:real_path] || canonical(path), unit[:real_path] || canonical(path), 1,
         compile_options(unit)
@@ -133,6 +135,17 @@ module Branchproof
 
     def compile_options(unit)
       unit[:compile_options] || {}
+    end
+
+    # The instrumenter already compiled the rewritten source once to validate it.
+    # Reuse that instruction sequence instead of compiling again, but only when
+    # it was built with the exact file/path/options this loader would use:
+    # real_path present and equal to absolute_path (so the instrumenter's file
+    # and path arguments match what we pass below), and no custom compile
+    # options (the instrumenter compiles without any).
+    def reusable_iseq?(unit, rewritten)
+      rewritten[:iseq] && compile_options(unit).empty? &&
+        unit[:real_path] && unit[:absolute_path] == unit[:real_path]
     end
 
     def status(state, reason)

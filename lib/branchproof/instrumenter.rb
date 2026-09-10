@@ -31,12 +31,12 @@ module Branchproof
 
       rewritten = apply_edits(bytes, edits)
       begin
-        RubyVM::InstructionSequence.compile(rewritten, unit[:absolute_path] || "(branchproof)",
-                                            unit[:real_path] || unit[:absolute_path] || "(branchproof)", 1)
+        iseq = RubyVM::InstructionSequence.compile(rewritten, unit[:absolute_path] || "(branchproof)",
+                                                   unit[:real_path] || unit[:absolute_path] || "(branchproof)", 1)
       rescue SyntaxError => e
         return result(bytes, diagnostics: [diagnostic("invalid_rewrite", e.message)])
       end
-      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: rewritten != bytes)
+      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: rewritten != bytes, iseq: iseq)
     end
 
     private
@@ -161,8 +161,8 @@ module Branchproof
       start.is_a?(Integer) && length.is_a?(Integer) && start >= 0 && length >= 0
     end
 
-    def result(bytes, changed: false, diagnostics: [])
-      { bytes: bytes, changed: changed, diagnostics: diagnostics }.freeze
+    def result(bytes, changed: false, diagnostics: [], iseq: nil)
+      { bytes: bytes, changed: changed, diagnostics: diagnostics, iseq: iseq }.freeze
     end
 
     def diagnostic(code, message)
