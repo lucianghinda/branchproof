@@ -639,37 +639,41 @@ module Branchproof
     end
 
     def metrics
-      decisions = inventory_decisions
-      unsupported, supported = decisions.partition { |decision| unsupported?(decision) }
-      eligible = supported.sum { |decision| Array(value(decision, :conditions)).length }
-      observed = vectors.map { |vector| value(vector, :decision_id).to_s }.uniq
-      proven = @analysis ? value(@analysis, :proven_count).to_i : 0
-      kind_counts = decisions.group_by { |decision| decision_kind(decision) }.transform_values(&:length)
-      context_counts = decisions.group_by { |decision| value(decision, :context).to_s }
-      context_counts = context_counts.reject { |context, _| context.empty? }.transform_values(&:length)
-      { discovered: decisions.length, supported: supported.length, unsupported: unsupported.length,
-        unsupported_conditions: unsupported.sum do |decision|
-          discovered_conditions(decision)
-        end, eligible_conditions: eligible,
-        opaque: decisions.sum { |decision| Array(value(decision, :opaque_ranges)).length },
-        unexecuted: supported.count { |decision| !observed.include?(value(decision, :id).to_s) },
-        eligible_alternatives: supported.sum do |decision|
-          nonboolean_decision?(decision) ? Array(value(decision, :alternatives)).length : 0
-        end,
-        completed: vectors.sum do |vector|
-          value(vector, :count).to_i
-        end, aborted: numeric_hash_value(@evidence, :abort_counts),
-        unattributed: vectors.sum { |vector| value(vector, :unattributed_count).to_i }, limited: incomplete? ? 1 : 0,
-        proven: proven, percentage: percentage(eligible, proven), kind_counts: kind_counts,
-        decision_kinds: kind_counts, context_counts: context_counts }
+      @metrics ||= begin
+        decisions = inventory_decisions
+        unsupported, supported = decisions.partition { |decision| unsupported?(decision) }
+        eligible = supported.sum { |decision| Array(value(decision, :conditions)).length }
+        observed = vectors.map { |vector| value(vector, :decision_id).to_s }.uniq
+        proven = @analysis ? value(@analysis, :proven_count).to_i : 0
+        kind_counts = decisions.group_by { |decision| decision_kind(decision) }.transform_values(&:length)
+        context_counts = decisions.group_by { |decision| value(decision, :context).to_s }
+        context_counts = context_counts.reject { |context, _| context.empty? }.transform_values(&:length)
+        { discovered: decisions.length, supported: supported.length, unsupported: unsupported.length,
+          unsupported_conditions: unsupported.sum do |decision|
+            discovered_conditions(decision)
+          end, eligible_conditions: eligible,
+          opaque: decisions.sum { |decision| Array(value(decision, :opaque_ranges)).length },
+          unexecuted: supported.count { |decision| !observed.include?(value(decision, :id).to_s) },
+          eligible_alternatives: supported.sum do |decision|
+            nonboolean_decision?(decision) ? Array(value(decision, :alternatives)).length : 0
+          end,
+          completed: vectors.sum do |vector|
+            value(vector, :count).to_i
+          end, aborted: numeric_hash_value(@evidence, :abort_counts),
+          unattributed: vectors.sum { |vector| value(vector, :unattributed_count).to_i }, limited: incomplete? ? 1 : 0,
+          proven: proven, percentage: percentage(eligible, proven), kind_counts: kind_counts,
+          decision_kinds: kind_counts, context_counts: context_counts }
+      end
     end
 
     def completeness
-      evidence = value(@evidence, :completeness) || {}
-      analysis = value(@analysis, :completeness) || {}
-      { observation: completeness_value?(evidence, analysis, :observation),
-        attribution: completeness_value?(evidence, analysis, :attribution),
-        analysis: @analysis ? value(analysis, :analysis) == true : value(evidence, :analysis) == true }
+      @completeness ||= begin
+        evidence = value(@evidence, :completeness) || {}
+        analysis = value(@analysis, :completeness) || {}
+        { observation: completeness_value?(evidence, analysis, :observation),
+          attribution: completeness_value?(evidence, analysis, :attribution),
+          analysis: @analysis ? value(analysis, :analysis) == true : value(evidence, :analysis) == true }
+      end
     end
 
     def completeness_value?(evidence, analysis, key)
