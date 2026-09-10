@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
+require_relative "flow_instrumentation"
+
 module Branchproof
   # Applies the smallest possible source edits around inventoried expressions.
   # The edits are deliberately textual: Prism owns the ranges, while this class
   # never evaluates application code or introduces a Ruby scope.
   class Instrumenter
+    include FlowInstrumentation
+
     RUNTIME = "::Branchproof::Runtime"
 
     def rewrite(unit:)
@@ -17,8 +21,7 @@ module Branchproof
       decisions = Array(unit[:decisions]).select { |decision| supported?(decision) }
       edits = decisions.filter_map do |decision|
         next if decisions.any? do |outer|
-          outer != decision && contains?(outer[:byte_start], outer[:byte_length], decision[:byte_start],
-                                         decision[:byte_length])
+          encloses_decision?(outer, decision)
         end
 
         decision_edit(bytes, decision, decisions)
@@ -57,13 +60,13 @@ module Branchproof
       return nil unless valid_range?(bytes, start, length)
 
       nested = all_decisions.select do |candidate|
-        candidate != decision && contains?(start, length, candidate[:byte_start], candidate[:byte_length])
+        encloses_decision?(decision, candidate)
       end
-      expression = render_range(bytes, start, length, decision, nested)
+      expression = render_decision(bytes, decision, nested)
       {
         start: start,
         finish: start + length,
-        text: frame(decision[:id], expression)
+        text: expression
       }
     end
 
@@ -90,22 +93,34 @@ module Branchproof
         contains?(start, length, child[:byte_start], child[:byte_length])
       end
       children = children.reject do |child|
-        nested.any? do |candidate|
-          candidate != child && contains?(candidate[:byte_start], candidate[:byte_length], child[:byte_start],
-                                          child[:byte_length])
-        end
+        children.any? { |candidate| encloses_decision?(candidate, child) }
       end
       children.sort_by! { |child| -child[:byte_start] }
       output = bytes.byteslice(start, length)
       children.each do |child|
-        child_text = render_range(bytes, child[:byte_start], child[:byte_length], child, nested.reject do |item|
-          item.equal?(child)
-        end)
-        child_text = frame(child[:id], child_text)
+        descendants = nested.select { |candidate| encloses_decision?(child, candidate) }
+        child_text = render_decision(bytes, child, descendants)
         offset = child[:byte_start] - start
         output[offset, child[:byte_length]] = child_text
       end
       output
+    end
+
+    def encloses_decision?(outer, inner)
+      return false if outer.equal?(inner) || outer == inner
+      return false unless contains?(outer[:byte_start], outer[:byte_length], inner[:byte_start], inner[:byte_length])
+      return true unless outer[:byte_start] == inner[:byte_start] && outer[:byte_length] == inner[:byte_length]
+
+      (outer[:kind] || "boolean") == "boolean" && inner[:kind] != "boolean" && !inner[:kind].nil?
+    end
+
+    def render_decision(bytes, decision, nested)
+      if decision[:instrumentation]
+        render_flow(bytes, decision, nested)
+      else
+        expression = render_range(bytes, decision[:byte_start], decision[:byte_length], decision, nested)
+        frame(decision[:id], expression)
+      end
     end
 
     def condition_wrapper(decision_id, index, expression)

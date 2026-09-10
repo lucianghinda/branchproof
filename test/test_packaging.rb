@@ -16,6 +16,10 @@ class TestPackaging < Minitest::Test
       capture_io { Gem::Package.build(specification, false, true, archive) }
       package = Gem::Package.new(archive)
       %w[branchproof mcdc].each { |name| assert_includes package.contents, "exe/#{name}" }
+      %w[decision_syntax flow_instrumentation runtime_flow].each do |name|
+        assert_includes package.contents, "lib/branchproof/#{name}.rb"
+      end
+
       destination = File.join(directory, "installed")
       Gem::Installer.at(archive, install_dir: destination, ignore_dependencies: true, wrappers: true).install
       %w[branchproof mcdc].each do |name|

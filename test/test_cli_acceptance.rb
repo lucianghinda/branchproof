@@ -240,10 +240,10 @@ class CLIAcceptanceTest < Minitest::Test
 
     assert_equal 0, result[:status].exitstatus, result[:stderr]
     assert_equal 2, metrics.fetch("discovered")
-    assert_equal 1, metrics.fetch("supported")
-    assert_equal 1, metrics.fetch("unsupported")
+    assert_equal 2, metrics.fetch("supported")
+    assert_equal 0, metrics.fetch("unsupported")
     assert_equal 1, metrics.fetch("unexecuted")
-    assert_equal 2, metrics.fetch("eligible_conditions")
+    assert_equal 4, metrics.fetch("eligible_conditions")
     assert_equal metrics.fetch("discovered"), metrics.fetch("supported") + metrics.fetch("unsupported")
   end
 

@@ -23,7 +23,11 @@ module Branchproof
       completeness = fetch(@document, :completeness) || {}
       evidence = fetch(@document, :observations) || {}
       lines = ["Branchproof focused view: #{@view}", "Tests: #{fetch(baseline, :status) || "INCOMPLETE"}",
-               "Values: T=true, F=false, -=short-circuited"]
+               (if @index.alternatives.empty?
+                  "Values: T=true, F=false, -=short-circuited"
+                else
+                  "Values: Boolean T=true/F=false; flow T=selected, F=not-selected, -=skipped"
+                end)]
       if completeness.values.include?(false) || fetch(baseline, :status).to_s != "PASSED"
         lines << "Warning: failed or incomplete run; observations and proof evidence may be unavailable."
       end
@@ -35,7 +39,12 @@ module Branchproof
       lines << "Empty groups mean no recorded completed observation."
       lines << ""
       lines.concat(@coordinator.coverage_ladder_lines)
-      @view == :conditions ? render_conditions(lines) : render_tests(lines)
+      if @view == :conditions
+        render_conditions(lines)
+        render_alternatives(lines)
+      else
+        render_tests(lines)
+      end
       render_unowned(lines)
       render_unsupported(lines)
       Array(fetch(@document, :diagnostics)).each do |diagnostic|
@@ -53,6 +62,8 @@ module Branchproof
         lines << "Condition: #{row[:expression]}"
         lines << "Location: #{location(row[:relative_path], row[:line], unavailable: "condition line unavailable")}"
         lines << "Decision: #{row[:decision_expression]} (condition #{row[:index]})"
+        lines << "Kind: #{row[:kind]}"
+        lines << "Context: #{row[:context]}" unless row[:context].to_s.empty?
         status = if @level == 1 && !coverage_available?
                    "NOT CALCULATED"
                  else
@@ -106,16 +117,52 @@ module Branchproof
       end
     end
 
+    def render_alternatives(lines)
+      rows = @index.alternatives
+      rows = rows.select { |row| row[:missing] || row[:status].to_s != "covered" } if @missing_only && @level > 1
+      rows.each do |row|
+        lines << "Alternative #{row[:index]}: #{row[:expression]}"
+        lines << "Location: #{location(row[:relative_path], row[:line],
+                                       unavailable: "alternative location unavailable")}"
+        lines << "Decision: #{row[:decision_expression]} (alternative #{row[:index]})"
+        lines << "Kind: #{row[:kind]}"
+        lines << "Context: #{row[:context]}" unless row[:context].to_s.empty?
+        lines << "Selection: #{row[:status] || "NOT_CALCULATED"}"
+        lines << "MC/DC: N/A (not applicable)"
+        render_alternative_group(lines, "Selected by", row[:selected])
+        render_alternative_group(lines, "Not selected by", row[:not_selected])
+        render_alternative_group(lines, "Skipped in", row[:skipped])
+        if row[:missing]
+          lines << "  Missing alternative: #{row[:expression]}"
+          lines << "  Need selection of: #{row[:expression]}"
+        end
+        lines << ""
+      end
+      lines << "No missing alternatives" if @missing_only && rows.empty?
+    end
+
+    def render_alternative_group(lines, heading, evidence)
+      evidence ||= {}
+      ids = Array(evidence[:test_ids]).map { |id| test_label(id) }
+      ids << "unattributed" if evidence[:unattributed_count].to_i.positive?
+      lines << "  #{heading}: #{ids.empty? ? "none recorded" : ids.uniq.join(", ")}"
+    end
+
     def render_tests(lines)
       rows = @index.tests
       missing_ids = @index.conditions.reject { |row| row[:status].to_s.upcase == "PROVEN" }.map { |row| row[:id] }
-      rows.each { |row| render_test_row(lines, row, missing_ids) }
+      missing_alternative_ids = @index.alternatives.select { |row| row[:missing] || row[:status].to_s != "covered" }
+                                      .map { |row| row[:alternative_id] }
+      rows.each { |row| render_test_row(lines, row, missing_ids, missing_alternative_ids) }
     end
 
-    def render_test_row(lines, row, missing_ids)
+    def render_test_row(lines, row, missing_ids, missing_alternative_ids = [])
       observations = row[:observations]
       if @missing_only
-        observations = observations.select { |observation| missing_ids.include?(observation[:condition_id]) }
+        observations = observations.select do |observation|
+          missing_ids.include?(observation[:condition_id]) ||
+            missing_alternative_ids.include?(observation[:alternative_id])
+        end
         return if observations.empty?
       end
       lines << "Test: #{row[:name]}"
@@ -131,31 +178,51 @@ module Branchproof
         lines << "  No recorded completed condition observations"
         return
       end
-      observations.group_by { |observation| observation[:condition_id] }.each_value do |items|
+      grouped = observations.group_by { |observation| observation[:alternative_id] || observation[:condition_id] }
+      grouped.each_value do |items|
         observation = items.first
-        observed_values = items.map { |item| item[:value] }.uniq
-        label = observed_values.all?(&:nil?) ? "short-circuited-only" : "evaluated"
-        label += "; owns canonical witness evidence" if @level > 1 && items.any? { |item| item[:owns_witness] }
         phases = items.flat_map { |item| item[:phases] }.uniq.sort.join(", ")
-        signs = values(values: observed_values)
-        condition_location = location(observation[:relative_path], observation[:line],
-                                      unavailable: "condition line unavailable")
-        lines << "  #{observation[:expression]} (#{condition_location}): #{signs}; #{label}; " \
-                 "phases: #{phases}"
+        if observation[:alternative_id]
+          states = items.map { |item| item[:alternative_state] }.uniq.join(", ")
+          alternative_location = location(observation[:relative_path], observation[:line],
+                                          unavailable: "alternative location unavailable")
+          lines << "  Alternative #{observation[:alternative_id]}: #{observation[:expression]} " \
+                   "(#{alternative_location}): #{states}; phases: #{phases}"
+        else
+          observed_values = items.map { |item| item[:value] }.uniq
+          label = observed_values.all?(&:nil?) ? "short-circuited-only" : "evaluated"
+          label += "; owns canonical witness evidence" if @level > 1 && items.any? { |item| item[:owns_witness] }
+          signs = values(values: observed_values)
+          condition_location = location(observation[:relative_path], observation[:line],
+                                        unavailable: "condition line unavailable")
+          lines << "  #{observation[:expression]} (#{condition_location}): #{signs}; #{label}; " \
+                   "phases: #{phases}"
+        end
       end
     end
 
     def render_unowned(lines)
       rows = @index.conditions
       rows = rows.reject { |row| row[:status] == "PROVEN" } if @missing_only
-      { "Unexecuted conditions" => rows.select { |row| row[:unexecuted] },
-        "Unattributed evidence" => rows.select { |row| row[:unattributed].positive? } }.each do |heading, conditions|
+      groups = { "Unexecuted conditions" => rows.select { |row| row[:unexecuted] },
+                 "Unattributed evidence" => rows.select { |row| row[:unattributed].positive? } }
+      alternative_rows = @index.alternatives
+      alternative_rows = alternative_rows.reject { |row| row[:status].to_s == "covered" } if @missing_only
+      unless alternative_rows.empty?
+        groups["Unexecuted alternatives"] = alternative_rows.select do |row|
+          row[:selected][:observed] == false && row[:not_selected][:observed] == false
+        end
+        groups["Unattributed alternative evidence"] = alternative_rows.select do |row|
+          %i[selected not_selected skipped].any? { |state| row[state][:unattributed_count].to_i.positive? }
+        end
+      end
+      groups.each do |heading, conditions|
         next if conditions.empty?
 
         lines << "#{heading}:"
         conditions.each do |row|
-          lines << "  #{row[:expression]} (#{location(row[:relative_path], row[:line],
-                                                      unavailable: "condition line unavailable")})"
+          unavailable = row[:alternative_id] ? "alternative location unavailable" : "condition line unavailable"
+          lines << "  #{row[:expression]} (#{location(row[:relative_path], row[:line], unavailable: unavailable)})"
         end
       end
     end

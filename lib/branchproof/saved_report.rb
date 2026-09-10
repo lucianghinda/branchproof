@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/BlockLength
+
 # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
 require "json"
@@ -7,7 +9,9 @@ require "json"
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
   class SavedReport
-    SUPPORTED_SCHEMAS = %w[1.0 1.1].freeze
+    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2].freeze
+    DECISION_KINDS = %w[boolean implicit multiway pattern exception].freeze
+    NONBOOLEAN_KINDS = (DECISION_KINDS - ["boolean"]).freeze
     CRITERION_VERSION = "masking_occurrence_v1"
     REQUIRED_FIELDS = %w[schema_version tool_version criterion_version runtime run_ids source_inventory baseline
                          observations analysis minima metrics diagnostics completeness].freeze
@@ -33,7 +37,8 @@ module Branchproof
 
     def validate!
       fail_with("document must be an object") unless hash_with_string_keys?(@document)
-      schema = @document["schema_version"]
+      @schema_version = @document["schema_version"]
+      schema = @schema_version
       fail_with("unsupported schema version") unless SUPPORTED_SCHEMAS.include?(schema)
       missing = REQUIRED_FIELDS.reject { |field| @document.key?(field) }
       fail_with("missing field: #{missing.first}") unless missing.empty?
@@ -66,6 +71,9 @@ module Branchproof
       decisions.each do |decision|
         fail_with("invalid decision") unless hash_with_string_keys?(decision)
         fail_with("unknown decision source") unless source_ids.include?(decision["source_id"])
+        kind = decision_kind(decision)
+        fail_with("invalid decision kind") unless DECISION_KINDS.include?(kind)
+        validate_string_field(decision, "context", nullable: true)
         validate_string_field(decision, "expression")
         validate_integer_field(decision, "line")
         conditions = decision["conditions"]
@@ -81,9 +89,17 @@ module Branchproof
         fail_with("condition indexes must be consecutive") unless conditions.map do |condition|
           condition["index"]
         end.sort == (0...conditions.length).to_a
+        alternatives = decision["alternatives"]
+        if nonboolean_kind?(kind)
+          fail_with("nonboolean decision tree must be null") unless decision.key?("tree") && decision["tree"].nil?
+          validate_alternatives(alternatives)
+        elsif alternatives && (!alternatives.is_a?(Array) || !alternatives.empty?)
+          fail_with("boolean decision alternatives must be empty")
+        end
       end
       @source_ids = source_ids
       @decision_ids = decision_ids
+      @decisions_by_id = decisions.to_h { |decision| [decision["id"], decision] }
       @condition_ids = decisions.flat_map do |decision|
         Array(decision["conditions"]).map do |condition|
           condition["id"]
@@ -102,6 +118,18 @@ module Branchproof
       paths = sources.map { |source| source["relative_path"] }.compact
       fail_with("duplicate source relative path") unless paths.uniq.length == paths.length
       @condition_counts = decisions.to_h { |decision| [decision["id"], decision["conditions"].length] }
+      @alternative_counts = decisions.to_h do |decision|
+        [decision["id"], nonboolean_kind?(decision_kind(decision)) ? decision.fetch("alternatives").length : 0]
+      end
+      @alternative_ids_by_decision = decisions.to_h do |decision|
+        [decision["id"], if nonboolean_kind?(decision_kind(decision))
+                           decision.fetch("alternatives").map do |alternative|
+                             alternative["id"]
+                           end
+                         else
+                           []
+                         end]
+      end
       @supported_ids = decisions.filter_map do |decision|
         decision["id"] unless decision["support_status"] == "UNSUPPORTED"
       end
@@ -119,14 +147,20 @@ module Branchproof
       vectors.each do |vector|
         fail_with("invalid vector") unless hash_with_string_keys?(vector)
         fail_with("unknown vector decision") unless @decision_ids.include?(vector["decision_id"])
+        decision = @decisions_by_id.fetch(vector["decision_id"])
         values = vector["values"]
         valid_values = values.is_a?(Array) && values.all? do |value|
           value.nil? || value == true || value == false
         end
         fail_with("vector values must be an array of booleans or null") unless valid_values
-        expected_length = @condition_counts.fetch(vector["decision_id"])
-        fail_with("vector values do not match decision conditions") unless values.length == expected_length
+        expected_length = if @alternative_counts.fetch(vector["decision_id"]).positive?
+                            @alternative_counts.fetch(vector["decision_id"])
+                          else
+                            @condition_counts.fetch(vector["decision_id"])
+                          end
+        fail_with("vector values do not match decision dimensions") unless values.length == expected_length
         fail_with("vector outcome must be boolean") unless [true, false].include?(vector["outcome"])
+        validate_flow_vector(vector, decision) if strict_flow_decision?(decision)
         fail_with("unknown vector test") unless strings?(vector["test_ids"]) && vector["test_ids"].all? do |id|
           @test_ids.include?(id)
         end
@@ -136,6 +170,7 @@ module Branchproof
       end
       @vector_ids = vector_ids
       @vector_decision_by_id = vectors.to_h { |vector| [vector["id"], vector["decision_id"]] }
+      @vectors_by_id = vectors.to_h { |vector| [vector["id"], vector] }
       aborts = observations["abort_counts"]
       return if aborts.nil? || aborts.is_a?(Integer) || (aborts.is_a?(Hash) && aborts.values.all?(Integer))
 
@@ -168,6 +203,11 @@ module Branchproof
         seen[id] = true
         results = decision["condition_results"]
         fail_with("condition results must be an array") unless results.is_a?(Array)
+        inventory_decision = @decisions_by_id[id]
+        if nonboolean_kind?(decision_kind(inventory_decision))
+          fail_with("nonboolean condition results must be empty") unless results.empty?
+          validate_nonboolean_analysis(decision, inventory_decision)
+        end
         seen_conditions = {}
         results.each do |result|
           condition_id = result["condition_id"] if hash_with_string_keys?(result)
@@ -186,6 +226,195 @@ module Branchproof
           fail_with("canonical pair must reference vectors") unless valid_pair
         end
       end
+    end
+
+    def decision_kind(decision)
+      kind = decision && decision["kind"]
+      kind.nil? || kind.empty? ? "boolean" : kind
+    end
+
+    def nonboolean_kind?(kind)
+      NONBOOLEAN_KINDS.include?(kind)
+    end
+
+    def validate_alternatives(alternatives)
+      fail_with("alternatives must be an array") unless alternatives.is_a?(Array)
+      ids = unique_ids(alternatives, "id", "alternative")
+      alternatives.each do |alternative|
+        fail_with("alternative index must be an integer") unless alternative["index"].is_a?(Integer)
+        fail_with("alternative expression must be a string") unless alternative["expression"].is_a?(String)
+        %w[line column byte_start byte_length].each do |field|
+          validate_integer_field(alternative, field, nullable: true)
+        end
+      end
+      indexes = alternatives.map { |alternative| alternative["index"] }
+      fail_with("alternative indexes must be consecutive") unless indexes.sort == (0...alternatives.length).to_a
+      ids
+    end
+
+    def validate_nonboolean_analysis(analysis_decision, inventory_decision)
+      conditions = analysis_decision["conditions"]
+      fail_with("nonboolean conditions must be empty") unless conditions.nil? || conditions == []
+      coverage = analysis_decision["coverage"]
+      if coverage.nil?
+        return unless strict_flow_decision?(inventory_decision)
+
+        fail_with("complete flow analysis requires coverage")
+      end
+
+      fail_with("flow coverage must be an object") unless hash_with_string_keys?(coverage)
+      fail_with("alternative coverage must be an object") unless hash_with_string_keys?(coverage["alternative"])
+      validate_alternative_coverage(coverage["alternative"], inventory_decision)
+      mcdc = coverage["mcdc"]
+      if mcdc.nil?
+        fail_with("flow MC/DC status must be explicit") if strict_flow_decision?(inventory_decision)
+        return
+      end
+
+      allowed = if inventory_decision["support_status"].to_s.upcase == "UNSUPPORTED"
+                  %w[not_applicable unsupported]
+                else
+                  ["not_applicable"]
+                end
+      fail_with("nonboolean MC/DC must be not_applicable") unless hash_with_string_keys?(mcdc) &&
+                                                                  allowed.include?(mcdc["status"])
+    end
+
+    def validate_alternative_coverage(coverage, decision)
+      allowed_statuses = %w[covered partial unexecuted]
+      allowed_statuses << "unsupported" if decision["support_status"].to_s.upcase == "UNSUPPORTED"
+      fail_with("invalid alternative coverage status") unless allowed_statuses.include?(coverage["status"])
+      %w[covered_alternatives required_alternatives].each do |field|
+        validate_integer_field(coverage, field)
+      end
+      expected = decision.fetch("alternatives")
+      expected_for_coverage = coverage["status"] == "unsupported" ? [] : expected
+      if strict_flow_decision?(decision)
+        %w[covered_alternatives required_alternatives].each do |field|
+          fail_with("#{field} must be an integer") unless coverage[field].is_a?(Integer)
+        end
+      end
+      unless coverage["required_alternatives"] == expected_for_coverage.length
+        fail_with("alternative coverage count mismatch")
+      end
+      if strict_flow_decision?(decision)
+        fail_with("alternative coverage count must be nonnegative") unless coverage["covered_alternatives"] >= 0 &&
+                                                                           coverage["required_alternatives"] >= 0
+        fail_with("covered alternatives exceed required alternatives") unless coverage["covered_alternatives"] <=
+                                                                              coverage["required_alternatives"]
+      end
+      alternatives = coverage["alternatives"]
+      fail_with("alternative coverage alternatives must be an array") unless alternatives.is_a?(Array)
+      seen = {}
+      alternatives.each do |row|
+        fail_with("invalid alternative coverage row") unless hash_with_string_keys?(row)
+        id = row["alternative_id"]
+        inventory = expected_for_coverage.find { |alternative| alternative["id"] == id }
+        fail_with("unknown alternative coverage id") unless inventory && !seen.key?(id)
+        seen[id] = true
+        unless row["index"].is_a?(Integer) && row["index"] == inventory["index"]
+          fail_with("alternative coverage index mismatch")
+        end
+        fail_with("alternative coverage expression must be a string") unless row["expression"].is_a?(String)
+        %w[selected not_selected skipped].each do |state|
+          if strict_flow_decision?(decision)
+            validate_alternative_evidence(row[state], decision, inventory["index"], state)
+          else
+            validate_alternative_evidence(row[state])
+          end
+        end
+      end
+      fail_with("alternative coverage missing rows") unless seen.keys.sort == expected_for_coverage.map { |alternative|
+        alternative["id"]
+      }.sort
+      missing = coverage["missing_alternatives"]
+      fail_with("missing alternatives must be an array of strings") unless strings?(missing)
+      if strict_flow_decision?(decision)
+        expected_missing = alternatives.filter_map do |row|
+          row["alternative_id"] unless row.dig("selected", "observed")
+        end
+        fail_with("missing alternatives do not match selected evidence") unless missing.sort == expected_missing.sort
+        covered = alternatives.count { |row| row.dig("selected", "observed") }
+        unless coverage["covered_alternatives"] == covered
+          fail_with("covered alternatives do not match selected evidence")
+        end
+        expected_status = if covered.zero?
+                            "unexecuted"
+                          elsif covered == expected.length
+                            "covered"
+                          else
+                            "partial"
+                          end
+        fail_with("alternative coverage status does not match evidence") unless coverage["status"] == expected_status
+      end
+      fail_with("unknown missing alternative") unless (missing - expected.map do |alternative|
+        alternative["id"]
+      end).empty?
+    end
+
+    def validate_alternative_evidence(evidence, decision = nil, index = nil, state = nil)
+      fail_with("alternative evidence must be an object") unless hash_with_string_keys?(evidence)
+      fail_with("alternative evidence observed must be boolean") unless [true, false].include?(evidence["observed"])
+      fail_with("alternative evidence vector_ids must be strings") unless strings?(evidence["vector_ids"])
+      unless evidence["vector_ids"].uniq.length == evidence["vector_ids"].length
+        fail_with("duplicate alternative evidence vector")
+      end
+      fail_with("unknown alternative evidence vector") unless (evidence["vector_ids"] - @vector_ids).empty?
+      fail_with("alternative evidence test_ids must be strings") unless strings?(evidence["test_ids"])
+      unless evidence["test_ids"].uniq.length == evidence["test_ids"].length
+        fail_with("duplicate alternative evidence test")
+      end
+      fail_with("unknown alternative evidence test") unless (evidence["test_ids"] - @test_ids).empty?
+      validate_integer_field(evidence, "unattributed_count")
+      return unless decision
+
+      vectors = evidence["vector_ids"].map { |id| @vectors_by_id.fetch(id) }
+      fail_with("alternative evidence references another decision") unless vectors.all? do |vector|
+        vector["decision_id"] == decision["id"]
+      end
+      expected_value = lambda do |vector|
+        value = vector["values"][index]
+        if state == "selected"
+          value == true
+        else
+          state == "not_selected" ? value == false : value.nil?
+        end
+      end
+      fail_with("alternative evidence state mismatch") unless vectors.all?(&expected_value)
+      expected_vectors = @vectors_by_id.values.select do |vector|
+        vector["decision_id"] == decision["id"] && expected_value.call(vector)
+      end
+      expected_vector_ids = expected_vectors.map { |vector| vector["id"] }.sort
+      fail_with("alternative evidence is incomplete") unless evidence["vector_ids"].sort == expected_vector_ids
+      expected_tests = vectors.flat_map { |vector| vector["test_ids"] }.uniq.sort
+      fail_with("alternative evidence test owners mismatch") unless evidence["test_ids"].sort == expected_tests
+      expected_unattributed = vectors.sum { |vector| vector.fetch("unattributed_count", 0).to_i }
+      fail_with("alternative evidence unattributed count mismatch") unless evidence.fetch("unattributed_count",
+                                                                                          0) == expected_unattributed
+      fail_with("alternative evidence observed mismatch") unless evidence["observed"] == !vectors.empty?
+    end
+
+    def validate_flow_vector(vector, decision)
+      values = vector["values"]
+      valid = if decision_kind(decision) == "implicit"
+                vector["outcome"] == true && values.length == 2 && values.all? do |value|
+                  [true, false].include?(value)
+                end && values.count(true) == 1
+              else
+                observations = values.each_with_index.filter_map { |value, index| [index, value] unless value.nil? }
+                vector["outcome"] == true &&
+                  observations.any? &&
+                  observations.each_with_index.all? do |(index, value), position|
+                    index == position && value == (position == observations.length - 1)
+                  end
+              end
+      fail_with("invalid flow vector trace") unless valid
+    end
+
+    def strict_flow_decision?(decision)
+      @schema_version == "1.2" &&
+        nonboolean_kind?(decision_kind(decision)) &&
+        decision["support_status"].to_s.upcase != "UNSUPPORTED"
     end
 
     def validate_completeness(completeness)
@@ -277,9 +506,17 @@ module Branchproof
       analysis = @document["analysis"]
       return unless analysis && analysis.dig("completeness", "analysis") == true
 
-      results = analysis["decisions"].to_h { |decision| [decision["decision_id"], decision["condition_results"]] }
+      analysis_by_id = analysis["decisions"].to_h { |decision| [decision["decision_id"], decision] }
       @supported_ids.each do |id|
-        actual = Array(results[id]).map { |result| result["condition_id"] }.sort
+        inventory_decision = @decisions_by_id.fetch(id)
+        analysis_decision = analysis_by_id[id]
+        if strict_flow_decision?(inventory_decision)
+          fail_with("complete analysis is missing flow decision") unless analysis_decision
+          validate_nonboolean_analysis(analysis_decision, inventory_decision)
+        end
+        actual = Array(analysis_decision && analysis_decision["condition_results"]).map do |result|
+          result["condition_id"]
+        end.sort
         fail_with("complete analysis is missing condition results") unless actual == @conditions_by_decision[id].sort
       end
     end
@@ -364,3 +601,5 @@ module Branchproof
 end
 
 # rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+
+# rubocop:enable Metrics/BlockLength

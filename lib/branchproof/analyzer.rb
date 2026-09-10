@@ -36,6 +36,7 @@ module Branchproof
     end
 
     def pair?(decision_id:, condition_index:, left:, right:)
+      return false if alternative_decision_for_id?(decision_id)
       return false unless compatible_vectors?(left, right, decision_id)
       return false unless observed?(left, condition_index) && observed?(right, condition_index)
       return false if value(left, condition_index) == value(right, condition_index)
@@ -51,6 +52,8 @@ module Branchproof
 
       decision = records(@inventory, :decisions).find { id(_1, :id) == decision_id }
       return @missing_cache[cache_key] = nil unless decision
+
+      return @missing_cache[cache_key] = nil if alternative_decision?(decision)
 
       support_status = id(decision, :support_status).to_s
       return @missing_cache[cache_key] = nil unless support_status.empty? || support_status.upcase == "SUPPORTED"
@@ -94,6 +97,8 @@ module Branchproof
     private
 
     def analyze_decision(decision)
+      return analyze_alternative_decision(decision) if alternative_decision?(decision)
+
       decision_id = id(decision, :id)
       unless id(decision, :support_status).to_s.empty? || id(decision, :support_status).to_s.upcase == "SUPPORTED"
         return {
@@ -157,6 +162,73 @@ module Branchproof
         completeness: { observation: true, attribution: true, analysis: !@analysis_invalid },
         diagnostics: []
       }
+    end
+
+    def analyze_alternative_decision(decision)
+      decision_id = id(decision, :id)
+      unless id(decision, :support_status).to_s.empty? || id(decision, :support_status).to_s.upcase == "SUPPORTED"
+        return {
+          decision_id: decision_id, kind: id(decision, :kind), effective_masks_by_vector: {},
+          condition_results: [], witness_buckets: {},
+          conditions: [], alternatives: alternatives(decision), unsupported: true,
+          coverage: unsupported_alternative_coverage,
+          completeness: { observation: true, attribution: true, analysis: true },
+          diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
+        }
+      end
+
+      vectors = @vectors.filter_map { |vector| valid_vector(vector, decision) }
+      rows = alternatives(decision).map do |alternative|
+        index = id(alternative, :index).to_i
+        selected = vectors.select { |vector| value(vector, index) == true }
+        not_selected = vectors.select { |vector| value(vector, index) == false }
+        skipped = vectors.select { |vector| value(vector, index).nil? }
+        {
+          alternative_id: id(alternative, :id), index: id(alternative, :index),
+          expression: id(alternative, :expression),
+          selected: alternative_evidence_bucket(selected),
+          not_selected: alternative_evidence_bucket(not_selected),
+          skipped: alternative_evidence_bucket(skipped)
+        }
+      end
+      missing = rows.filter_map { |row| row[:alternative_id] unless row[:selected][:observed] }
+      covered = rows.count { |row| row[:selected][:observed] }
+      {
+        decision_id: decision_id, kind: id(decision, :kind), effective_masks_by_vector: {},
+        condition_results: [], witness_buckets: {},
+        conditions: [], alternatives: alternatives(decision), unsupported: false,
+        coverage: { alternative: { status: coverage_status(covered, rows.length), covered_alternatives: covered,
+                                   required_alternatives: rows.length, alternatives: rows,
+                                   missing_alternatives: missing },
+                    mcdc: { status: "not_applicable" } },
+        completeness: { observation: true, attribution: true, analysis: !@analysis_invalid }, diagnostics: []
+      }
+    end
+
+    def unsupported_alternative_coverage
+      { alternative: { status: "unsupported", covered_alternatives: 0, required_alternatives: 0,
+                       alternatives: [], missing_alternatives: [] }, mcdc: { status: "unsupported" } }
+    end
+
+    def alternative_evidence_bucket(vectors)
+      evidence = vectors.map { |vector| provenance(vector) }
+      { observed: !vectors.empty?, vector_ids: evidence.map { |item| item[:vector_id] }.uniq.sort,
+        test_ids: evidence.flat_map { |item| item[:test_ids] }.uniq.sort,
+        unattributed_count: evidence.sum { |item| item[:unattributed_count] } }
+    end
+
+    def alternative_decision?(decision)
+      kind = id(decision, :kind).to_s
+      !kind.empty? && kind != "boolean"
+    end
+
+    def alternative_decision_for_id?(decision_id)
+      decision = records(@inventory, :decisions).find { |item| id(item, :id) == decision_id }
+      decision && alternative_decision?(decision)
+    end
+
+    def alternatives(decision)
+      records(decision, :alternatives)
     end
 
     def unsupported_coverage
@@ -254,29 +326,39 @@ module Branchproof
 
     def aggregate_coverage(decisions)
       supported = decisions.reject { |decision| decision[:unsupported] }
-      decision_covered = supported.count do |decision|
+      boolean_supported = supported.reject { |decision| alternative_decision?(decision) }
+      decision_covered = boolean_supported.count do |decision|
         decision[:coverage][:decision][:status] == "covered"
       end
-      condition_decision_covered = supported.count do |decision|
+      condition_decision_covered = boolean_supported.count do |decision|
         decision[:coverage][:condition_decision][:status] == "covered"
       end
-      condition_count = supported.sum { |decision| decision[:coverage][:condition][:condition_count] }
-      condition_values = supported.sum { |decision| decision[:coverage][:condition][:covered_values] }
-      covered_conditions = supported.sum do |decision|
+      condition_count = boolean_supported.sum { |decision| decision[:coverage][:condition][:condition_count] }
+      condition_values = boolean_supported.sum { |decision| decision[:coverage][:condition][:covered_values] }
+      covered_conditions = boolean_supported.sum do |decision|
         decision[:coverage][:condition][:covered_conditions]
       end
-      proven = supported.sum { |decision| decision[:coverage][:mcdc][:proven_conditions] }
+      proven = boolean_supported.sum { |decision| decision[:coverage][:mcdc][:proven_conditions] }
       percentage = ->(covered, required) { required.zero? ? nil : (covered.to_f / required * 100).round(2) }
-      { decision: { covered_decisions: decision_covered, supported_decisions: supported.length,
-                    percentage: percentage.call(decision_covered, supported.length) },
+      { decision: { covered_decisions: decision_covered, supported_decisions: boolean_supported.length,
+                    percentage: percentage.call(decision_covered, boolean_supported.length) },
         condition: { covered_values: condition_values, required_values: condition_count * 2,
                      covered_conditions: covered_conditions, condition_count: condition_count,
                      percentage: percentage.call(condition_values, condition_count * 2) },
         condition_decision: { covered_decisions: condition_decision_covered,
-                              supported_decisions: supported.length,
-                              percentage: percentage.call(condition_decision_covered, supported.length) },
+                              supported_decisions: boolean_supported.length,
+                              percentage: percentage.call(condition_decision_covered, boolean_supported.length) },
         mcdc: { proven_conditions: proven, supported_conditions: condition_count,
-                percentage: percentage.call(proven, condition_count) } }
+                percentage: percentage.call(proven, condition_count) },
+        alternative: alternative_aggregate(decisions) }
+    end
+
+    def alternative_aggregate(decisions)
+      flow = decisions.select { |decision| !decision[:unsupported] && alternative_decision?(decision) }
+      required = flow.sum { |decision| decision.dig(:coverage, :alternative, :required_alternatives).to_i }
+      covered = flow.sum { |decision| decision.dig(:coverage, :alternative, :covered_alternatives).to_i }
+      { covered_alternatives: covered, required_alternatives: required,
+        supported_decisions: flow.length, percentage: required.zero? ? nil : (covered.to_f / required * 100).round(2) }
     end
 
     def valid_vector(vector, decision)
@@ -308,12 +390,46 @@ module Branchproof
         return nil
       end
 
-      effective_mask(vector, id(decision, :id), decision[:tree])
+      if alternative_decision?(decision)
+        handle_alternative_vector(vector, decision)
+      else
+        effective_mask(vector, id(decision, :id), decision[:tree])
+      end
       decision_source.nil? ? vector : vector.merge(source_id: decision_source)
     rescue ArgumentError
       @analysis_invalid = true
       add_diagnostic("invalid_vector", "error", id(vector, :id))
       nil
+    end
+
+    # rubocop:disable-next Naming/PredicateMethod -- raises on malformed flow vectors
+    def handle_alternative_vector(vector, decision)
+      values = values_for(vector)
+      expected = alternatives(decision).length
+      raise ArgumentError, "invalid alternative vector shape" unless values.length == expected
+
+      observations = values.each_with_index.filter_map { |item, index| [index, item] unless item.nil? }
+      raise ArgumentError, "invalid alternative trace" unless valid_alternative_trace?(decision, observations,
+                                                                                       outcome(vector))
+
+      true
+    end
+
+    def valid_alternative_trace?(decision, observations, result)
+      return false unless result == true
+
+      expected = alternatives(decision).length
+      return false unless expected.positive?
+      if id(decision, :kind).to_s == "implicit"
+        return expected == 2 && observations.length == 2 &&
+               observations.map(&:first) == [0, 1] && observations.map(&:last).count(true) == 1
+      end
+
+      return false unless observations.length.between?(1, expected)
+
+      observations.each_with_index.all? do |(index, value), position|
+        index == position && value == (position == observations.length - 1)
+      end
     end
 
     def effective_mask(vector, decision_id, tree = nil)
@@ -340,6 +456,10 @@ module Branchproof
         raise ArgumentError, "missing atom" if value.nil?
 
         return [value, 1 << index, offset + 1]
+      end
+      if type == :not
+        child_result, child_mask, consumed = replay(node.fetch(:child), values, offset)
+        return [!child_result, child_mask, consumed]
       end
       left_result, left_mask, consumed = replay(node.fetch(:left), values, offset)
       return [left_result, left_mask, consumed] if (type == :and && !left_result) || (type == :or && left_result)
@@ -440,6 +560,8 @@ module Branchproof
         return { entry: entry, true_exits: [edges[0]], false_exits: [edges[1]], all_bits: 1 << index, edges: edges }
       end
       type = id(node, :type).to_sym
+      return build_graph(node.fetch(:child), false_destination, true_destination) if type == :not
+
       right = build_graph(node[:right], true_destination, false_destination)
       if type == :and
         left = build_graph(node[:left], right[:entry], false_destination)
@@ -455,7 +577,9 @@ module Branchproof
     end
 
     def impose_path(node, target, target_value, constraints)
-      return true if id(node, :type).to_sym == :atom && id(node, :index) == target
+      type = id(node, :type).to_sym
+      return true if type == :atom && id(node, :index) == target
+      return impose_path(node.fetch(:child), target, target_value, constraints) if type == :not
 
       left = node[:left]
       right = node[:right]
@@ -480,6 +604,8 @@ module Branchproof
 
         constraints << { condition_index: id(node, :index), value: desired }
         true
+      elsif id(node, :type).to_sym == :not
+        impose_subtree(node.fetch(:child), !desired, constraints)
       elsif desired == (id(node, :type).to_sym == :and)
         impose_subtree(node[:left], desired, constraints) && impose_subtree(node[:right], desired, constraints)
       else
@@ -488,7 +614,9 @@ module Branchproof
     end
 
     def evaluate(node, values)
-      return values[id(node, :index)] if id(node, :type).to_sym == :atom
+      type = id(node, :type).to_sym
+      return values[id(node, :index)] if type == :atom
+      return !evaluate(node.fetch(:child), values) if type == :not
 
       left = evaluate(node[:left], values)
       return left if id(node, :type).to_sym == :and && !left
@@ -498,10 +626,15 @@ module Branchproof
     end
 
     def evaluate_with_trace(node, values, trace = [])
-      if id(node, :type).to_sym == :atom
+      type = id(node, :type).to_sym
+      if type == :atom
         value = !values[id(node, :index)].nil? && values[id(node, :index)] != false
         trace << [id(node, :index), value]
         return [value, trace]
+      end
+      if type == :not
+        child, = evaluate_with_trace(node.fetch(:child), values, trace)
+        return [!child, trace]
       end
       left, = evaluate_with_trace(node[:left], values, trace)
       return [left, trace] if id(node, :type).to_sym == :and && !left
@@ -511,13 +644,12 @@ module Branchproof
     end
 
     def contains?(node, target)
-      if id(node,
-            :type).to_sym == :atom
-        id(node,
-           :index) == target
+      if id(node, :type).to_sym == :atom
+        id(node, :index) == target
+      elsif id(node, :type).to_sym == :not
+        contains?(node.fetch(:child), target)
       else
-        contains?(node[:left],
-                  target) || contains?(node[:right], target)
+        contains?(node[:left], target) || contains?(node[:right], target)
       end
     end
 

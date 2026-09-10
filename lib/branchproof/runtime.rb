@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 require "securerandom"
+require_relative "runtime_flow"
 
 module Branchproof
   # Process-local execution recorder. It deliberately never coerces or stores
   # application values: Ruby's conditional expression is used for truthiness.
   # Captures condition evaluations while preserving application values.
   module Runtime
+    extend RuntimeFlow
+
     class << self
       def boot(evidence:)
         return nil if defined?(@booted) && @booted && @evidence.equal?(evidence) && Process.pid == @process_id

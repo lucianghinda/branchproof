@@ -85,7 +85,12 @@ class TernaryAcceptanceTest < Minitest::Test
     assert_equal 2, vectors_for(report, outer).length
     assert_equal 1, vectors_for(report, inner).length
     assert_equal 0, report.fetch("metrics").fetch("aborted")
-    assert_equal 0, report.fetch("metrics").fetch("unexecuted")
+    assert_equal 1, report.fetch("metrics").fetch("unexecuted")
+    short_circuit = report.fetch("source_inventory").fetch("decisions").find do |decision|
+      decision.fetch("context") == "short_circuit" && decision.fetch("expression").include?("File.write")
+    end
+    refute_nil short_circuit
+    assert_empty vectors_for(report, short_circuit)
   end
 
   def test_ternary_inside_if_predicate_has_independent_inventory_and_exact_execution
@@ -187,7 +192,7 @@ class TernaryAcceptanceTest < Minitest::Test
       end
 
       def unsafe
-        (true and false) ? :yes : :no
+        (value .. value) ? :yes : :no
       end
     RUBY
       class TernaryDiagnosticTest < Minitest::Test
@@ -201,7 +206,7 @@ class TernaryAcceptanceTest < Minitest::Test
     report = result.fetch(:json)
     safe, unsafe = ternary_decisions(report).sort_by { |decision| decision.fetch("line") }
     assert_empty safe.fetch("support_reasons")
-    assert_includes unsafe.fetch("support_reasons"), "unsupported_keyword_boolean"
+    assert_includes unsafe.fetch("support_reasons"), "unsupported_flip_flop"
     refute_includes safe.fetch("support_reasons"), "unsupported_ternary"
   end
 
