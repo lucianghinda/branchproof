@@ -58,11 +58,13 @@ module Branchproof
     end
 
     def read_unit(path)
+      absolute_path = File.expand_path(path)
+      relative_path = relative(path)
       bytes = File.binread(path)
       parsed = Prism.parse(bytes)
       encoding = source_encoding(bytes, parsed)
-      source_id = Records.source_id(relative_path: relative(path), digest: Digest::SHA256.hexdigest(bytes),
-                                    encoding: encoding)
+      digest = Digest::SHA256.hexdigest(bytes)
+      source_id = Records.source_id(relative_path: relative_path, digest: digest, encoding: encoding)
       diagnostics = parsed.errors.map do |error|
         Records.diagnostic(code: "parse_error", severity: "error", message: error.message, source_id: source_id,
                            details: { byte_start: error.location.start_offset, byte_length: error.location.length })
@@ -78,11 +80,11 @@ module Branchproof
       file_reasons << "unsupported_data_section" if parsed.respond_to?(:data_loc) && parsed.data_loc
       file_reasons << "parse_error" unless parsed.errors.empty?
       decisions = parsed.value ? decisions_for(parsed.value, bytes, source_id, file_reasons, encoding) : []
-      Records.build(source_id: source_id, relative_path: relative(path), absolute_path: File.expand_path(path),
-                    real_path: File.realpath(path), digest: Digest::SHA256.hexdigest(bytes), encoding: encoding,
+      Records.build(source_id: source_id, relative_path: relative_path, absolute_path: absolute_path,
+                    real_path: File.realpath(path), digest: digest, encoding: encoding,
                     original_bytes: bytes, decisions: decisions, diagnostics: diagnostics)
     rescue SystemCallError => e
-      Records.build(source_id: nil, relative_path: relative(path), absolute_path: File.expand_path(path),
+      Records.build(source_id: nil, relative_path: relative_path, absolute_path: absolute_path,
                     real_path: nil, digest: nil, encoding: nil, original_bytes: nil, decisions: [],
                     diagnostics: [Records.diagnostic(code: "source_unreadable", severity: "error", message: e.message)])
     end
