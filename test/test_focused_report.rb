@@ -109,4 +109,37 @@ class TestFocusedReport < Minitest::Test
     assert_includes output, "2 aborted"
     refute_includes output, "Test: DecisionTest"
   end
+
+  def test_ladder_summary_and_condition_value_evidence_render_in_each_focused_view
+    snapshot = Marshal.load(Marshal.dump(document))
+    snapshot[:analysis][:coverage] = {
+      decision: { covered_decisions: 1, supported_decisions: 1, percentage: 100.0 },
+      condition: { covered_values: 3, required_values: 4, covered_conditions: 1, condition_count: 2,
+                   percentage: 75.0 },
+      condition_decision: { covered_decisions: 0, supported_decisions: 1, percentage: 0.0 },
+      mcdc: { proven_conditions: 1, supported_conditions: 2, percentage: 50.0 }
+    }
+    snapshot[:analysis][:decisions].first[:condition_results].each do |result|
+      result[:coverage] = { values: [
+        { value: true, observed: true, test_ids: ["tt"] },
+        { value: false, observed: false, test_ids: [] }
+      ], missing_values: [false] }
+    end
+    before = Marshal.dump(snapshot)
+
+    %i[conditions tests].each do |view|
+      output = Branchproof::FocusedReport.new(document: snapshot, view: view, level: 2).render
+      assert_includes output, "Coverage ladder:"
+      assert_includes output, "D (Decision coverage): 100.0%"
+      assert_includes output, "C (Condition coverage): 75.0%"
+      if view == :conditions
+        assert_includes output, "Value true: observed; tests: DecisionTest#test_true"
+        assert_includes output, "Missing values: false"
+      else
+        assert_includes output, "Test: DecisionTest#test_true"
+      end
+    end
+
+    assert_equal before, Marshal.dump(snapshot)
+  end
 end

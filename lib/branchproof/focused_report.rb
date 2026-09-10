@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+# rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/BlockLength, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 require "pathname"
 
 module Branchproof
@@ -34,6 +34,7 @@ module Branchproof
       end
       lines << "Empty groups mean no recorded completed observation."
       lines << ""
+      lines.concat(@coordinator.coverage_ladder_lines)
       @view == :conditions ? render_conditions(lines) : render_tests(lines)
       render_unowned(lines)
       render_unsupported(lines)
@@ -52,7 +53,15 @@ module Branchproof
         lines << "Condition: #{row[:expression]}"
         lines << "Location: #{location(row[:relative_path], row[:line], unavailable: "condition line unavailable")}"
         lines << "Decision: #{row[:decision_expression]} (condition #{row[:index]})"
-        lines << "MC/DC: #{@level == 1 ? "NOT CALCULATED" : (row[:status] || "NOT_PROVEN")}"
+        status = if @level == 1 && !coverage_available?
+                   "NOT CALCULATED"
+                 else
+                   row[:status] || "NOT_PROVEN"
+                 end
+        lines << "MC/DC: #{status}"
+        if @level >= 2
+          lines.concat(@coordinator.condition_coverage_evidence(decision_id: row[:decision_id], condition_id: row[:id]))
+        end
         render_group(lines, "Evaluated true by", row[:observed_true], row)
         render_group(lines, "Evaluated false by", row[:observed_false], row)
         render_group(lines, "Short-circuited in", row[:short_circuited], row)
@@ -77,6 +86,11 @@ module Branchproof
         lines << ""
       end
       lines << "No missing conditions" if @missing_only && rows.empty?
+    end
+
+    def coverage_available?
+      analysis = fetch(@document, :analysis)
+      analysis && fetch(analysis, :coverage)
     end
 
     def render_constraint(lines, row)
@@ -202,4 +216,4 @@ module Branchproof
   end
 end
 
-# rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+# rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/BlockLength, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity

@@ -49,7 +49,7 @@ module Branchproof
                                             message: merge_status[:reason].to_s }]
         end
       end
-      if options[:level] >= 2 && value(baseline, :status).to_s == "PASSED"
+      if value(baseline, :status).to_s == "PASSED"
         analysis = Analyzer.new(inventory: inventory, evidence: evidence.snapshot, limits: options[:limits]).call
         baseline[:analysis] = analysis
         if options[:level] >= 2
@@ -70,7 +70,7 @@ module Branchproof
       diagnostics = Array(value(inventory, :diagnostics)) + Array(value(baseline, :diagnostics)) +
                     Array(value(evidence.snapshot,
                                 :diagnostics)) + Array(value(value(baseline, :analysis), :diagnostics))
-      analysis = options[:level] == 1 ? nil : value(baseline, :analysis)
+      analysis = value(baseline, :analysis)
       minima = options[:level] == 1 ? [] : Array(value(baseline, :minima))
       report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || evidence.snapshot,
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
