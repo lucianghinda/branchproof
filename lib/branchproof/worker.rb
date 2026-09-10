@@ -17,9 +17,6 @@ module Branchproof
       project = symbolize(payload.fetch("project", legacy_project))
       prepend_load_paths(project)
       inventory = symbolize(payload.fetch("inventory"))
-      Array(inventory[:source_units]).each do |unit|
-        unit[:original_bytes] = File.binread(unit[:absolute_path]) if unit[:absolute_path]
-      end
       limits = symbolize(payload.fetch("limits"))
       require "minitest"
       require "minitest/test"
