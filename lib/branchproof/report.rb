@@ -32,8 +32,8 @@ module Branchproof
 
     def self.from_document(document:, level: nil, view: :decisions, missing_only: false)
       data = document || {}
-      new(inventory: data[:source_inventory] || data["source_inventory"] || data[:inventory] || data["inventory"],
-          evidence: data[:observations] || data["observations"] || data[:evidence] || data["evidence"],
+      new(inventory: data[:source_inventory] || data["source_inventory"],
+          evidence: data[:observations] || data["observations"],
           analysis: data[:analysis] || data["analysis"], minima: data[:minima] || data["minima"],
           baseline: data[:baseline] || data["baseline"], diagnostics: data[:diagnostics] || data["diagnostics"],
           level: level || (data[:analysis] || data["analysis"] ? 3 : 1), view: view, missing_only: missing_only,
@@ -131,7 +131,7 @@ module Branchproof
     def terminal_document
       unless @view == :decisions
         return FocusedReport.new(document: json_document, view: @view, level: @level,
-                                 missing_only: @missing_only).render
+                                 missing_only: @missing_only, coordinator: self).render
       end
 
       @terminal_ids = terminal_ids
@@ -492,8 +492,15 @@ module Branchproof
     end
 
     def condition_result(decision, condition)
-      Array(value(analysis_for(decision), :condition_results)).find do |item|
-        value(item, :condition_id).to_s == value(condition, :id).to_s
+      condition_results_index.dig(value(decision, :id).to_s, value(condition, :id).to_s)
+    end
+
+    def condition_results_index
+      @condition_results_index ||= Array(value(@analysis, :decisions)).each_with_object({}) do |item, index|
+        by_condition_id = index[value(item, :decision_id).to_s] ||= {}
+        Array(value(item, :condition_results)).each do |result|
+          by_condition_id[value(result, :condition_id).to_s] = result
+        end
       end
     end
 
@@ -592,7 +599,11 @@ module Branchproof
       id = value(constraint, :existing_vector_id).to_s
       return if id.empty?
 
-      vectors.find { |vector| value(vector, :id).to_s == id }
+      vectors_by_id[id]
+    end
+
+    def vectors_by_id
+      @vectors_by_id ||= vectors.to_h { |vector| [value(vector, :id).to_s, vector] }
     end
 
     def values_legend
@@ -639,37 +650,41 @@ module Branchproof
     end
 
     def metrics
-      decisions = inventory_decisions
-      unsupported, supported = decisions.partition { |decision| unsupported?(decision) }
-      eligible = supported.sum { |decision| Array(value(decision, :conditions)).length }
-      observed = vectors.map { |vector| value(vector, :decision_id).to_s }.uniq
-      proven = @analysis ? value(@analysis, :proven_count).to_i : 0
-      kind_counts = decisions.group_by { |decision| decision_kind(decision) }.transform_values(&:length)
-      context_counts = decisions.group_by { |decision| value(decision, :context).to_s }
-      context_counts = context_counts.reject { |context, _| context.empty? }.transform_values(&:length)
-      { discovered: decisions.length, supported: supported.length, unsupported: unsupported.length,
-        unsupported_conditions: unsupported.sum do |decision|
-          discovered_conditions(decision)
-        end, eligible_conditions: eligible,
-        opaque: decisions.sum { |decision| Array(value(decision, :opaque_ranges)).length },
-        unexecuted: supported.count { |decision| !observed.include?(value(decision, :id).to_s) },
-        eligible_alternatives: supported.sum do |decision|
-          nonboolean_decision?(decision) ? Array(value(decision, :alternatives)).length : 0
-        end,
-        completed: vectors.sum do |vector|
-          value(vector, :count).to_i
-        end, aborted: numeric_hash_value(@evidence, :abort_counts),
-        unattributed: vectors.sum { |vector| value(vector, :unattributed_count).to_i }, limited: incomplete? ? 1 : 0,
-        proven: proven, percentage: percentage(eligible, proven), kind_counts: kind_counts,
-        decision_kinds: kind_counts, context_counts: context_counts }
+      @metrics ||= begin
+        decisions = inventory_decisions
+        unsupported, supported = decisions.partition { |decision| unsupported?(decision) }
+        eligible = supported.sum { |decision| Array(value(decision, :conditions)).length }
+        observed = vectors.map { |vector| value(vector, :decision_id).to_s }.uniq
+        proven = @analysis ? value(@analysis, :proven_count).to_i : 0
+        kind_counts = decisions.group_by { |decision| decision_kind(decision) }.transform_values(&:length)
+        context_counts = decisions.group_by { |decision| value(decision, :context).to_s }
+        context_counts = context_counts.reject { |context, _| context.empty? }.transform_values(&:length)
+        { discovered: decisions.length, supported: supported.length, unsupported: unsupported.length,
+          unsupported_conditions: unsupported.sum do |decision|
+            discovered_conditions(decision)
+          end, eligible_conditions: eligible,
+          opaque: decisions.sum { |decision| Array(value(decision, :opaque_ranges)).length },
+          unexecuted: supported.count { |decision| !observed.include?(value(decision, :id).to_s) },
+          eligible_alternatives: supported.sum do |decision|
+            nonboolean_decision?(decision) ? Array(value(decision, :alternatives)).length : 0
+          end,
+          completed: vectors.sum do |vector|
+            value(vector, :count).to_i
+          end, aborted: numeric_hash_value(@evidence, :abort_counts),
+          unattributed: vectors.sum { |vector| value(vector, :unattributed_count).to_i }, limited: incomplete? ? 1 : 0,
+          proven: proven, percentage: percentage(eligible, proven), kind_counts: kind_counts,
+          decision_kinds: kind_counts, context_counts: context_counts }
+      end
     end
 
     def completeness
-      evidence = value(@evidence, :completeness) || {}
-      analysis = value(@analysis, :completeness) || {}
-      { observation: completeness_value?(evidence, analysis, :observation),
-        attribution: completeness_value?(evidence, analysis, :attribution),
-        analysis: @analysis ? value(analysis, :analysis) == true : value(evidence, :analysis) == true }
+      @completeness ||= begin
+        evidence = value(@evidence, :completeness) || {}
+        analysis = value(@analysis, :completeness) || {}
+        { observation: completeness_value?(evidence, analysis, :observation),
+          attribution: completeness_value?(evidence, analysis, :attribution),
+          analysis: @analysis ? value(analysis, :analysis) == true : value(evidence, :analysis) == true }
+      end
     end
 
     def completeness_value?(evidence, analysis, key)
@@ -708,9 +723,11 @@ module Branchproof
     end
 
     def vectors_for(decision)
-      vectors.select do |vector|
-        value(vector, :decision_id).to_s == value(decision, :id).to_s
-      end
+      vectors_by_decision_id[value(decision, :id).to_s] || []
+    end
+
+    def vectors_by_decision_id
+      @vectors_by_decision_id ||= vectors.group_by { |vector| value(vector, :decision_id).to_s }
     end
 
     def decisions_to_render
@@ -748,7 +765,6 @@ module Branchproof
 
     def vectors_to_render(decision)
       return vectors_for(decision) unless @missing_only
-      return [] if nonboolean_decision?(decision)
 
       []
     end
@@ -860,15 +876,23 @@ module Branchproof
     end
 
     def analysis_for(decision)
-      Array(value(@analysis, :decisions)).find do |item|
-        value(item, :decision_id).to_s == value(decision, :id).to_s
+      analysis_by_decision_id[value(decision, :id).to_s]
+    end
+
+    def analysis_by_decision_id
+      @analysis_by_decision_id ||= Array(value(@analysis, :decisions)).to_h do |item|
+        [value(item, :decision_id).to_s, item]
       end
     end
 
     def source_for(decision)
-      Array(value(@inventory, :source_units)).find do |source|
-        value(source, :source_id).to_s == value(decision, :source_id).to_s
-      end || decision
+      source_by_source_id[value(decision, :source_id).to_s] || decision
+    end
+
+    def source_by_source_id
+      @source_by_source_id ||= Array(value(@inventory, :source_units)).to_h do |source|
+        [value(source, :source_id).to_s, source]
+      end
     end
 
     def inventory_decisions = Array(value(@inventory, :decisions))
