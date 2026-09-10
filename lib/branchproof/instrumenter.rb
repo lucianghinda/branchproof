@@ -14,17 +14,14 @@ module Branchproof
     def rewrite(unit:)
       bytes = unit.fetch(:original_bytes).dup.force_encoding(Encoding::BINARY)
       reasons = Array(unit[:support_reasons])
-      unless supported_unit?(unit, reasons)
-        return result(bytes, diagnostics: [diagnostic("unsupported_source", reasons.join(", "))])
-      end
+      return result(bytes, diagnostics: [diagnostic("unsupported_source", reasons.join(", "))]) unless supported?(unit)
 
       decisions = Array(unit[:decisions]).select { |decision| supported?(decision) }
+      encloses, enclosed = build_enclosures(decisions)
       edits = decisions.filter_map do |decision|
-        next if decisions.any? do |outer|
-          encloses_decision?(outer, decision)
-        end
+        next if enclosed[decision]
 
-        decision_edit(bytes, decision, decisions)
+        decision_edit(bytes, decision, encloses)
       end
       if decisions.any? && edits.empty?
         return result(bytes,
@@ -34,35 +31,44 @@ module Branchproof
 
       rewritten = apply_edits(bytes, edits)
       begin
-        RubyVM::InstructionSequence.compile(rewritten, unit[:absolute_path] || "(branchproof)",
-                                            unit[:real_path] || unit[:absolute_path] || "(branchproof)", 1)
+        iseq = RubyVM::InstructionSequence.compile(rewritten, unit[:absolute_path] || "(branchproof)",
+                                                   unit[:real_path] || unit[:absolute_path] || "(branchproof)", 1)
       rescue SyntaxError => e
-        return result(bytes, diagnostics: [diagnostic("invalid_rewrite", e.message)])
+        return result(rewritten, diagnostics: [diagnostic("invalid_rewrite", e.message)])
       end
-      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: rewritten != bytes)
+      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: edits.any?, iseq: iseq)
     end
 
     private
 
-    def supported_unit?(unit, _reasons)
-      status = unit[:support_status]
+    def supported?(record)
+      status = record[:support_status]
       status.nil? || status.to_s.casecmp("supported").zero?
     end
 
-    def supported?(decision)
-      status = decision[:support_status]
-      status.nil? || status.to_s.casecmp("supported").zero?
+    # Precompute, once, which decisions each decision encloses (and whether it is
+    # itself enclosed by any other), so rendering never re-scans the full decision
+    # list at every recursion level. Safe because `encloses_decision?` containment
+    # is transitive: if the encloses map for `decision` says it contains X, that
+    # holds true within any nested subset that already contains `decision`.
+    def build_enclosures(decisions)
+      encloses = {}.compare_by_identity
+      enclosed = {}.compare_by_identity
+      decisions.each do |outer|
+        contained = decisions.select { |inner| encloses_decision?(outer, inner) }
+        encloses[outer] = contained
+        contained.each { |inner| enclosed[inner] = true }
+      end
+      [encloses, enclosed]
     end
 
-    def decision_edit(bytes, decision, all_decisions)
+    def decision_edit(bytes, decision, encloses)
       start = decision[:byte_start]
       length = decision[:byte_length]
       return nil unless valid_range?(bytes, start, length)
 
-      nested = all_decisions.select do |candidate|
-        encloses_decision?(decision, candidate)
-      end
-      expression = render_decision(bytes, decision, nested)
+      nested = encloses[decision] || []
+      expression = render_decision(bytes, decision, nested, encloses)
       {
         start: start,
         finish: start + length,
@@ -70,7 +76,9 @@ module Branchproof
       }
     end
 
-    def render_range(bytes, start, length, decision, nested)
+    def render_range(bytes, decision, nested, encloses)
+      start = decision[:byte_start]
+      length = decision[:byte_length]
       conditions = Array(decision[:conditions]).sort_by { |condition| condition[:byte_start] }
       cursor = start
       chunks = []
@@ -80,15 +88,15 @@ module Branchproof
         next unless valid_range?(bytes, cstart, clen) && cstart >= start && cstart + clen <= start + length
 
         chunks << bytes.byteslice(cursor, cstart - cursor)
-        original = render_children(bytes, cstart, clen, nested)
+        original = render_children(bytes, cstart, clen, nested, encloses)
         chunks << condition_wrapper(decision[:id], condition[:index], original)
         cursor = cstart + clen
       end
-      chunks << render_children(bytes, cursor, length - (cursor - start), nested)
+      chunks << render_children(bytes, cursor, length - (cursor - start), nested, encloses)
       chunks.join
     end
 
-    def render_children(bytes, start, length, nested)
+    def render_children(bytes, start, length, nested, encloses)
       children = nested.select do |child|
         contains?(start, length, child[:byte_start], child[:byte_length])
       end
@@ -98,8 +106,8 @@ module Branchproof
       children.sort_by! { |child| -child[:byte_start] }
       output = bytes.byteslice(start, length)
       children.each do |child|
-        descendants = nested.select { |candidate| encloses_decision?(child, candidate) }
-        child_text = render_decision(bytes, child, descendants)
+        descendants = encloses[child] || []
+        child_text = render_decision(bytes, child, descendants, encloses)
         offset = child[:byte_start] - start
         output[offset, child[:byte_length]] = child_text
       end
@@ -114,11 +122,11 @@ module Branchproof
       (outer[:kind] || "boolean") == "boolean" && inner[:kind] != "boolean" && !inner[:kind].nil?
     end
 
-    def render_decision(bytes, decision, nested)
+    def render_decision(bytes, decision, nested, encloses)
       if decision[:instrumentation]
-        render_flow(bytes, decision, nested)
+        render_flow(bytes, decision, nested, encloses)
       else
-        expression = render_range(bytes, decision[:byte_start], decision[:byte_length], decision, nested)
+        expression = render_range(bytes, decision, nested, encloses)
         frame(decision[:id], expression)
       end
     end
@@ -133,10 +141,13 @@ module Branchproof
         "#{RUNTIME}.leave(#{decision_id.inspect}); end; end)"
     end
 
+    # Mutates `bytes` in place: it is already a fresh copy made at the top of
+    # rewrite, so there is no need to copy it again before splicing edits in.
     def apply_edits(bytes, edits)
-      edits.sort_by { |edit| -edit[:start] }.each_with_object(bytes.dup) do |edit, output|
-        output[edit[:start]...edit[:finish]] = edit[:text]
+      edits.sort_by { |edit| -edit[:start] }.each do |edit|
+        bytes[edit[:start]...edit[:finish]] = edit[:text]
       end
+      bytes
     end
 
     def valid_range?(bytes, start, length)
@@ -153,8 +164,8 @@ module Branchproof
       start.is_a?(Integer) && length.is_a?(Integer) && start >= 0 && length >= 0
     end
 
-    def result(bytes, changed: false, diagnostics: [])
-      { bytes: bytes, changed: changed, diagnostics: diagnostics }.freeze
+    def result(bytes, changed: false, diagnostics: [], iseq: nil)
+      { bytes: bytes, changed: changed, diagnostics: diagnostics, iseq: iseq }.freeze
     end
 
     def diagnostic(code, message)

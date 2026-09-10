@@ -8,36 +8,36 @@ module Branchproof
   module FlowInstrumentation
     private
 
-    def render_flow(bytes, decision, nested)
+    def render_flow(bytes, decision, nested, encloses)
       metadata = decision.fetch(:instrumentation)
       case metadata.fetch(:type)
       when "safe_navigation"
         receiver = metadata.fetch(:receiver)
-        replacements = [flow_replacement(bytes, receiver, nested) do |expression|
+        replacements = [flow_replacement(bytes, receiver, nested, encloses) do |expression|
           "#{self.class::RUNTIME}.flow_receiver(#{decision[:id].inspect}, (#{expression}))"
         end]
-        flow_fragments(bytes, decision, nested, replacements)
+        flow_fragments(bytes, decision, nested, replacements, encloses)
       when "assignment"
         rhs = metadata.fetch(:rhs)
-        replacements = [flow_replacement(bytes, rhs, nested) do |expression|
+        replacements = [flow_replacement(bytes, rhs, nested, encloses) do |expression|
           "(begin; #{self.class::RUNTIME}.flow_path(#{decision[:id].inspect}, 1); (#{expression}); end)"
         end]
-        expression = flow_fragments(bytes, decision, nested, replacements)
+        expression = flow_fragments(bytes, decision, nested, replacements, encloses)
         flow_frame(decision[:id], expression, default_path: 0)
       when "case"
-        render_case_flow(bytes, decision, nested, metadata)
+        render_case_flow(bytes, decision, nested, metadata, encloses)
       when "case_match"
-        render_pattern_flow(bytes, decision, nested, metadata)
+        render_pattern_flow(bytes, decision, nested, metadata, encloses)
       else
         raise ArgumentError, "unknown instrumentation type: #{metadata[:type]}"
       end
     end
 
-    def render_case_flow(bytes, decision, nested, metadata)
+    def render_case_flow(bytes, decision, nested, metadata, encloses)
       identifier = decision[:id].inspect
       runtime = self.class::RUNTIME
       replacements = metadata.fetch(:candidates).map do |candidate|
-        flow_replacement(bytes, candidate, nested) do |expression|
+        flow_replacement(bytes, candidate, nested, encloses) do |expression|
           "(begin; #{runtime}.flow_candidate(#{identifier}, #{candidate[:index]}); (#{expression}); end)"
         end
       end
@@ -55,10 +55,10 @@ module Branchproof
         replacements << { start: metadata.fetch(:end_start), length: 0,
                           text: "else; #{runtime}.flow_select(#{identifier}, #{index}); nil; " }
       end
-      flow_frame(decision[:id], flow_fragments(bytes, decision, nested, replacements))
+      flow_frame(decision[:id], flow_fragments(bytes, decision, nested, replacements, encloses))
     end
 
-    def render_pattern_flow(bytes, decision, nested, metadata)
+    def render_pattern_flow(bytes, decision, nested, metadata, encloses)
       identifier = decision[:id].inspect
       runtime = self.class::RUNTIME
       replacements = metadata.fetch(:branches).map do |branch|
@@ -71,27 +71,27 @@ module Branchproof
         replacements << { start: alternative[:insert_at], length: 0,
                           text: "; #{runtime}.flow_select(#{identifier}, #{alternative[:index]}); " }
       end
-      flow_frame(decision[:id], flow_fragments(bytes, decision, nested, replacements))
+      flow_frame(decision[:id], flow_fragments(bytes, decision, nested, replacements, encloses))
     end
 
-    def flow_replacement(bytes, location, nested)
+    def flow_replacement(bytes, location, nested, encloses)
       start = location.fetch(:byte_start)
       length = location.fetch(:byte_length)
-      { start: start, length: length, text: yield(render_children(bytes, start, length, nested)) }
+      { start: start, length: length, text: yield(render_children(bytes, start, length, nested, encloses)) }
     end
 
-    def flow_fragments(bytes, decision, nested, replacements)
+    def flow_fragments(bytes, decision, nested, replacements, encloses)
       cursor = decision.fetch(:byte_start)
       finish = cursor + decision.fetch(:byte_length)
       chunks = []
       replacements.sort_by { |edit| [edit[:start], edit[:length]] }.each do |edit|
         raise ArgumentError, "overlapping flow edits" if edit[:start] < cursor
 
-        chunks << render_children(bytes, cursor, edit[:start] - cursor, nested)
+        chunks << render_children(bytes, cursor, edit[:start] - cursor, nested, encloses)
         chunks << edit[:text]
         cursor = edit[:start] + edit[:length]
       end
-      chunks << render_children(bytes, cursor, finish - cursor, nested)
+      chunks << render_children(bytes, cursor, finish - cursor, nested, encloses)
       chunks.join
     end
 
