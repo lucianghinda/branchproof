@@ -182,17 +182,21 @@ module Branchproof
     end
 
     def test_id_for(test)
+      return test.instance_variable_get(:@branchproof_test_id) if test.instance_variable_defined?(:@branchproof_test_id)
+
       source = begin
         test.method(test.name).source_location
       rescue NameError
         nil
       end
-      if defined?(Branchproof::Records)
-        Branchproof::Records.id(adapter: "minitest", class_name: test.class.name, method_name: test.name,
-                                source: source)
-      else
-        "minitest:#{test.class}:#{test.name}:#{source}"
-      end
+      id = if defined?(Branchproof::Records)
+             Branchproof::Records.id(adapter: "minitest", class_name: test.class.name, method_name: test.name,
+                                     source: source)
+           else
+             "minitest:#{test.class}:#{test.name}:#{source}"
+           end
+      test.instance_variable_set(:@branchproof_test_id, id)
+      id
     end
 
     def register_test(test)
