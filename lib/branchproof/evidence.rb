@@ -74,12 +74,13 @@ module Branchproof
       end
       decision_id = value[:decision_id].to_s
       vector_values = condition_values(decision_id, value[:observations])
-      if new_vector?(decision_id, vector_values,
-                     value[:outcome]) && vector_count(decision_id) >= @limits[:vectors_per_decision]
+      outcome = value[:outcome] ? true : false
+      vector_id = Branchproof::Records.id([decision_id, vector_values, outcome])
+      if new_vector?(vector_id) && vector_count(decision_id) >= @limits[:vectors_per_decision]
         @limited = true
         return status("limited", "vectors_per_decision reached")
       end
-      vector = vector_for(decision_id, vector_values, value[:outcome] ? true : false)
+      vector = vector_for(decision_id, vector_values, outcome, vector_id)
       new_owner = if value[:test_id]
                     !vector[:test_ids].include?(value[:test_id].to_s)
                   else
@@ -287,8 +288,7 @@ module Branchproof
       values
     end
 
-    def vector_for(decision_id, values, outcome)
-      id = Branchproof::Records.id([decision_id, values, outcome])
+    def vector_for(decision_id, values, outcome, id)
       existing = @vectors[id]
       return existing if existing
 
@@ -446,7 +446,7 @@ module Branchproof
 
     def decision_conditions(id) = (@decisions_by_id[id.to_s] || {}).fetch(:conditions, [])
     def vector_count(id) = @vector_counts_by_decision[id.to_s]
-    def new_vector?(id, values, outcome) = !@vectors.key?(Branchproof::Records.id([id, values, outcome]))
+    def new_vector?(id) = !@vectors.key?(id)
 
     def owner_associations = @owner_associations_count
 
