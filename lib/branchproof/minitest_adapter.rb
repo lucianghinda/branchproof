@@ -13,10 +13,6 @@ module Branchproof
       @tests = {}
     end
 
-    def capabilities
-      { serial: true, phases: true }.freeze
-    end
-
     def run(test_files:, runner_args:, on_complete:, before_load: nil)
       raise ArgumentError, "test_files must be an Array" unless test_files.is_a?(Array)
       raise ArgumentError, "on_complete must respond to call" unless on_complete.respond_to?(:call)
