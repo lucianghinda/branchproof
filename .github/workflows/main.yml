@@ -26,10 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BRANCHPROOF_RAILS_INTEGRATION: "1"
+      # This job adds optional Rails dependencies to the core bundle.
+      BUNDLE_FROZEN: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
           bundler-cache: true
+          cache-version: rails-integration
       - run: bundle exec rake
