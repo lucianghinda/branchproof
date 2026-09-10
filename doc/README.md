@@ -97,7 +97,7 @@ For example, running the contents of the small `decision.rb` /
 with the terminal format produces a summary like this:
 
 ```text
-Branchproof 0.4.0
+Branchproof 0.5.0
 Tests: PASSED (3 tests, 0 failed, 0 skipped)
 MC/DC: 100.0% (2/2 conditions proven)
 Analysis: COMPLETE

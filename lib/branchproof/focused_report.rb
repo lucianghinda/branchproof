@@ -38,7 +38,7 @@ module Branchproof
       render_unowned(lines)
       render_unsupported(lines)
       Array(fetch(@document, :diagnostics)).each do |diagnostic|
-        lines << "Diagnostic: #{fetch(diagnostic, :message) || fetch(diagnostic, :code)}"
+        lines << "Diagnostic: #{@coordinator.diagnostic_message(diagnostic)}"
       end
       lines.join("\n") << "\n"
     end

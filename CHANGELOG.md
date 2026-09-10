@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-10
+
+- Show source filenames beside diagnostics in decision, condition, and test
+  views, including reports rendered from saved JSON.
+- Explain when a selected file has no supported conditions to instrument and
+  include unsupported syntax reasons when its decisions cannot be instrumented.
+
 ## [0.4.0] - 2026-09-10
 
 - Added `branchproof` as the primary CLI command while retaining `mcdc` as a

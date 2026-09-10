@@ -18,6 +18,30 @@ class TestLoader < Minitest::Test
     end
   end
 
+  def test_unchanged_sources_explain_absent_and_unsupported_conditions
+    { "plain.rb" => ["VALUE = 1\n", "no supported conditions to instrument"],
+      "limited.rb" => ["if a && b\n  true\nend\n", "conditions cannot be instrumented: condition_limit_exceeded"],
+      "unsupported.rb" => ["if /pattern/\n  true\nend\n",
+                           "conditions cannot be instrumented: unsupported_implicit_regexp"] }.each do |name, (bytes, reason)|
+      Dir.mktmpdir("branchproof-diagnostic") do |directory|
+        path = File.join(directory, name)
+        File.write(path, bytes)
+        limits = Branchproof::Limits.default.merge(conditions_per_decision: 1)
+        inventory = Branchproof::Source.new(root: directory, limits: limits).inventory(paths: [path])
+        loader = Branchproof::Loader.new(inventory: inventory, instrumenter: Branchproof::Instrumenter.new)
+        @installed_loader = loader
+        assert_equal "installed", loader.install[:status]
+        assert_nil loader.load_iseq(path)
+        diagnostic = loader.diagnostics.last
+        assert_equal reason, diagnostic[:message]
+        assert_equal inventory[:source_units].first[:source_id], diagnostic[:source_id]
+      ensure
+        teardown
+        @installed_loader = nil
+      end
+    end
+  end
+
   def test_install_registers_a_process_local_cruby_hook
     loader = Branchproof::Loader.new(inventory: { source_units: [] }, instrumenter: InstrumenterStub.new)
     @installed_loader = loader

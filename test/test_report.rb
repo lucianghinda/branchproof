@@ -19,6 +19,31 @@ class TestReport < Minitest::Test
     assert_equal 2, report.exit_code
   end
 
+  def test_diagnostics_identify_sources_in_every_live_and_saved_view
+    diagnostics = [
+      { code: "not_instrumented", message: "no supported conditions to instrument", source_id: "one" },
+      { code: "unsupported_source", message: "unsupported source syntax: unsupported_flip_flop", source_id: "two" },
+      { code: "loader_conflict", message: "another hook is installed" }
+    ]
+    report = base_report(inventory: { decisions: [], source_units: [
+                           { source_id: "one", relative_path: "app/one.rb" },
+                           { source_id: "two", relative_path: "app/two.rb" }
+                         ] }, diagnostics: diagnostics)
+    json = StringIO.new
+    report.write(io: json, format: :json)
+    document = JSON.parse(json.string)
+    assert_equal diagnostics.map { |item| item.transform_keys(&:to_s) }, document["diagnostics"]
+    [report, *%i[decisions conditions tests].map do |view|
+      Branchproof::Report.from_document(document: document, view: view)
+    end].each do |renderer|
+      output = StringIO.new
+      renderer.write(io: output, format: :terminal)
+      assert_includes output.string, "Skipped app/one.rb: no supported conditions to instrument"
+      assert_includes output.string, "Skipped app/two.rb: unsupported source syntax: unsupported_flip_flop"
+      assert_includes output.string, "another hook is installed"
+    end
+  end
+
   def base_report(**overrides)
     Branchproof::Report.new(inventory: { decisions: [{ conditions: [{ index: 0 }, { index: 1 }] }] },
                             evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: true } },

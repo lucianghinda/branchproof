@@ -22,6 +22,9 @@ Not documented.
 ### `condition_explanation(decision_id:, condition_id:)` <a id="method-i-condition_explanation"></a> <a id="condition_explanation-instance_method"></a>
 Shares the existing missing-case wording with focused terminal views.
 
+### `diagnostic_message(diagnostic)` <a id="method-i-diagnostic_message"></a> <a id="diagnostic_message-instance_method"></a>
+Formats source context consistently in live and saved terminal views.
+
 ### `exit_code()` <a id="method-i-exit_code"></a> <a id="exit_code-instance_method"></a>
 Not documented.
 
