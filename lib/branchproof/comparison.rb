@@ -27,7 +27,10 @@ module Branchproof
       before_conditions = condition_map(@before)
       after_conditions = condition_map(@after)
       matched_ids = before_conditions.keys & after_conditions.keys
-      matched_ids.select! { |id| compatible_condition?(before_conditions[id], after_conditions[id], changed_paths) }
+      matched_ids.select! do |id|
+        compatible_condition?(before_conditions[id], after_conditions[id], changed_paths, before_sources,
+                              after_sources)
+      end
       changes = matched_ids.filter_map { |id| condition_change(id, before_conditions[id], after_conditions[id]) }
       reasons = comparability_reasons(changed_paths)
       reasons.concat(metadata_requirements)
@@ -127,13 +130,13 @@ module Branchproof
       end
     end
 
-    def compatible_condition?(before, after, changed_paths)
+    def compatible_condition?(before, after, changed_paths, before_sources, after_sources)
       before_path = source_path(@before, before[:decision])
       after_path = source_path(@after, after[:decision])
       return false if before_path.nil? || changed_paths.include?(before_path) || before_path != after_path
 
-      before_digest = digest(sources(@before)[before_path])
-      after_digest = digest(sources(@after)[after_path])
+      before_digest = digest(before_sources[before_path])
+      after_digest = digest(after_sources[after_path])
       return false unless before_digest && before_digest == after_digest
 
       %i[index expression byte_start byte_length].all? do |key|
