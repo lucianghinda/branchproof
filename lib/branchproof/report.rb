@@ -765,7 +765,6 @@ module Branchproof
 
     def vectors_to_render(decision)
       return vectors_for(decision) unless @missing_only
-      return [] if nonboolean_decision?(decision)
 
       []
     end
