@@ -162,7 +162,6 @@ module Branchproof
              else
                "unknown"
              end
-      return if kind.nil?
 
       decision = after[:decision]
       source_path = source_path(@after, decision)
