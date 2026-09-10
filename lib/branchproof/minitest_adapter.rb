@@ -154,12 +154,7 @@ module Branchproof
       record = @tests[test_id]
       return unless record
 
-      skipped = test.failures.any? do |failure|
-        (failure.respond_to?(:skipped?) && failure.skipped?) ||
-          (defined?(Minitest::Skip) && failure.respond_to?(:error) && failure.error.is_a?(Minitest::Skip)) ||
-          failure.class.name.to_s.include?("Skip")
-      end
-      record[:status] = if skipped
+      record[:status] = if test.skipped?
                           "skipped"
                         else
                           (test.failures.empty? ? "passed" : "failed")
