@@ -5,6 +5,8 @@
 # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
 require "json"
+# rubocop:disable-next Lint/RedundantRequireStatement -- supports standalone core entry
+require "set"
 
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
@@ -107,7 +109,7 @@ module Branchproof
       end
       fail_with("duplicate condition id") unless @condition_ids.uniq.length == @condition_ids.length
       @conditions_by_decision = decisions.to_h do |decision|
-        [decision["id"], Array(decision["conditions"]).map { |condition| condition["id"] }]
+        [decision["id"], Array(decision["conditions"]).to_set { |condition| condition["id"] }]
       end
       sources.each do |source|
         validate_string_field(source, "relative_path", nullable: true)
@@ -142,11 +144,12 @@ module Branchproof
       fail_with("tests must be an array") unless tests.is_a?(Array)
       fail_with("vectors must be an array") unless vectors.is_a?(Array)
       @test_ids = unique_ids(tests, "id", "test")
+      @test_id_set = @test_ids.to_set
       tests.each { |test| validate_test(test) }
       vector_ids = unique_ids(vectors, "id", "vector")
       vectors.each do |vector|
         fail_with("invalid vector") unless hash_with_string_keys?(vector)
-        fail_with("unknown vector decision") unless @decision_ids.include?(vector["decision_id"])
+        fail_with("unknown vector decision") unless @decisions_by_id.key?(vector["decision_id"])
         decision = @decisions_by_id.fetch(vector["decision_id"])
         values = vector["values"]
         valid_values = values.is_a?(Array) && values.all? do |value|
@@ -162,7 +165,7 @@ module Branchproof
         fail_with("vector outcome must be boolean") unless [true, false].include?(vector["outcome"])
         validate_flow_vector(vector, decision) if strict_flow_decision?(decision)
         fail_with("unknown vector test") unless strings?(vector["test_ids"]) && vector["test_ids"].all? do |id|
-          @test_ids.include?(id)
+          @test_id_set.include?(id)
         end
         validate_phases(vector)
         validate_integer_field(vector, "count")
@@ -199,7 +202,7 @@ module Branchproof
       decisions.each do |decision|
         fail_with("invalid analysis decision") unless hash_with_string_keys?(decision)
         id = decision["decision_id"]
-        fail_with("unknown analysis decision") unless @decision_ids.include?(id) && !seen.key?(id)
+        fail_with("unknown analysis decision") unless @decisions_by_id.key?(id) && !seen.key?(id)
         seen[id] = true
         results = decision["condition_results"]
         fail_with("condition results must be an array") unless results.is_a?(Array)
@@ -221,7 +224,7 @@ module Branchproof
 
           pair = result["canonical_pair"]
           valid_pair = pair.is_a?(Array) && pair.length == 2 && pair.uniq.length == 2 && pair.all? do |id|
-            @vector_ids.include?(id) && @vector_decision_by_id[id] == decision["decision_id"]
+            @vectors_by_id.key?(id) && @vector_decision_by_id[id] == decision["decision_id"]
           end
           fail_with("canonical pair must reference vectors") unless valid_pair
         end
@@ -359,12 +362,16 @@ module Branchproof
       unless evidence["vector_ids"].uniq.length == evidence["vector_ids"].length
         fail_with("duplicate alternative evidence vector")
       end
-      fail_with("unknown alternative evidence vector") unless (evidence["vector_ids"] - @vector_ids).empty?
+      fail_with("unknown alternative evidence vector") unless evidence["vector_ids"].all? do |id|
+        @vectors_by_id.key?(id)
+      end
       fail_with("alternative evidence test_ids must be strings") unless strings?(evidence["test_ids"])
       unless evidence["test_ids"].uniq.length == evidence["test_ids"].length
         fail_with("duplicate alternative evidence test")
       end
-      fail_with("unknown alternative evidence test") unless (evidence["test_ids"] - @test_ids).empty?
+      fail_with("unknown alternative evidence test") unless evidence["test_ids"].all? do |id|
+        @test_id_set.include?(id)
+      end
       validate_integer_field(evidence, "unattributed_count")
       return unless decision
 
@@ -446,7 +453,7 @@ module Branchproof
 
       valid = hash_with_string_keys?(phases) && phases.all? do |test_id, values|
         valid_phases = %w[setup body teardown suite unattributed]
-        @test_ids.include?(test_id) && strings?(values) && values.all? { |phase| valid_phases.include?(phase) }
+        @test_id_set.include?(test_id) && strings?(values) && values.all? { |phase| valid_phases.include?(phase) }
       end
       fail_with("invalid phases_by_test") unless valid
     end
@@ -556,7 +563,7 @@ module Branchproof
       return unless locations
 
       valid = hash_with_string_keys?(locations) && locations.all? do |test_id, location|
-        @test_ids.include?(test_id) && hash_with_string_keys?(location) &&
+        @test_id_set.include?(test_id) && hash_with_string_keys?(location) &&
           (!location.key?("relative_path") || location["relative_path"].nil? ||
             location["relative_path"].is_a?(String)) &&
           (!location.key?("line") || location["line"].nil? || location["line"].is_a?(Integer))
