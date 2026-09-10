@@ -119,8 +119,8 @@ module Branchproof
           specs << { node: node, predicate: predicate, context: context }
           mark_semantic_boolean_nodes(predicate, inventoried_boolean_nodes)
         elsif subjectless_case?(node)
-          when_nodes(node).each do |when_node|
-            when_predicates(when_node).each do |predicate|
+          conditions_for(node).each do |when_node|
+            conditions_for(when_node).each do |predicate|
               predicate = unwrap_predicate(predicate)
               specs << { node: when_node, predicate: predicate, context: "case_when" }
               mark_semantic_boolean_nodes(predicate, inventoried_boolean_nodes)
@@ -192,10 +192,7 @@ module Branchproof
 
     def range_within_defined_expression?(decision, defined_ranges)
       start_offset = decision[:byte_start]
-      end_offset = start_offset + decision[:byte_length]
-      defined_ranges.any? do |defined_location|
-        defined_location.start_offset <= start_offset && defined_location.end_offset >= end_offset
-      end
+      offsets_within_defined_expression?(start_offset, start_offset + decision[:byte_length], defined_ranges)
     end
 
     def walk(node, &block)
@@ -216,16 +213,7 @@ module Branchproof
       node.is_a?(Prism::CaseNode) && node.predicate.nil?
     end
 
-    def when_nodes(node)
-      conditions = node.conditions
-      if conditions.is_a?(Array)
-        conditions
-      else
-        (conditions.respond_to?(:body) ? conditions.body : [])
-      end
-    end
-
-    def when_predicates(node)
+    def conditions_for(node)
       conditions = node.conditions
       if conditions.is_a?(Array)
         conditions
@@ -289,9 +277,12 @@ module Branchproof
 
     def within_defined_expression?(node, defined_ranges)
       location = node.location
+      offsets_within_defined_expression?(location.start_offset, location.end_offset, defined_ranges)
+    end
+
+    def offsets_within_defined_expression?(start_offset, end_offset, defined_ranges)
       defined_ranges.any? do |defined_location|
-        defined_location.start_offset <= location.start_offset &&
-          defined_location.end_offset >= location.end_offset
+        defined_location.start_offset <= start_offset && defined_location.end_offset >= end_offset
       end
     end
 
