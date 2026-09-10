@@ -41,7 +41,7 @@ module Branchproof
     def load_iseq(path)
       return nil unless @installed
 
-      unit = @units[canonical(path)]
+      unit = @units[path] || @units[canonical(path)]
       return nil unless unit
 
       bytes = File.binread(path)
@@ -113,8 +113,8 @@ module Branchproof
 
     def index_units(inventory)
       Array(inventory[:source_units]).each_with_object({}) do |unit, index|
-        path = unit[:absolute_path] || unit[:real_path]
-        index[canonical(path)] = unit if path
+        index[unit[:absolute_path]] = unit if unit[:absolute_path]
+        index[unit[:real_path]] = unit if unit[:real_path]
       end
     end
 
