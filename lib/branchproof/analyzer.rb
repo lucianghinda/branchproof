@@ -30,7 +30,8 @@ module Branchproof
         proven_count: proven,
         eligible_count: eligible,
         completeness: completeness(decisions),
-        diagnostics: decisions.flat_map { |decision| decision[:diagnostics] } + @invalid_diagnostics
+        diagnostics: decisions.flat_map { |decision| decision[:diagnostics] } + @invalid_diagnostics,
+        coverage: aggregate_coverage(decisions)
       }.freeze
     end
 
@@ -97,7 +98,7 @@ module Branchproof
       unless id(decision, :support_status).to_s.empty? || id(decision, :support_status).to_s.upcase == "SUPPORTED"
         return {
           decision_id: decision_id, effective_masks_by_vector: {}, condition_results: [], witness_buckets: {},
-          conditions: [], unsupported: true,
+          conditions: [], unsupported: true, coverage: unsupported_coverage,
           completeness: { observation: true, attribution: true, analysis: true },
           diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
         }
@@ -136,9 +137,13 @@ module Branchproof
                     nil
                   else
                     (true_ids.empty? || false_ids.empty? ? "missing_effective_sign" : "no_independent_pair")
-                  end
+                  end,
+          coverage: condition_coverage(index, vectors)
         }
       end
+      decision_coverage = decision_coverage(vectors)
+      condition_coverage_summary = condition_summary(results)
+      mcdc = mcdc_coverage(results)
       {
         decision_id: decision_id,
         effective_masks_by_vector: masks,
@@ -146,9 +151,132 @@ module Branchproof
         witness_buckets: buckets,
         edge_table: edge_table(decision[:tree]),
         conditions: conditions(decision),
+        coverage: { decision: decision_coverage, condition: condition_coverage_summary,
+                    condition_decision: conjunction_coverage(decision_coverage, condition_coverage_summary),
+                    mcdc: mcdc },
         completeness: { observation: true, attribution: true, analysis: !@analysis_invalid },
         diagnostics: []
       }
+    end
+
+    def unsupported_coverage
+      { decision: { status: "unsupported", true_observed: false, false_observed: false,
+                    covered_outcomes: 0, required_outcomes: 2, outcomes: [], missing_outcomes: [] },
+        condition: { status: "unsupported", covered_values: 0, required_values: 0,
+                     covered_conditions: 0, condition_count: 0 },
+        condition_decision: { status: "unsupported" },
+        mcdc: { status: "unsupported", proven_conditions: 0, condition_count: 0 } }
+    end
+
+    def provenance(vector)
+      { vector_id: id(vector, :id).to_s,
+        test_ids: Array(id(vector, :test_ids)).map(&:to_s).uniq.sort,
+        unattributed_count: id(vector, :unattributed_count).to_i }
+    end
+
+    def evidence_bucket(value, vectors)
+      matching = vectors.select do |vector|
+        observed?(vector, value[:index]) && self.value(vector, value[:index]) == value[:value]
+      end
+      evidence = matching.map { |vector| provenance(vector) }
+      { value: value[:value], observed: !matching.empty?,
+        vector_ids: evidence.flat_map { |item| item[:vector_id] }.uniq.sort,
+        test_ids: evidence.flat_map { |item| item[:test_ids] }.uniq.sort,
+        unattributed_count: evidence.sum { |item| item[:unattributed_count] } }
+    end
+
+    def condition_coverage(index, vectors)
+      observed_vectors = vectors.select { |vector| observed?(vector, index) }
+      values = [true, false].map do |item|
+        evidence_bucket({ index: index, value: item }, observed_vectors)
+      end
+      covered = values.count { |entry| entry[:observed] }
+      { status: coverage_status(covered, 2), true_observed: values[0][:observed],
+        false_observed: values[1][:observed], covered_values: covered, required_values: 2,
+        values: values, missing_values: values.reject { |entry| entry[:observed] }.map { |entry| entry[:value] } }
+    end
+
+    def decision_coverage(vectors)
+      outcomes = [false, true].map do |value|
+        matching = vectors.select { |vector| outcome(vector) == value }
+        evidence = matching.map { |vector| provenance(vector) }
+        { value: value, observed: !matching.empty?,
+          vector_ids: evidence.flat_map { |item| item[:vector_id] }.uniq.sort,
+          test_ids: evidence.flat_map { |item| item[:test_ids] }.uniq.sort,
+          unattributed_count: evidence.sum { |item| item[:unattributed_count] } }
+      end
+      covered = outcomes.count { |entry| entry[:observed] }
+      { status: coverage_status(covered, 2), true_observed: outcomes[1][:observed],
+        false_observed: outcomes[0][:observed], covered_outcomes: covered, required_outcomes: 2,
+        outcomes: outcomes,
+        missing_outcomes: outcomes.reject { |entry| entry[:observed] }.map { |entry| entry[:value] } }
+    end
+
+    def condition_summary(results)
+      values = results.sum { |result| result[:coverage][:covered_values] }
+      count = results.length
+      { status: coverage_status(values, count * 2), covered_values: values,
+        required_values: count * 2,
+        covered_conditions: results.count { |result| result[:coverage][:status] == "covered" },
+        condition_count: count }
+    end
+
+    def mcdc_coverage(results)
+      proven = results.count { |result| result[:status] == "PROVEN" }
+      observed = results.any? { |result| result[:coverage][:covered_values].positive? }
+      status = if !observed
+                 "unexecuted"
+               elsif proven == results.length
+                 "covered"
+               else
+                 "partial"
+               end
+      { status: status, proven_conditions: proven, condition_count: results.length }
+    end
+
+    def conjunction_coverage(decision, condition)
+      status = if decision[:status] == "covered" && condition[:status] == "covered"
+                 "covered"
+               elsif decision[:status] == "unexecuted" && condition[:status] == "unexecuted"
+                 "unexecuted"
+               else
+                 "partial"
+               end
+      { status: status }
+    end
+
+    def coverage_status(covered, required)
+      return "unexecuted" if covered.zero?
+      return "covered" if covered == required
+
+      "partial"
+    end
+
+    def aggregate_coverage(decisions)
+      supported = decisions.reject { |decision| decision[:unsupported] }
+      decision_covered = supported.count do |decision|
+        decision[:coverage][:decision][:status] == "covered"
+      end
+      condition_decision_covered = supported.count do |decision|
+        decision[:coverage][:condition_decision][:status] == "covered"
+      end
+      condition_count = supported.sum { |decision| decision[:coverage][:condition][:condition_count] }
+      condition_values = supported.sum { |decision| decision[:coverage][:condition][:covered_values] }
+      covered_conditions = supported.sum do |decision|
+        decision[:coverage][:condition][:covered_conditions]
+      end
+      proven = supported.sum { |decision| decision[:coverage][:mcdc][:proven_conditions] }
+      percentage = ->(covered, required) { required.zero? ? nil : (covered.to_f / required * 100).round(2) }
+      { decision: { covered_decisions: decision_covered, supported_decisions: supported.length,
+                    percentage: percentage.call(decision_covered, supported.length) },
+        condition: { covered_values: condition_values, required_values: condition_count * 2,
+                     covered_conditions: covered_conditions, condition_count: condition_count,
+                     percentage: percentage.call(condition_values, condition_count * 2) },
+        condition_decision: { covered_decisions: condition_decision_covered,
+                              supported_decisions: supported.length,
+                              percentage: percentage.call(condition_decision_covered, supported.length) },
+        mcdc: { proven_conditions: proven, supported_conditions: condition_count,
+                percentage: percentage.call(proven, condition_count) } }
     end
 
     def valid_vector(vector, decision)
