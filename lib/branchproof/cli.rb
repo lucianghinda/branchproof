@@ -49,30 +49,31 @@ module Branchproof
                                             message: merge_status[:reason].to_s }]
         end
       end
+      snapshot = evidence.snapshot
       if value(baseline, :status).to_s == "PASSED"
-        analysis = Analyzer.new(inventory: inventory, evidence: evidence.snapshot, limits: options[:limits]).call
+        analysis = Analyzer.new(inventory: inventory, evidence: snapshot, limits: options[:limits]).call
         baseline[:analysis] = analysis
         if options[:level] >= 2
           ids = Array(value(inventory, :decisions)).map { |decision| value(decision, :id) }
           baseline[:minima] = ids.filter_map do |decision_id|
-            Minimizer.new(analysis: analysis, evidence: evidence.snapshot, limits: options[:limits]).call(objective: :vectors, decision_ids: [decision_id])
+            Minimizer.new(analysis: analysis, evidence: snapshot, limits: options[:limits]).call(objective: :vectors, decision_ids: [decision_id])
           end
           baseline[:minima] += ids.filter_map do |decision_id|
-            Minimizer.new(analysis: analysis, evidence: evidence.snapshot, limits: options[:limits]).call(
+            Minimizer.new(analysis: analysis, evidence: snapshot, limits: options[:limits]).call(
               objective: :tests, decision_ids: [decision_id]
             )
           end
-          baseline[:minima] << Minimizer.new(analysis: analysis, evidence: evidence.snapshot, limits: options[:limits]).call(
+          baseline[:minima] << Minimizer.new(analysis: analysis, evidence: snapshot, limits: options[:limits]).call(
             objective: :tests, decision_ids: ids
           )
         end
       end
       diagnostics = Array(value(inventory, :diagnostics)) + Array(value(baseline, :diagnostics)) +
-                    Array(value(evidence.snapshot,
+                    Array(value(snapshot,
                                 :diagnostics)) + Array(value(value(baseline, :analysis), :diagnostics))
       analysis = value(baseline, :analysis)
       minima = options[:level] == 1 ? [] : Array(value(baseline, :minima))
-      report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || evidence.snapshot,
+      report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || snapshot,
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
                           level: options[:level], missing_only: options[:missing_only], view: options[:view],
                           run_metadata: run_metadata(options, baseline))
