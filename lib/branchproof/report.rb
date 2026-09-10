@@ -131,7 +131,7 @@ module Branchproof
     def terminal_document
       unless @view == :decisions
         return FocusedReport.new(document: json_document, view: @view, level: @level,
-                                 missing_only: @missing_only).render
+                                 missing_only: @missing_only, coordinator: self).render
       end
 
       @terminal_ids = terminal_ids

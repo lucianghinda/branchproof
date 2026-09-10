@@ -6,7 +6,7 @@ require "pathname"
 module Branchproof
   # Terminal renderings grouped around conditions or tests.
   class FocusedReport
-    def initialize(document:, view:, level:, missing_only: false)
+    def initialize(document:, view:, level:, missing_only: false, coordinator: nil)
       @document = document || {}
       @view = view.to_sym
       raise ArgumentError, "view must be :conditions or :tests" unless %i[conditions tests].include?(@view)
@@ -18,7 +18,7 @@ module Branchproof
       @test_name_counts = @index.tests.each_with_object(Hash.new(0)) do |test, counts|
         counts[[test[:name], test[:relative_path], test[:line]]] += 1
       end
-      @coordinator = Report.from_document(document: @document, level: @level)
+      @coordinator = coordinator || Report.from_document(document: @document, level: @level)
     end
 
     def render
