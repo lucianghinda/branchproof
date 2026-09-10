@@ -55,17 +55,14 @@ module Branchproof
         baseline[:analysis] = analysis
         if options[:level] >= 2
           ids = Array(value(inventory, :decisions)).map { |decision| value(decision, :id) }
+          minimizer = Minimizer.new(analysis: analysis, evidence: snapshot, limits: options[:limits])
           baseline[:minima] = ids.filter_map do |decision_id|
-            Minimizer.new(analysis: analysis, evidence: snapshot, limits: options[:limits]).call(objective: :vectors, decision_ids: [decision_id])
+            minimizer.call(objective: :vectors, decision_ids: [decision_id])
           end
           baseline[:minima] += ids.filter_map do |decision_id|
-            Minimizer.new(analysis: analysis, evidence: snapshot, limits: options[:limits]).call(
-              objective: :tests, decision_ids: [decision_id]
-            )
+            minimizer.call(objective: :tests, decision_ids: [decision_id])
           end
-          baseline[:minima] << Minimizer.new(analysis: analysis, evidence: snapshot, limits: options[:limits]).call(
-            objective: :tests, decision_ids: ids
-          )
+          baseline[:minima] << minimizer.call(objective: :tests, decision_ids: ids)
         end
       end
       diagnostics = Array(value(inventory, :diagnostics)) + Array(value(baseline, :diagnostics)) +
