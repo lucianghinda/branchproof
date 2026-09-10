@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-10
+
 - Added `branchproof` as the primary CLI command while retaining `mcdc` as a
   compatibility alias.
 - Added condition-focused and test-focused terminal views, including relative
