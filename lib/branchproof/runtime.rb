@@ -26,7 +26,7 @@ module Branchproof
       end
 
       def enter(decision_id)
-        state[:frames] << { decision_id: String(decision_id), context: state[:context]&.dup,
+        state[:frames] << { decision_id: decision_id, context: state[:context]&.dup,
                             observations: [], outcome: nil, finished: false }
         nil
       end
@@ -35,7 +35,7 @@ module Branchproof
         frame = current_frame(decision_id)
         if frame
           truth = value ? true : false
-          frame[:observations] << [Integer(index), truth]
+          frame[:observations] << [index, truth]
         end
         value
       end
@@ -53,7 +53,7 @@ module Branchproof
         detect_fork
         frames = state[:frames]
         frame = frames.pop
-        unless frame && frame[:decision_id] == String(decision_id)
+        unless frame && frame[:decision_id] == decision_id
           latch("runtime_frame_mismatch", "decision frame stack is not balanced")
           cleanup_state
           return nil
@@ -65,7 +65,7 @@ module Branchproof
           decision_id: frame[:decision_id],
           test_id: frame[:context]&.fetch(:test_id, nil),
           phase: frame[:context]&.fetch(:phase, "unattributed") || "unattributed",
-          observations: frame[:observations].map(&:dup),
+          observations: frame[:observations],
           outcome: frame[:finished] ? frame[:outcome] : nil,
           status: frame[:finished] ? "completed" : "aborted"
         }
@@ -138,7 +138,7 @@ module Branchproof
 
       def current_frame(decision_id)
         frame = state[:frames].last
-        return frame if frame && frame[:decision_id] == String(decision_id)
+        return frame if frame && frame[:decision_id] == decision_id
 
         latch("runtime_frame_mismatch", "no active frame for #{decision_id}") if frame
         nil
