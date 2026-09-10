@@ -232,7 +232,7 @@ module Branchproof
     def valid_trace?(decision, observations, outcome)
       return valid_alternative_trace?(decision, observations, outcome) if alternative_decision?(decision)
 
-      tree = symbolize(decision[:tree])
+      tree = decision[:tree]
       unless tree
         return observations.map(&:first) == observations.map(&:first).sort &&
                (outcome ? true : false) == evaluate_fallback(observations)
@@ -247,7 +247,6 @@ module Branchproof
     end
 
     def replay_tree(node, observations, cursor)
-      node = symbolize(node)
       type = node[:type].to_s
       if type == "atom"
         pair = observations[cursor]
