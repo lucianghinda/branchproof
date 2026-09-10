@@ -65,6 +65,7 @@ Branchproof::Report,Class,Branchproof/Report.md
 Branchproof::Report.SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-SCHEMA_VERSION
 Branchproof::Report.CRITERION_VERSION,Constant,Branchproof/Report.md#constant-CRITERION_VERSION
 Branchproof::Report.condition_explanation,Method,Branchproof/Report.md#method-i-condition_explanation
+Branchproof::Report.diagnostic_message,Method,Branchproof/Report.md#method-i-diagnostic_message
 Branchproof::Report.exit_code,Method,Branchproof/Report.md#method-i-exit_code
 Branchproof::Report.initialize,Method,Branchproof/Report.md#method-i-initialize
 Branchproof::Report.write,Method,Branchproof/Report.md#method-i-write

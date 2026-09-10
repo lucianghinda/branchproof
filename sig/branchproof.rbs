@@ -105,6 +105,7 @@ module Branchproof
     CRITERION_VERSION: String
     def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?) -> void
     def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool) -> Report
+    def diagnostic_message: (Hash[Symbol | String, untyped] diagnostic) -> String
     def condition_explanation: (decision_id: String, condition_id: String) -> String
     def write: (io: _WriteIO, format: Symbol | String) -> nil
     def exit_code: () -> Integer

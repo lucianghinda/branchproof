@@ -55,7 +55,7 @@ module Branchproof
       end
       unless rewritten[:changed]
         if Array(rewritten[:diagnostics]).empty?
-          add_diagnostic("not_instrumented", "selected source had no safe edits", unit[:source_id],
+          add_diagnostic("not_instrumented", unchanged_reason(unit), unit[:source_id],
                          severity: "info")
         end
         return nil
@@ -79,6 +79,14 @@ module Branchproof
     end
 
     private
+
+    def unchanged_reason(unit)
+      decisions = Array(unit[:decisions])
+      reasons = decisions.flat_map { |decision| Array(decision[:support_reasons]) }.uniq
+      return "conditions cannot be instrumented: #{reasons.join(", ")}" unless reasons.empty?
+
+      "no supported conditions to instrument"
+    end
 
     def hook_supported?
       defined?(RubyVM::InstructionSequence) && RubyVM::InstructionSequence.respond_to?(:compile)

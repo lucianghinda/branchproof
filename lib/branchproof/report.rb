@@ -58,6 +58,18 @@ module Branchproof
       condition_detail(decision, condition, condition_result(decision, condition))
     end
 
+    # Formats source context consistently in live and saved terminal views.
+    def diagnostic_message(diagnostic)
+      message = value(diagnostic, :message) || value(diagnostic, :code)
+      source_id = value(diagnostic, :source_id)
+      return message unless source_id
+
+      source = source_for(diagnostic)
+      path = value(source, :relative_path) || source_id
+      prefix = %w[not_instrumented unsupported_source].include?(value(diagnostic, :code).to_s) ? "Skipped " : ""
+      "#{prefix}#{path}: #{message}"
+    end
+
     def exit_code
       return 2 unless usage_valid?
 
@@ -110,7 +122,7 @@ module Branchproof
       render_minima(lines) unless @missing_only
       unless @diagnostics.empty?
         lines << "Diagnostics:"
-        @diagnostics.each { |diagnostic| lines << "  - #{value(diagnostic, :message) || value(diagnostic, :code)}" }
+        @diagnostics.each { |diagnostic| lines << "  - #{diagnostic_message(diagnostic)}" }
       end
       lines.join("\n") << "\n"
     end
