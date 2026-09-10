@@ -13,6 +13,9 @@ module Branchproof
       @evidence = evidence || {}
       @limits = limits || {}
       @vectors = records(@evidence, :vectors)
+      @vectors_by_decision = @vectors.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |vector, hash|
+        hash[id(vector, :decision_id)] << vector
+      end
       @constraint_states = Hash.new(0)
       @missing_cache = {}
       @invalid_diagnostics = []
@@ -58,7 +61,7 @@ module Branchproof
       support_status = id(decision, :support_status).to_s
       return @missing_cache[cache_key] = nil unless support_status.empty? || support_status.upcase == "SUPPORTED"
 
-      relevant = @vectors.select { id(_1, :decision_id) == decision_id }
+      relevant = @vectors_by_decision[decision_id]
       valid = relevant.filter_map { valid_vector(_1, decision) }
       if valid.empty?
         return @missing_cache[cache_key] = {
@@ -109,7 +112,7 @@ module Branchproof
         }
       end
 
-      vectors = @vectors.filter_map { |vector| valid_vector(vector, decision) }
+      vectors = @vectors_by_decision[decision_id].filter_map { |vector| valid_vector(vector, decision) }
       masks = vectors.to_h { |vector| [id(vector, :id), effective_mask(vector, decision_id)] }
       buckets = {}
       conditions(decision).each do |condition|
@@ -177,7 +180,7 @@ module Branchproof
         }
       end
 
-      vectors = @vectors.filter_map { |vector| valid_vector(vector, decision) }
+      vectors = @vectors_by_decision[decision_id].filter_map { |vector| valid_vector(vector, decision) }
       rows = alternatives(decision).map do |alternative|
         index = id(alternative, :index).to_i
         selected = vectors.select { |vector| value(vector, index) == true }
