@@ -634,18 +634,6 @@ module Branchproof
       end
     end
 
-    def evaluate(node, values)
-      type = id(node, :type).to_sym
-      return values[id(node, :index)] if type == :atom
-      return !evaluate(node.fetch(:child), values) if type == :not
-
-      left = evaluate(node[:left], values)
-      return left if id(node, :type).to_sym == :and && !left
-      return left if id(node, :type).to_sym == :or && left
-
-      evaluate(node[:right], values)
-    end
-
     def evaluate_with_trace(node, values, trace = [])
       type = id(node, :type).to_sym
       if type == :atom
