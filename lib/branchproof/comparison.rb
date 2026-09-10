@@ -266,9 +266,7 @@ module Branchproof
     def comparability_reasons(changed_paths)
       reasons = []
       reasons << "source files changed: #{changed_paths.sort.join(", ")}" unless changed_paths.empty?
-      %i[criterion_version project_kind runner_args source_patterns test_patterns limits runtime].each do |key|
-        next if key == :criterion_version
-
+      %i[project_kind runner_args source_patterns test_patterns limits runtime].each do |key|
         left = metadata(@before, key)
         right = metadata(@after, key)
         if key == :runner_args
