@@ -126,6 +126,50 @@ Additional tests outside this MC/DC evidence set may improve coverage.
 The test execution still runs once for the selected level. Use `--format
 json` when a consumer needs the complete identifiers and versioned schema.
 
+### Coverage ladder
+
+Each successful `analyze` run calculates four criteria from the same completed
+observations. The report shows their status for each supported decision and
+aggregate counts with explicit denominators:
+
+| Criterion | Requirement | Aggregate denominator |
+| --- | --- | --- |
+| Decision | The decision produced both true and false | Supported decisions |
+| Condition | Every atomic condition evaluated both true and false | Two required truth values per supported condition |
+| Condition/Decision | Both Decision and Condition Coverage hold for a decision | Supported decisions |
+| MC/DC | Every condition has an independence witness pair | Supported conditions |
+
+For `logged_in? && admin?`, observations `[F-] => F` and `[TT] => T` give:
+
+```text
+Decision                    PASS
+Condition                   FAIL (3/4 values observed)
+Condition/Decision          FAIL
+MC/DC                       FAIL (1/2 conditions proven)
+```
+
+The skipped `admin?` in `[F-]` counts as neither true nor false. Conditions
+that did evaluate count toward Condition Coverage even when their value was
+masked by another condition. Here, the two observations prove independence
+for `logged_in?`; `admin?` still needs `[TF] => F`.
+
+Decision and Condition Coverage are calculated independently from the captured
+evidence. Condition/Decision requires both; MC/DC adds independence evidence.
+Unsupported decisions are excluded from every denominator, while
+unexecuted supported decisions remain in scope. Empty denominators are N/A.
+
+Reports retain the observations and owning tests for each decision outcome
+and condition value. Missing values describe required runtime observations,
+not application inputs or a guarantee that the path is reachable. Unattributed
+observations can provide truth-value evidence without identifying a test;
+the report's completeness and diagnostics still apply.
+
+JSON stores aggregate counts under `analysis.coverage`, per-decision results
+under `analysis.decisions[].coverage`, and condition value evidence under
+`analysis.decisions[].condition_results[].coverage`. Existing MC/DC witness
+pairs, counterpart constraints, and raw vectors remain available. Statuses
+distinguish `covered`, `partial`, `unexecuted`, and `unsupported` results.
+
 ### Find missing cases
 
 Use `--missing-only` to focus the terminal report on conditions that still
@@ -175,15 +219,17 @@ test inputs; they do not by themselves prove a bug in the application.
 
 The levels select how much of the one-run result is displayed:
 
-* Level 1 reports observed vectors grouped by their raw decision outcomes.
+* Level 1 reports the coverage ladder and observed vectors grouped by their
+  raw decision outcomes.
 * Level 2 includes the smallest supporting sets found for vectors and tests.
 * Level 3 (the default) includes condition independence witnesses and
   counterpart constraints, as well as the Level 1 and 2 evidence.
 
-Level 2 and Level 3 compute from the same captured run. They do not rerun the
-test suite. A failed, unsupported, or incomplete run is reported with its
-status and diagnostics and cannot become a successful coverage result by
-changing the display level.
+All levels calculate the same criteria from one captured run. The level
+controls displayed evidence, not the coverage criterion; JSON retains the
+analysis even at Level 1. A failed, unsupported, or incomplete run is reported
+with its status and diagnostics and cannot become a successful coverage
+result by changing the display level.
 
 ### Focused condition and test views
 
@@ -232,7 +278,8 @@ artifacts when you need to retain multiple runs.
 The `report` command reads the saved document without loading the application
 or running tests. It uses locations and metadata captured in the report, so
 rendering remains useful after the original checkout has moved or been
-removed. Level 1 reports observations; levels 2 and 3 require corresponding
+removed. New snapshots retain the ladder at every level. Legacy snapshots
+without analysis can still be rendered at Level 1; levels 2 and 3 require
 analysis in the saved report. The repository ignores `.branchproof/`; choose a
 different path and CI artifact policy when a project needs to retain reports.
 Saved JSON includes existing raw metadata such as test names and expressions;

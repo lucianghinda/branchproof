@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-10
+
+- Report Decision, Condition, and Condition/Decision Coverage alongside
+  existing MC/DC evidence from one test execution.
+- Show explicit coverage counts, supporting tests, and missing Boolean
+  observations in decision, condition, and test views and JSON reports.
+- Calculate the same coverage criteria at every reporting level and retain
+  analysis in level-1 snapshots for offline inspection at higher detail.
+  Continue to support legacy snapshots without analysis at level 1.
+
 ## [0.5.0] - 2026-09-10
 
 - Show source filenames beside diagnostics in decision, condition, and test

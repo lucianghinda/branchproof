@@ -19,8 +19,18 @@ Not documented.
 Not documented.
 
 ## Public Instance Methods
+### `condition_coverage_evidence(decision_id:, condition_id:)` <a id="method-i-condition_coverage_evidence"></a> <a id="condition_coverage_evidence-instance_method"></a>
+Returns condition-value evidence for focused renderers without exposing the
+report's internal document traversal or mutating saved records.
+
 ### `condition_explanation(decision_id:, condition_id:)` <a id="method-i-condition_explanation"></a> <a id="condition_explanation-instance_method"></a>
 Shares the existing missing-case wording with focused terminal views.
+
+### `coverage_ladder_lines()` <a id="method-i-coverage_ladder_lines"></a> <a id="coverage_ladder_lines-instance_method"></a>
+Render the shared ladder in every terminal view.
+
+### `coverage_status_label(status)` <a id="method-i-coverage_status_label"></a> <a id="coverage_status_label-instance_method"></a>
+Not documented.
 
 ### `diagnostic_message(diagnostic)` <a id="method-i-diagnostic_message"></a> <a id="diagnostic_message-instance_method"></a>
 Formats source context consistently in live and saved terminal views.
