@@ -26,6 +26,9 @@ module Branchproof
       @invalid_diagnostics = []
       @analysis_invalid = false
       @diagnostic_keys = Set.new
+      # Keyed by vector object identity (not content), so a validated vector's
+      # values are checked once and reused on every later read.
+      @values_cache = {}.compare_by_identity
     end
 
     def call
@@ -673,13 +676,15 @@ module Branchproof
     end
 
     def values_for(vector)
+      return @values_cache[vector] if @values_cache.key?(vector)
+
       raw = vector[:values] || vector["values"]
       raise ArgumentError, "observation must contain booleans or nil" unless raw.is_a?(Array)
       unless raw.all? { |value| value.nil? || value == true || value == false }
         raise ArgumentError, "observation must contain booleans or nil"
       end
 
-      raw
+      @values_cache[vector] = raw
     end
 
     def outcome(vector) = vector[:outcome].nil? ? vector["outcome"] : vector[:outcome]
