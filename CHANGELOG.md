@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-10
+
 - Discover Boolean loop predicates, subjectless case candidates, standalone
   short-circuit expressions, and pattern predicates through Prism.
 - Analyze unary NOT and keyword `and`/`or` with Ruby's parsed precedence.
