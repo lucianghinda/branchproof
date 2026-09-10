@@ -1,0 +1,116 @@
+module Branchproof
+  VERSION: String
+
+  type record = Hash[Symbol, untyped]
+  type limits = record
+
+  class Error < StandardError
+  end
+
+  module Records
+    def self.build: (untyped value) -> untyped
+    def self.id: (untyped value) -> String
+    def self.canonical: (untyped value) -> String
+    def self.diagnostic: (code: String | Symbol, severity: String | Symbol, message: String, ?source_id: String?, ?decision_id: String?, ?execution_id: String?, ?test_id: String?, ?details: record) -> record
+    def self.source_id: (relative_path: String, digest: String, ?encoding: String) -> String
+    def self.condition_id: (String decision_id, Integer index) -> String
+    def self.decision_id: (source_id: String, context: String, byte_start: Integer, byte_length: Integer, tree: untyped) -> String
+  end
+
+  module Limits
+    KEYS: Array[Symbol]
+    DEFAULTS: record
+    def self.default: () -> limits
+    def self.normalize: (?record overrides) -> limits
+  end
+
+  class Source
+    attr_reader root: String
+    attr_reader limits: limits
+    def initialize: (root: String, limits: limits) -> void
+    def inventory: (paths: Array[String]) -> record
+  end
+
+  class Project
+    MODES: Array[String]
+    RAILS_ENVIRONMENT: record
+    def initialize: (root: String, ?mode: String) -> void
+    def to_h: () -> record
+  end
+
+  module RailsSupport
+    def self.boot: (project: record) -> record
+  end
+
+  class Instrumenter
+    RUNTIME: String
+    def rewrite: (unit: record) -> record
+  end
+
+  class Loader
+    STATUS_KEYS: Array[Symbol]
+    def initialize: (inventory: record, instrumenter: Instrumenter) -> void
+    def install: () -> record
+    def load_iseq: (String path) -> untyped
+    def diagnostics: () -> Array[record]
+  end
+
+  module Runtime
+    def self.boot: (evidence: Evidence) -> nil
+    def self.enter: (String decision_id) -> nil
+    def self.condition: (String decision_id, Integer index, untyped value) -> untyped
+    def self.finish: (String decision_id, untyped value) -> untyped
+    def self.leave: (String decision_id) -> nil
+    def self.context: (?test_id: String?, ?phase: String?) -> nil
+    def self.snapshot: () -> record
+    def self.diagnostics: () -> Array[record]
+  end
+
+  class Evidence
+    SCHEMA_VERSION: String
+    CRITERION_VERSION: String
+    TOOL_VERSION: String
+    attr_reader inventory: record
+    attr_reader run_id: String
+    def initialize: (inventory: record, limits: limits, run_id: String) -> void
+    def register_test: (test: record) -> record
+    def record: (execution: record) -> record
+    def diagnose: (diagnostic: record) -> nil
+    def snapshot: () -> record
+    def merge: (snapshot: record) -> record
+  end
+
+  class Analyzer
+    CRITERION: String
+    def initialize: (inventory: record, evidence: record, limits: limits) -> void
+    def call: () -> record
+    def pair?: (decision_id: String, condition_index: Integer, left: record, right: record) -> bool
+    def missing: (decision_id: String, condition_index: Integer) -> record?
+  end
+
+  class Minimizer
+    def initialize: (analysis: record, evidence: record, limits: limits) -> void
+    def call: (objective: Symbol, decision_ids: Array[String]) -> record
+  end
+
+  class MinitestAdapter
+    def initialize: (runtime: untyped) -> void
+    def capabilities: () -> record
+    def run: (test_files: Array[String], runner_args: Array[String], on_complete: ^(record) -> untyped, ?before_load: ^() -> untyped?) -> nil
+  end
+
+  class Report
+    SCHEMA_VERSION: String
+    CRITERION_VERSION: String
+    def initialize: (inventory: record, evidence: record, analysis: record?, minima: Array[record], baseline: record, diagnostics: Array[record]) -> void
+    def write: (io: _WriteIO, format: Symbol | String) -> nil
+    def exit_code: () -> Integer
+  end
+
+  interface _WriteIO
+    def write: (String) -> Integer
+  end
+end
+
+module MCDC
+end

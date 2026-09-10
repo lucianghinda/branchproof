@@ -1,0 +1,124 @@
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "vendor/**/*"
+    - "tmp/**/*"
+
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - "test/**/*"
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+Metrics/BlockLength:
+  Exclude:
+    - "test/**/*"
+    # Snapshot/report assembly is intentionally kept together for auditability.
+    - "lib/branchproof/evidence.rb"
+
+Metrics/AbcSize:
+  Exclude:
+    - "test/**/*"
+    # Inventory/reporting code is deliberately record-oriented and bounded.
+    - "lib/branchproof/source.rb"
+    - "lib/branchproof/report.rb"
+    - "lib/branchproof/evidence.rb"
+    - "lib/branchproof/records.rb"
+    - "lib/branchproof/limits.rb"
+    - "lib/branchproof/runtime.rb"
+    # Analyzer, adapters, and bounded search/rewriting algorithms keep their
+    # state transitions together so the decision semantics remain inspectable.
+    - "lib/branchproof/analyzer.rb"
+    - "lib/branchproof/cli.rb"
+    - "lib/branchproof/instrumenter.rb"
+    - "lib/branchproof/loader.rb"
+    - "lib/branchproof/minimizer.rb"
+    - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/worker.rb"
+
+Metrics/ClassLength:
+  Exclude:
+    - "test/**/*"
+    - "lib/branchproof/source.rb"
+    - "lib/branchproof/evidence.rb"
+    - "lib/branchproof/runtime.rb"
+    - "lib/branchproof/report.rb"
+    - "lib/branchproof/analyzer.rb"
+    - "lib/branchproof/cli.rb"
+    - "lib/branchproof/instrumenter.rb"
+    - "lib/branchproof/loader.rb"
+    - "lib/branchproof/minimizer.rb"
+    - "lib/branchproof/minitest_adapter.rb"
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - "test/**/*"
+    - "lib/branchproof/source.rb"
+    - "lib/branchproof/evidence.rb"
+    - "lib/branchproof/records.rb"
+    - "lib/branchproof/limits.rb"
+    - "lib/branchproof/runtime.rb"
+    - "lib/branchproof/report.rb"
+    - "lib/branchproof/analyzer.rb"
+    - "lib/branchproof/cli.rb"
+    - "lib/branchproof/instrumenter.rb"
+    - "lib/branchproof/loader.rb"
+    - "lib/branchproof/minimizer.rb"
+    - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/worker.rb"
+
+Metrics/MethodLength:
+  Exclude:
+    - "test/**/*"
+    - "lib/branchproof/source.rb"
+    - "lib/branchproof/evidence.rb"
+    - "lib/branchproof/report.rb"
+    - "lib/branchproof/records.rb"
+    - "lib/branchproof/limits.rb"
+    - "lib/branchproof/runtime.rb"
+    - "lib/branchproof/analyzer.rb"
+    - "lib/branchproof/cli.rb"
+    - "lib/branchproof/instrumenter.rb"
+    - "lib/branchproof/loader.rb"
+    - "lib/branchproof/minimizer.rb"
+    - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/worker.rb"
+
+Metrics/ModuleLength:
+  Exclude:
+    - "test/**/*"
+    - "lib/branchproof/runtime.rb"
+
+Metrics/ParameterLists:
+  Exclude:
+    - "test/**/*"
+    - "lib/branchproof/source.rb"
+    - "lib/branchproof/evidence.rb"
+    - "lib/branchproof/records.rb"
+    - "lib/branchproof/report.rb"
+    - "lib/branchproof/runtime.rb"
+    - "lib/branchproof/minimizer.rb"
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - "test/**/*"
+    - "lib/branchproof/source.rb"
+    - "lib/branchproof/evidence.rb"
+    - "lib/branchproof/records.rb"
+    - "lib/branchproof/limits.rb"
+    - "lib/branchproof/runtime.rb"
+    - "lib/branchproof/report.rb"
+    - "lib/branchproof/analyzer.rb"
+    - "lib/branchproof/cli.rb"
+    - "lib/branchproof/instrumenter.rb"
+    - "lib/branchproof/loader.rb"
+    - "lib/branchproof/minimizer.rb"
+    - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/worker.rb"

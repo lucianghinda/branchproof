@@ -1,0 +1,150 @@
+# frozen_string_literal: true
+
+module Branchproof
+  # Applies the smallest possible source edits around inventoried expressions.
+  # The edits are deliberately textual: Prism owns the ranges, while this class
+  # never evaluates application code or introduces a Ruby scope.
+  class Instrumenter
+    RUNTIME = "::Branchproof::Runtime"
+
+    def rewrite(unit:)
+      bytes = unit.fetch(:original_bytes).dup.force_encoding(Encoding::BINARY)
+      reasons = Array(unit[:support_reasons])
+      unless supported_unit?(unit, reasons)
+        return result(bytes, diagnostics: [diagnostic("unsupported_source", reasons.join(", "))])
+      end
+
+      decisions = Array(unit[:decisions]).select { |decision| supported?(decision) }
+      edits = decisions.filter_map do |decision|
+        next if decisions.any? do |outer|
+          outer != decision && contains?(outer[:byte_start], outer[:byte_length], decision[:byte_start],
+                                         decision[:byte_length])
+        end
+
+        decision_edit(bytes, decision, decisions)
+      end
+      if decisions.any? && edits.empty?
+        return result(bytes,
+                      diagnostics: [diagnostic("invalid_range",
+                                               "no valid decision ranges")])
+      end
+
+      rewritten = apply_edits(bytes, edits)
+      begin
+        RubyVM::InstructionSequence.compile(rewritten, unit[:absolute_path] || "(branchproof)",
+                                            unit[:real_path] || unit[:absolute_path] || "(branchproof)", 1)
+      rescue SyntaxError => e
+        return result(bytes, diagnostics: [diagnostic("invalid_rewrite", e.message)])
+      end
+      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: rewritten != bytes)
+    end
+
+    private
+
+    def supported_unit?(unit, _reasons)
+      status = unit[:support_status]
+      status.nil? || status.to_s.casecmp("supported").zero?
+    end
+
+    def supported?(decision)
+      status = decision[:support_status]
+      status.nil? || status.to_s.casecmp("supported").zero?
+    end
+
+    def decision_edit(bytes, decision, all_decisions)
+      start = decision[:byte_start]
+      length = decision[:byte_length]
+      return nil unless valid_range?(bytes, start, length)
+
+      nested = all_decisions.select do |candidate|
+        candidate != decision && contains?(start, length, candidate[:byte_start], candidate[:byte_length])
+      end
+      expression = render_range(bytes, start, length, decision, nested)
+      {
+        start: start,
+        finish: start + length,
+        text: frame(decision[:id], expression)
+      }
+    end
+
+    def render_range(bytes, start, length, decision, nested)
+      conditions = Array(decision[:conditions]).sort_by { |condition| condition[:byte_start] }
+      cursor = start
+      chunks = []
+      conditions.each do |condition|
+        cstart = condition[:byte_start]
+        clen = condition[:byte_length]
+        next unless valid_range?(bytes, cstart, clen) && cstart >= start && cstart + clen <= start + length
+
+        chunks << bytes.byteslice(cursor, cstart - cursor)
+        original = render_children(bytes, cstart, clen, nested)
+        chunks << condition_wrapper(decision[:id], condition[:index], original)
+        cursor = cstart + clen
+      end
+      chunks << render_children(bytes, cursor, length - (cursor - start), nested)
+      chunks.join
+    end
+
+    def render_children(bytes, start, length, nested)
+      children = nested.select do |child|
+        contains?(start, length, child[:byte_start], child[:byte_length])
+      end
+      children = children.reject do |child|
+        nested.any? do |candidate|
+          candidate != child && contains?(candidate[:byte_start], candidate[:byte_length], child[:byte_start],
+                                          child[:byte_length])
+        end
+      end
+      children.sort_by! { |child| -child[:byte_start] }
+      output = bytes.byteslice(start, length)
+      children.each do |child|
+        child_text = render_range(bytes, child[:byte_start], child[:byte_length], child, nested.reject do |item|
+          item.equal?(child)
+        end)
+        child_text = frame(child[:id], child_text)
+        offset = child[:byte_start] - start
+        output[offset, child[:byte_length]] = child_text
+      end
+      output
+    end
+
+    def condition_wrapper(decision_id, index, expression)
+      "#{RUNTIME}.condition(#{decision_id.inspect}, #{index}, (#{expression}))"
+    end
+
+    def frame(decision_id, expression)
+      "(begin; #{RUNTIME}.enter(#{decision_id.inspect}); begin; " \
+        "#{RUNTIME}.finish(#{decision_id.inspect}, (#{expression})); ensure; " \
+        "#{RUNTIME}.leave(#{decision_id.inspect}); end; end)"
+    end
+
+    def apply_edits(bytes, edits)
+      edits.sort_by { |edit| -edit[:start] }.each_with_object(bytes.dup) do |edit, output|
+        output[edit[:start]...edit[:finish]] = edit[:text]
+      end
+    end
+
+    def valid_range?(bytes, start, length)
+      start.is_a?(Integer) && length.is_a?(Integer) && start >= 0 && length >= 0 && start + length <= bytes.bytesize
+    end
+
+    def contains?(outer_start, outer_length, inner_start, inner_length)
+      valid_integer_range?(inner_start,
+                           inner_length) && inner_start >= outer_start &&
+        inner_start + inner_length <= outer_start + outer_length
+    end
+
+    def valid_integer_range?(start, length)
+      start.is_a?(Integer) && length.is_a?(Integer) && start >= 0 && length >= 0
+    end
+
+    def result(bytes, changed: false, diagnostics: [])
+      { bytes: bytes, changed: changed, diagnostics: diagnostics }.freeze
+    end
+
+    def diagnostic(code, message)
+      { code: code.to_s, severity: "warning", message: message, source_id: nil, decision_id: nil,
+        execution_id: nil, test_id: nil, details: {} }.freeze
+    end
+  end
+end
