@@ -108,7 +108,8 @@ module Branchproof
     end
 
     def preloaded_target?
-      @units.keys.any? { |path| $LOADED_FEATURES.any? { |feature| canonical(feature) == path } }
+      loaded = $LOADED_FEATURES.each_with_object(Set.new) { |feature, set| set << canonical(feature) }
+      @units.keys.any? { |path| loaded.include?(canonical(path)) }
     end
 
     def index_units(inventory)
