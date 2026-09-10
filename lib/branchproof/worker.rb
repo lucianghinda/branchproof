@@ -14,7 +14,7 @@ module Branchproof
 
     def child_process(config_path)
       payload = JSON.parse(File.binread(config_path))
-      project = symbolize(payload.fetch("project", legacy_project))
+      project = symbolize(payload.fetch("project"))
       prepend_load_paths(project)
       inventory = symbolize(payload.fetch("inventory"))
       limits = symbolize(payload.fetch("limits"))
