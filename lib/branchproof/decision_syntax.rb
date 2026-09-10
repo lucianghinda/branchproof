@@ -26,15 +26,23 @@ module Branchproof
       :InstanceVariableAndWriteNode, :LocalVariableAndWriteNode
     )
 
-    def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
-      nodes = []
-      walk(program) { |node| nodes << node if flow_decision_node?(node) }
+    # nodes: flow-decision nodes already collected by a caller's own AST walk
+    # (Source merges this discovery into one pass). Falls back to its own
+    # walk when nothing is passed in, so this method still works standalone.
+    def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8", nodes: nil)
+      nodes ||= collect_flow_decision_nodes(program)
       nodes.sort_by { |node| [node.location.start_offset, node.location.length] }.map do |node|
         build_flow_decision(node, bytes, source_id, file_reasons, encoding)
       end
     end
 
     private
+
+    def collect_flow_decision_nodes(program)
+      nodes = []
+      walk(program) { |node| nodes << node if flow_decision_node?(node) }
+      nodes
+    end
 
     def flow_decision_node?(node)
       return true if node.is_a?(Prism::CaseNode) && node.predicate

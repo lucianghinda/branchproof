@@ -102,23 +102,51 @@ module Branchproof
       Encoding::UTF_8.name
     end
 
+    # Walks the whole program AST exactly once, sorting every node into the
+    # buckets the two classification phases below need. Phase one (decision
+    # and case-when nodes) must run to completion before phase two (bare
+    # boolean/pattern nodes) because phase two skips nodes phase one already
+    # inventoried via mark_semantic_boolean_nodes.
+    def collect_ast_nodes(program)
+      defined_ranges = []
+      guard_patterns = {}.compare_by_identity
+      phase_one_nodes = []
+      phase_two_nodes = []
+      flow_nodes = []
+
+      walk(program) do |node|
+        if node.is_a?(Prism::DefinedNode)
+          defined_ranges << node.location
+        elsif node.is_a?(Prism::InNode)
+          pattern = node.pattern
+          guard_patterns[pattern] = true if pattern.is_a?(Prism::IfNode) || pattern.is_a?(Prism::UnlessNode)
+        end
+        phase_one_nodes << node if decision_node?(node) || subjectless_case?(node)
+        phase_two_nodes << node if boolean_node?(node) || node.is_a?(Prism::MatchPredicateNode)
+        flow_nodes << node if flow_decision_node?(node)
+      end
+
+      { defined_ranges: defined_ranges, guard_patterns: guard_patterns, phase_one_nodes: phase_one_nodes,
+        phase_two_nodes: phase_two_nodes, flow_nodes: flow_nodes }
+    end
+
     def decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
       specs = []
       inventoried_boolean_nodes = {}.compare_by_identity
-      defined_ranges = []
-      pattern_guard_nodes = pattern_guard_nodes_for(program)
+      collected = collect_ast_nodes(program)
+      defined_ranges = collected[:defined_ranges]
+      guard_patterns = collected[:guard_patterns]
 
-      walk(program) do |node|
-        defined_ranges << node.location if node.is_a?(Prism::DefinedNode)
+      collected[:phase_one_nodes].each do |node|
         if decision_node?(node)
           predicate = node.predicate
           next unless predicate
 
           predicate = unwrap_predicate(predicate)
-          context = pattern_guard_nodes[node] ? "pattern_guard" : decision_context(node, bytes)
+          context = guard_patterns[node] ? "pattern_guard" : decision_context(node, bytes)
           specs << { node: node, predicate: predicate, context: context }
           mark_semantic_boolean_nodes(predicate, inventoried_boolean_nodes)
-        elsif subjectless_case?(node)
+        else
           conditions_for(node).each do |when_node|
             conditions_for(when_node).each do |predicate|
               predicate = unwrap_predicate(predicate)
@@ -131,8 +159,7 @@ module Branchproof
 
       # Boolean expressions nested in an atomic expression (for example, a call
       # argument) are separate decisions when tree_for did not decompose them.
-      walk(program) do |node|
-        next unless boolean_node?(node) || node.is_a?(Prism::MatchPredicateNode)
+      collected[:phase_two_nodes].each do |node|
         next if inventoried_boolean_nodes[node]
 
         additional_reasons = if within_defined_expression?(node, defined_ranges)
@@ -160,16 +187,15 @@ module Branchproof
                        predicate: predicate, context: spec[:context],
                        additional_reasons: spec[:additional_reasons] || [])
       end
-      boolean_decisions + flow_decisions_for(program, bytes, source_id, file_reasons, encoding)
+      boolean_decisions + flow_decisions_for(program, bytes, source_id, file_reasons, encoding,
+                                             defined_ranges: defined_ranges, nodes: collected[:flow_nodes])
     end
 
-    def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
-      defined_ranges = []
-      walk(program) do |node|
-        defined_ranges << node.location if node.is_a?(Prism::DefinedNode)
-      end
+    def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8",
+                           defined_ranges: nil, nodes: nil)
+      defined_ranges ||= collect_defined_ranges(program)
 
-      super.map do |decision|
+      super(program, bytes, source_id, file_reasons, encoding, nodes: nodes).map do |decision|
         next decision unless range_within_defined_expression?(decision, defined_ranges)
 
         decision.merge(
@@ -179,15 +205,10 @@ module Branchproof
       end
     end
 
-    def pattern_guard_nodes_for(program)
-      guards = {}.compare_by_identity
-      walk(program) do |node|
-        next unless node.is_a?(Prism::InNode)
-
-        pattern = node.pattern
-        guards[pattern] = true if pattern.is_a?(Prism::IfNode) || pattern.is_a?(Prism::UnlessNode)
-      end
-      guards
+    def collect_defined_ranges(program)
+      defined_ranges = []
+      walk(program) { |node| defined_ranges << node.location if node.is_a?(Prism::DefinedNode) }
+      defined_ranges
     end
 
     def range_within_defined_expression?(decision, defined_ranges)
