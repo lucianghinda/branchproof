@@ -337,7 +337,7 @@ class CLIAcceptanceTest < Minitest::Test
         analysis = Branchproof::Analyzer.new(inventory: inventory, evidence: evidence.snapshot, limits: Branchproof::Limits.default).call
         puts JSON.generate(status: "ok", proven_count: analysis.fetch(:proven_count), minitest: defined?(Minitest))
       RUBY
-      stdout, stderr, status = Open3.capture3({ "GEM_HOME" => nil, "GEM_PATH" => nil }, RbConfig.ruby, "-I",
+      stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I",
                                               File.join(GEM_ROOT, "lib"), "-e", script)
       assert status.success?, stderr
       document = JSON.parse(stdout)
@@ -379,7 +379,7 @@ class CLIAcceptanceTest < Minitest::Test
                     "require #{File.join(root, "lib", "decision.rb").inspect}\nrequire \"minitest/autorun\"\n#{test_source}")
       extra_files.each { |name, content| File.binwrite(File.join(root, name), content) unless name == "marker.path" }
       phase_log = File.join(root, "phase.log")
-      env = { "GEM_HOME" => nil, "GEM_PATH" => nil, "MT_NO_PLUGINS" => "1", "BRANCHPROOF_PHASE_LOG" => phase_log }
+      env = { "MT_NO_PLUGINS" => "1", "BRANCHPROOF_PHASE_LOG" => phase_log }
       cli_args = ["analyze", File.join(root, "lib", "decision.rb"), "--format", "json", "--test",
                   File.join(root, "test", "decision_test.rb"), *args]
       cli_args += ["--output", File.join(root, output)] if output
