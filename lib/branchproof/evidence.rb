@@ -202,11 +202,10 @@ module Branchproof
     def validate_execution(value)
       return "execution must be a hash" unless value.is_a?(Hash)
 
-      %i[run_id execution_id decision_id test_id phase owner observations outcome status].each do |key|
+      %i[run_id decision_id test_id phase observations outcome status].each do |key|
         return "missing #{key}" unless value.key?(key)
       end
       return "run mismatch" unless value[:run_id].to_s == @run_id
-      return "invalid owner" unless value[:owner].is_a?(Hash)
       return "invalid status" unless %w[completed aborted invalid].include?(value[:status].to_s)
       return "invalid phase" unless %w[setup body teardown suite unattributed].include?(value[:phase].to_s)
       return "invalid observations" unless value[:observations].is_a?(Array) && value[:observations].all? do |pair|

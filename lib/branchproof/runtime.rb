@@ -27,8 +27,7 @@ module Branchproof
 
       def enter(decision_id)
         state[:frames] << { decision_id: String(decision_id), context: state[:context]&.dup,
-                            observations: [], outcome: nil, finished: false,
-                            execution_id: SecureRandom.hex(12) }
+                            observations: [], outcome: nil, finished: false }
         nil
       end
 
@@ -62,11 +61,9 @@ module Branchproof
 
         execution = {
           run_id: @run_id,
-          execution_id: frame[:execution_id],
           decision_id: frame[:decision_id],
           test_id: frame[:context]&.fetch(:test_id, nil),
           phase: frame[:context]&.fetch(:phase, "unattributed") || "unattributed",
-          owner: owner_tuple,
           observations: frame[:observations].map(&:dup),
           outcome: frame[:finished] ? frame[:outcome] : nil,
           status: frame[:finished] ? "completed" : "aborted"
@@ -146,10 +143,6 @@ module Branchproof
 
         latch("runtime_frame_mismatch", "no active frame for #{decision_id}") if frame
         nil
-      end
-
-      def owner_tuple
-        { process_id: Process.pid, thread_id: Thread.current.object_id, fiber_id: Fiber.current.object_id }
       end
 
       def safely_record(execution)
