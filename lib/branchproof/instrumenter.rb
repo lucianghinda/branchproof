@@ -34,9 +34,9 @@ module Branchproof
         iseq = RubyVM::InstructionSequence.compile(rewritten, unit[:absolute_path] || "(branchproof)",
                                                    unit[:real_path] || unit[:absolute_path] || "(branchproof)", 1)
       rescue SyntaxError => e
-        return result(bytes, diagnostics: [diagnostic("invalid_rewrite", e.message)])
+        return result(rewritten, diagnostics: [diagnostic("invalid_rewrite", e.message)])
       end
-      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: rewritten != bytes, iseq: iseq)
+      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: edits.any?, iseq: iseq)
     end
 
     private
@@ -141,10 +141,13 @@ module Branchproof
         "#{RUNTIME}.leave(#{decision_id.inspect}); end; end)"
     end
 
+    # Mutates `bytes` in place: it is already a fresh copy made at the top of
+    # rewrite, so there is no need to copy it again before splicing edits in.
     def apply_edits(bytes, edits)
-      edits.sort_by { |edit| -edit[:start] }.each_with_object(bytes.dup) do |edit, output|
-        output[edit[:start]...edit[:finish]] = edit[:text]
+      edits.sort_by { |edit| -edit[:start] }.each do |edit|
+        bytes[edit[:start]...edit[:finish]] = edit[:text]
       end
+      bytes
     end
 
     def valid_range?(bytes, start, length)
