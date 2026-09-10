@@ -113,7 +113,7 @@ module Branchproof
       decision_id = id(decision, :id)
       unless id(decision, :support_status).to_s.empty? || id(decision, :support_status).to_s.upcase == "SUPPORTED"
         return {
-          decision_id: decision_id, effective_masks_by_vector: {}, condition_results: [], witness_buckets: {},
+          decision_id: decision_id, effective_masks_by_vector: {}, condition_results: [],
           conditions: [], unsupported: true, coverage: unsupported_coverage,
           completeness: { observation: true, attribution: true, analysis: true },
           diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
@@ -164,7 +164,6 @@ module Branchproof
         decision_id: decision_id,
         effective_masks_by_vector: masks,
         condition_results: results,
-        witness_buckets: buckets,
         edge_table: edge_table(decision[:tree]),
         conditions: conditions(decision),
         coverage: { decision: decision_coverage, condition: condition_coverage_summary,
@@ -180,7 +179,7 @@ module Branchproof
       unless id(decision, :support_status).to_s.empty? || id(decision, :support_status).to_s.upcase == "SUPPORTED"
         return {
           decision_id: decision_id, kind: id(decision, :kind), effective_masks_by_vector: {},
-          condition_results: [], witness_buckets: {},
+          condition_results: [],
           conditions: [], alternatives: alternatives(decision), unsupported: true,
           coverage: unsupported_alternative_coverage,
           completeness: { observation: true, attribution: true, analysis: true },
@@ -206,7 +205,7 @@ module Branchproof
       covered = rows.count { |row| row[:selected][:observed] }
       {
         decision_id: decision_id, kind: id(decision, :kind), effective_masks_by_vector: {},
-        condition_results: [], witness_buckets: {},
+        condition_results: [],
         conditions: [], alternatives: alternatives(decision), unsupported: false,
         coverage: { alternative: { status: coverage_status(covered, rows.length), covered_alternatives: covered,
                                    required_alternatives: rows.length, alternatives: rows,
