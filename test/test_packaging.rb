@@ -2,9 +2,27 @@
 
 require "test_helper"
 require "rubygems"
+require "rubygems/package"
+require "rubygems/installer"
+require "tmpdir"
 
 class TestPackaging < Minitest::Test
   ROOT = File.expand_path("..", __dir__).freeze
+
+  def test_built_gem_installs_both_executable_names
+    Dir.mktmpdir("branchproof-package-") do |directory|
+      specification = Gem::Specification.load(File.join(ROOT, "branchproof.gemspec"))
+      archive = File.join(directory, specification.file_name)
+      capture_io { Gem::Package.build(specification, false, true, archive) }
+      package = Gem::Package.new(archive)
+      %w[branchproof mcdc].each { |name| assert_includes package.contents, "exe/#{name}" }
+      destination = File.join(directory, "installed")
+      Gem::Installer.at(archive, install_dir: destination, ignore_dependencies: true, wrappers: true).install
+      %w[branchproof mcdc].each do |name|
+        assert File.executable?(File.join(destination, "bin", name)), "missing installed executable #{name}"
+      end
+    end
+  end
 
   def test_gemspec_has_runtime_identity_and_cli
     spec = Gem::Specification.load(File.join(ROOT, "branchproof.gemspec"))
@@ -17,10 +35,12 @@ class TestPackaging < Minitest::Test
     assert_includes spec.files, "NOTICE"
     assert_includes spec.files, "lib/branchproof.rb"
     assert_includes spec.files, "exe/mcdc"
+    assert_includes spec.files, "exe/branchproof"
     assert_includes spec.files, "sig/branchproof.rbs"
     assert_includes spec.files, "doc/Branchproof.md"
     assert_includes spec.files, "llms.txt"
     assert_includes spec.executables, "mcdc"
+    assert_includes spec.executables, "branchproof"
   end
 
   def test_package_uses_apache_license

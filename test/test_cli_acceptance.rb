@@ -9,7 +9,7 @@ require "fileutils"
 
 class CLIAcceptanceTest < Minitest::Test
   GEM_ROOT = File.expand_path("..", __dir__)
-  EXECUTABLE = File.join(GEM_ROOT, "exe", "mcdc")
+  EXECUTABLE = File.join(GEM_ROOT, "exe", "branchproof")
 
   def test_failed_assertion_is_a_failed_run_with_exit_one
     result = run_project(source: decision_source, test_source: <<~RUBY)

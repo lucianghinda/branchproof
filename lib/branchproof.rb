@@ -18,6 +18,11 @@ module Branchproof
   autoload :Analyzer, "branchproof/analyzer"
   autoload :Minimizer, "branchproof/minimizer"
   autoload :Report, "branchproof/report"
+  autoload :CoverageIndex, "branchproof/coverage_index"
+  autoload :FocusedReport, "branchproof/focused_report"
+  autoload :SavedReport, "branchproof/saved_report"
+  autoload :Comparison, "branchproof/comparison"
+  autoload :ComparisonReport, "branchproof/comparison_report"
   autoload :Worker, "branchproof/worker"
 end
 

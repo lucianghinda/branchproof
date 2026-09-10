@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-10
+
+- Added `branchproof` as the primary CLI command while retaining `mcdc` as a
+  compatibility alias.
+- Added condition-focused and test-focused terminal views, including relative
+  source locations, evaluated and short-circuited observations, and analyzer
+  witness ownership.
+- Added opt-in saved JSON reports, offline rendering, and exact-condition
+  comparisons with gained/lost proof and changed-source context.
+- Added `--fail-on-regression` comparison status handling and documented the
+  local `.branchproof/` artifact directory and explicit baseline workflow.
+
 ## [0.3.0] - 2026-09-10
 
 - Add `--missing-only` to focus terminal reports on unproven conditions.

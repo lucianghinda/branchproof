@@ -8,6 +8,22 @@ require "tmpdir"
 require "fileutils"
 
 class TestCLI < Minitest::Test
+  def test_views_are_explicit_terminal_options
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    assert_equal :conditions, cli.send(:parse, ["analyze", "--view", "conditions"])[:view]
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--view", "tests", "--format", "json"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--view", "unknown"]) }
+    assert_equal false, cli.send(:value, { finalized: false }, :finalized)
+  end
+
+  def test_primary_help_lists_offline_commands
+    stdout = StringIO.new
+    status = Branchproof::CLI.new(stdout: stdout, stderr: StringIO.new).call(["--help"])
+    assert_equal 0, status
+    assert_includes stdout.string, "branchproof report"
+    assert_includes stdout.string, "branchproof compare"
+  end
+
   FIXTURE_ROOT = File.expand_path("fixtures/cli", __dir__)
 
   def test_empty_command_is_usage_error_without_report_on_stdout

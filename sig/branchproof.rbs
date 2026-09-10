@@ -2,6 +2,7 @@ module Branchproof
   VERSION: String
 
   type record = Hash[Symbol, untyped]
+  type document = Hash[String | Symbol, untyped]
   type limits = record
 
   class Error < StandardError
@@ -102,9 +103,37 @@ module Branchproof
   class Report
     SCHEMA_VERSION: String
     CRITERION_VERSION: String
-    def initialize: (inventory: record, evidence: record, analysis: record?, minima: Array[record], baseline: record, diagnostics: Array[record], ?level: Integer, ?missing_only: bool) -> void
+    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?) -> void
+    def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool) -> Report
+    def condition_explanation: (decision_id: String, condition_id: String) -> String
     def write: (io: _WriteIO, format: Symbol | String) -> nil
     def exit_code: () -> Integer
+  end
+
+  class CoverageIndex
+    def initialize: (document: document) -> void
+    attr_reader conditions: Array[record]
+    attr_reader tests: Array[record]
+  end
+
+  class FocusedReport
+    def initialize: (document: document, view: Symbol, level: Integer, ?missing_only: bool) -> void
+    def render: () -> String
+  end
+
+  class SavedReport
+    def self.read: (String path) -> document
+  end
+
+  class Comparison
+    def initialize: (before: document, after: document) -> void
+    def call: () -> document
+  end
+
+  class ComparisonReport
+    def initialize: (document: document) -> void
+    def write: (io: _WriteIO, format: Symbol | String) -> nil
+    def exit_code: (?fail_on_regression: bool) -> Integer
   end
 
   interface _WriteIO
