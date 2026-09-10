@@ -492,8 +492,15 @@ module Branchproof
     end
 
     def condition_result(decision, condition)
-      Array(value(analysis_for(decision), :condition_results)).find do |item|
-        value(item, :condition_id).to_s == value(condition, :id).to_s
+      condition_results_index.dig(value(decision, :id).to_s, value(condition, :id).to_s)
+    end
+
+    def condition_results_index
+      @condition_results_index ||= Array(value(@analysis, :decisions)).each_with_object({}) do |item, index|
+        by_condition_id = index[value(item, :decision_id).to_s] ||= {}
+        Array(value(item, :condition_results)).each do |result|
+          by_condition_id[value(result, :condition_id).to_s] = result
+        end
       end
     end
 
@@ -592,7 +599,11 @@ module Branchproof
       id = value(constraint, :existing_vector_id).to_s
       return if id.empty?
 
-      vectors.find { |vector| value(vector, :id).to_s == id }
+      vectors_by_id[id]
+    end
+
+    def vectors_by_id
+      @vectors_by_id ||= vectors.to_h { |vector| [value(vector, :id).to_s, vector] }
     end
 
     def values_legend
@@ -712,9 +723,11 @@ module Branchproof
     end
 
     def vectors_for(decision)
-      vectors.select do |vector|
-        value(vector, :decision_id).to_s == value(decision, :id).to_s
-      end
+      vectors_by_decision_id[value(decision, :id).to_s] || []
+    end
+
+    def vectors_by_decision_id
+      @vectors_by_decision_id ||= vectors.group_by { |vector| value(vector, :decision_id).to_s }
     end
 
     def decisions_to_render
@@ -864,15 +877,23 @@ module Branchproof
     end
 
     def analysis_for(decision)
-      Array(value(@analysis, :decisions)).find do |item|
-        value(item, :decision_id).to_s == value(decision, :id).to_s
+      analysis_by_decision_id[value(decision, :id).to_s]
+    end
+
+    def analysis_by_decision_id
+      @analysis_by_decision_id ||= Array(value(@analysis, :decisions)).to_h do |item|
+        [value(item, :decision_id).to_s, item]
       end
     end
 
     def source_for(decision)
-      Array(value(@inventory, :source_units)).find do |source|
-        value(source, :source_id).to_s == value(decision, :source_id).to_s
-      end || decision
+      source_by_source_id[value(decision, :source_id).to_s] || decision
+    end
+
+    def source_by_source_id
+      @source_by_source_id ||= Array(value(@inventory, :source_units)).to_h do |source|
+        [value(source, :source_id).to_s, source]
+      end
     end
 
     def inventory_decisions = Array(value(@inventory, :decisions))
