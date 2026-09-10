@@ -174,6 +174,7 @@ module Branchproof
       @vector_ids = vector_ids
       @vector_decision_by_id = vectors.to_h { |vector| [vector["id"], vector["decision_id"]] }
       @vectors_by_id = vectors.to_h { |vector| [vector["id"], vector] }
+      @vectors_by_decision = vectors.group_by { |vector| vector["decision_id"] }
       aborts = observations["abort_counts"]
       return if aborts.nil? || aborts.is_a?(Integer) || (aborts.is_a?(Hash) && aborts.values.all?(Integer))
 
@@ -388,9 +389,8 @@ module Branchproof
         end
       end
       fail_with("alternative evidence state mismatch") unless vectors.all?(&expected_value)
-      expected_vectors = @vectors_by_id.values.select do |vector|
-        vector["decision_id"] == decision["id"] && expected_value.call(vector)
-      end
+      decision_vectors = @vectors_by_decision.fetch(decision["id"], [])
+      expected_vectors = decision_vectors.select(&expected_value)
       expected_vector_ids = expected_vectors.map { |vector| vector["id"] }.sort
       fail_with("alternative evidence is incomplete") unless evidence["vector_ids"].sort == expected_vector_ids
       expected_tests = vectors.flat_map { |vector| vector["test_ids"] }.uniq.sort
