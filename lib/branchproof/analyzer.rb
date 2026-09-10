@@ -43,15 +43,14 @@ module Branchproof
       }.freeze
     end
 
-    def pair?(decision_id:, condition_index:, left:, right:)
+    def pair?(decision_id:, condition_index:, left:, right:, masks: nil)
       return false if alternative_decision_for_id?(decision_id)
       return false unless compatible_vectors?(left, right, decision_id)
       return false unless observed?(left, condition_index) && observed?(right, condition_index)
       return false if value(left, condition_index) == value(right, condition_index)
       return false if outcome(left) == outcome(right)
 
-      masks = [left, right].map { effective_mask(_1, decision_id) }
-      masks.all? { |mask| mask&.anybits?(1 << condition_index) }
+      [left, right].all? { |vector| masked_bits(vector, decision_id, masks)&.anybits?(1 << condition_index) }
     end
 
     def missing(decision_id:, condition_index:)
@@ -75,14 +74,15 @@ module Branchproof
           feasibility_statement: "No completed structural observation exists."
         }
       end
-      return @missing_cache[cache_key] = nil if first_pair(valid, condition_index, decision_id)
+      masks = valid.to_h { |vector| [id(vector, :id), effective_mask(vector, decision_id)] }
+      return @missing_cache[cache_key] = nil if first_pair(valid, condition_index, decision_id, masks)
 
-      existing = valid.find { |vector| effective_mask(vector, decision_id).anybits?(1 << condition_index) }
+      existing = valid.find { |vector| masks[id(vector, :id)].anybits?(1 << condition_index) }
       signs = existing ? [!value(existing, condition_index)] : [true, false]
       candidates = signs.filter_map { counterpart(decision, condition_index, _1) }
       candidates.select! do |candidate|
         !existing || pair?(decision_id: decision_id, condition_index: condition_index, left: existing,
-                           right: candidate[:vector])
+                           right: candidate[:vector], masks: masks)
       end
       limited = @constraint_states[id(decision, :id)] > constraint_limit
       if limited
@@ -140,7 +140,7 @@ module Branchproof
         true_ids = buckets[index][:true]
         false_ids = buckets[index][:false]
         # rubocop:enable Lint/BooleanSymbol
-        pair = first_pair(vectors, index, decision_id)
+        pair = first_pair(vectors, index, decision_id, masks)
         {
           condition_id: id(condition, :id),
           status: pair ? "PROVEN" : "NOT_PROVEN",
@@ -456,6 +456,15 @@ module Branchproof
       mask
     end
 
+    # Returns the effective mask for a vector, reusing a precomputed
+    # vector-id => mask hash when the caller has one, instead of
+    # replaying the whole Boolean tree again.
+    def masked_bits(vector, decision_id, masks)
+      return effective_mask(vector, decision_id) unless masks
+
+      masks[id(vector, :id)] || effective_mask(vector, decision_id)
+    end
+
     def replay(node, values, offset)
       type = id(node, :type).to_sym
       if type == :atom
@@ -480,9 +489,9 @@ module Branchproof
       end
     end
 
-    def first_pair(vectors, index, decision_id)
+    def first_pair(vectors, index, decision_id, masks = nil)
       observed_vectors = vectors.select do |vector|
-        observed?(vector, index) && effective_mask(vector, decision_id).anybits?(1 << index)
+        observed?(vector, index) && masked_bits(vector, decision_id, masks)&.anybits?(1 << index)
       end
       observed_vectors.sort_by! { |vector| id(vector, :id).to_s }
       grouped = observed_vectors.group_by do |vector|
@@ -499,7 +508,9 @@ module Branchproof
 
         left = left_vectors.first
         right = right_vectors.first
-        return [left, right] if pair?(decision_id: decision_id, condition_index: index, left: left, right: right)
+        if pair?(decision_id: decision_id, condition_index: index, left: left, right: right, masks: masks)
+          return [left, right]
+        end
       end
       nil
     end
