@@ -71,8 +71,9 @@ GEM
       yard
 
 PLATFORMS
-  arm64-darwin-25
+  arm64-darwin
   ruby
+  x86_64-linux
 
 DEPENDENCIES
   branchproof!
