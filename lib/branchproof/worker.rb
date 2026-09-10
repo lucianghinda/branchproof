@@ -14,12 +14,9 @@ module Branchproof
 
     def child_process(config_path)
       payload = JSON.parse(File.binread(config_path))
-      project = symbolize(payload.fetch("project", legacy_project))
+      project = symbolize(payload.fetch("project"))
       prepend_load_paths(project)
       inventory = symbolize(payload.fetch("inventory"))
-      Array(inventory[:source_units]).each do |unit|
-        unit[:original_bytes] = File.binread(unit[:absolute_path]) if unit[:absolute_path]
-      end
       limits = symbolize(payload.fetch("limits"))
       require "minitest"
       require "minitest/test"

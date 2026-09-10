@@ -43,6 +43,8 @@ module Branchproof
     end
 
     def deep_freeze(value)
+      return value if value.frozen?
+
       case value
       when Hash
         value.transform_values { |item| deep_freeze(item) }.freeze
