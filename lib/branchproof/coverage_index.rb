@@ -7,7 +7,7 @@ require "pathname"
 module Branchproof
   # Derives condition- and test-oriented rows from one report document.
   class CoverageIndex
-    attr_reader :conditions, :tests
+    attr_reader :conditions, :alternatives, :tests
 
     def initialize(document:)
       @document = symbolize(document || {})
@@ -27,6 +27,7 @@ module Branchproof
         @tests_by_id[id] = (@tests_by_id[id] || {}).merge(test) unless id.empty?
       end
       @conditions = build_conditions.freeze
+      @alternatives = build_alternatives.freeze
       @tests = build_tests.freeze
     end
 
@@ -62,7 +63,7 @@ module Branchproof
             id: condition[:id], decision_id: decision[:id], index: condition[:index],
             expression: condition[:expression],
             line: condition[:line], column: condition[:column], relative_path: relative_path(source[:relative_path]),
-            decision_expression: decision[:expression],
+            decision_expression: decision[:expression], kind: decision_kind(decision), context: decision[:context],
             status: @document[:analysis] ? (result[:status] || "NOT_PROVEN") : "NOT CALCULATED",
             observed_true: test_ids(observations[true]), observed_false: test_ids(observations[false]),
             short_circuited: test_ids(observations[:short_circuited]),
@@ -80,11 +81,68 @@ module Branchproof
       end
     end
 
+    def build_alternatives
+      records(@inventory, :decisions).flat_map do |decision|
+        next [] if decision[:support_status].to_s == "UNSUPPORTED"
+        next [] if boolean_decision?(decision)
+
+        source = @source_units_by_id[decision[:source_id].to_s] || {}
+        coverage = symbolize(analysis_for(decision)[:coverage] || {})[:alternative] || {}
+        coverage_rows = records(coverage, :alternatives).to_h { |row| [row[:alternative_id].to_s, row] }
+        vectors = @vectors_by_decision[decision[:id].to_s] || []
+        records(decision, :alternatives).map do |alternative|
+          alternative = symbolize(alternative)
+          evidence = { selected: [], not_selected: [], skipped: [] }
+          vectors.each do |vector|
+            value = vector_values(vector)[alternative[:index].to_i]
+            state = if value.nil?
+                      :skipped
+                    else
+                      (value ? :selected : :not_selected)
+                    end
+            evidence[state] << vector
+          end
+          row = symbolize(coverage_rows[alternative[:id].to_s] || {})
+          {
+            id: alternative[:id], alternative_id: alternative[:id], decision_id: decision[:id],
+            index: alternative[:index], expression: alternative[:expression],
+            line: alternative[:line], column: alternative[:column],
+            relative_path: relative_path(source[:relative_path]),
+            decision_expression: decision[:expression], kind: decision_kind(decision),
+            context: decision[:context],
+            status: @document[:analysis] ? alternative_status(row, evidence) : "NOT CALCULATED",
+            selected: row[:selected] || evidence_bucket(evidence[:selected]),
+            not_selected: row[:not_selected] || evidence_bucket(evidence[:not_selected]),
+            skipped: row[:skipped] || evidence_bucket(evidence[:skipped]),
+            vectors: evidence, missing: missing_alternative?(coverage, alternative)
+          }
+        end
+      end
+    end
+
     def build_tests
       by_id = @tests_by_id.transform_values do |test|
         { id: test[:id], name: display_name(test), relative_path: test_location(test)[0], line: test_location(test)[1],
           status: test[:status], phases: Array(test[:phase_counts]).to_h.keys.sort,
           observations: [], owns_witness: false }
+      end
+      @alternatives.each do |alternative|
+        alternative[:vectors].each do |kind, vectors|
+          vectors.each do |vector|
+            Array(vector[:test_ids]).each do |id|
+              row = by_id[id.to_s] ||= { id: id, name: id, relative_path: nil, line: nil, status: "unknown",
+                                         phases: [], observations: [], owns_witness: false }
+              phase_map = symbolize(vector[:phases_by_test] || {})
+              phases = phase_map[id.to_s] || phase_map[id.to_sym] || []
+              row[:phases] |= Array(phases).map(&:to_s)
+              row[:observations] << { alternative_id: alternative[:id], expression: alternative[:expression],
+                                      relative_path: alternative[:relative_path], line: alternative[:line],
+                                      value: kind == :skipped ? nil : (kind == :selected), kind: :alternative,
+                                      alternative_state: kind.to_s, phases: phases.map(&:to_s).sort,
+                                      owns_witness: false }
+            end
+          end
+        end
       end
       @conditions.each do |condition|
         condition[:vectors].each do |kind, vectors|
@@ -116,6 +174,36 @@ module Branchproof
 
     def analysis_for(decision)
       @analysis_by_decision[decision[:id].to_s] || {}
+    end
+
+    def boolean_decision?(decision)
+      decision_kind(decision) == "boolean"
+    end
+
+    def decision_kind(decision)
+      kind = decision[:kind].to_s
+      kind.empty? ? "boolean" : kind
+    end
+
+    def evidence_bucket(vectors)
+      evidence = vectors.map do |vector|
+        { vector_id: vector[:id].to_s, test_ids: Array(vector[:test_ids]).map(&:to_s).uniq.sort,
+          unattributed_count: vector[:unattributed_count].to_i }
+      end
+      { observed: !vectors.empty?, vector_ids: evidence.map { |item| item[:vector_id] }.uniq.sort,
+        test_ids: evidence.flat_map { |item| item[:test_ids] }.uniq.sort,
+        unattributed_count: evidence.sum { |item| item[:unattributed_count] } }
+    end
+
+    def missing_alternative?(coverage, alternative)
+      Array(coverage[:missing_alternatives]).map(&:to_s).include?(alternative[:id].to_s)
+    end
+
+    def alternative_status(row, evidence)
+      status = row[:status].to_s
+      return status unless status.empty?
+
+      evidence[:selected].empty? ? "unexecuted" : "covered"
     end
 
     def supporting_set_for(decision_id)

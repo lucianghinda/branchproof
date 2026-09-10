@@ -56,7 +56,7 @@ class TestReport < Minitest::Test
     output = StringIO.new
     base_report(inventory: { decisions: [] }).write(io: output, format: :json)
     document = JSON.parse(output.string)
-    assert_equal "1.1", document.fetch("schema_version")
+    assert_equal "1.2", document.fetch("schema_version")
     assert_nil document.fetch("metrics").fetch("percentage")
   end
 

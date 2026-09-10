@@ -3,6 +3,7 @@
 |  |  |
 | --- | --- |
 | **Inherits** | Object |
+| **Includes** | [Branchproof::FlowInstrumentation](FlowInstrumentation.md) |
 | **Defined in** | lib/branchproof/instrumenter.rb |
 
 Applies the smallest possible source edits around inventoried expressions. The

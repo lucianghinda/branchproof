@@ -62,6 +62,12 @@ module Branchproof
     def self.condition: (String decision_id, Integer index, untyped value) -> untyped
     def self.finish: (String decision_id, untyped value) -> untyped
     def self.leave: (String decision_id) -> nil
+    def self.flow_candidate: (String decision_id, Integer index) -> nil
+    def self.flow_selected: (String decision_id) -> nil
+    def self.flow_select: (String decision_id, Integer index) -> nil
+    def self.flow_path: (String decision_id, Integer index) -> nil
+    def self.flow_finish: (String decision_id, untyped value, ?Integer? default_path) -> untyped
+    def self.flow_receiver: (String decision_id, untyped receiver) -> untyped
     def self.context: (?test_id: String?, ?phase: String?) -> nil
     def self.snapshot: () -> record
     def self.diagnostics: () -> Array[record]
@@ -114,6 +120,7 @@ module Branchproof
   class CoverageIndex
     def initialize: (document: document) -> void
     attr_reader conditions: Array[record]
+    attr_reader alternatives: Array[record]
     attr_reader tests: Array[record]
   end
 

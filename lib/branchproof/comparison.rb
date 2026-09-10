@@ -7,7 +7,7 @@ module Branchproof
   # Compares two complete report documents without loading or executing the project.
   class Comparison
     SCHEMA_VERSION = "1.0"
-    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1].freeze
+    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1 1.2].freeze
     CRITERION_VERSION = "masking_occurrence_v1"
 
     def initialize(before:, after:)

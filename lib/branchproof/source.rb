@@ -3,10 +3,13 @@
 require "digest"
 require "pathname"
 require "prism"
+require_relative "decision_syntax"
 
 module Branchproof
   # Inventories supported condition and decision occurrences from Ruby files.
   class Source
+    include DecisionSyntax
+
     attr_reader :root, :limits
 
     def initialize(root:, limits:)
@@ -98,10 +101,98 @@ module Branchproof
     end
 
     def decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
-      nodes = []
-      walk(program) { |node| nodes << node if decision_node?(node) }
-      nodes.sort_by { |node| node.location.start_offset }.map.with_index do |node, _|
-        build_decision(node, bytes, source_id, file_reasons, encoding)
+      specs = []
+      inventoried_boolean_nodes = {}.compare_by_identity
+      defined_ranges = []
+      pattern_guard_nodes = pattern_guard_nodes_for(program)
+
+      walk(program) do |node|
+        defined_ranges << node.location if node.is_a?(Prism::DefinedNode)
+        if decision_node?(node)
+          predicate = node.predicate
+          next unless predicate
+
+          predicate = unwrap_predicate(predicate)
+          context = pattern_guard_nodes[node] ? "pattern_guard" : decision_context(node, bytes)
+          specs << { node: node, predicate: predicate, context: context }
+          mark_semantic_boolean_nodes(predicate, inventoried_boolean_nodes)
+        elsif subjectless_case?(node)
+          when_nodes(node).each do |when_node|
+            when_predicates(when_node).each do |predicate|
+              predicate = unwrap_predicate(predicate)
+              specs << { node: when_node, predicate: predicate, context: "case_when" }
+              mark_semantic_boolean_nodes(predicate, inventoried_boolean_nodes)
+            end
+          end
+        end
+      end
+
+      # Boolean expressions nested in an atomic expression (for example, a call
+      # argument) are separate decisions when tree_for did not decompose them.
+      walk(program) do |node|
+        next unless boolean_node?(node) || node.is_a?(Prism::MatchPredicateNode)
+        next if inventoried_boolean_nodes[node]
+
+        additional_reasons = if within_defined_expression?(node, defined_ranges)
+                               ["unsupported_defined_expression"]
+                             else
+                               []
+                             end
+        context = node.is_a?(Prism::MatchPredicateNode) ? "pattern_in" : "short_circuit"
+        specs << { node: nil, predicate: node, context: context,
+                   additional_reasons: additional_reasons }
+        mark_semantic_boolean_nodes(node, inventoried_boolean_nodes)
+      end
+
+      ordered_specs = specs.each_with_index.sort_by do |(spec, index)|
+        [spec[:predicate].location.start_offset, index]
+      end.map(&:first)
+      seen_ranges = {}
+      boolean_decisions = ordered_specs.filter_map do |spec|
+        predicate = spec[:predicate]
+        range = [predicate.location.start_offset, predicate.location.length]
+        next if seen_ranges[range]
+
+        seen_ranges[range] = true
+        build_decision(spec[:node], bytes, source_id, file_reasons, encoding,
+                       predicate: predicate, context: spec[:context],
+                       additional_reasons: spec[:additional_reasons] || [])
+      end
+      boolean_decisions + flow_decisions_for(program, bytes, source_id, file_reasons, encoding)
+    end
+
+    def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
+      defined_ranges = []
+      walk(program) do |node|
+        defined_ranges << node.location if node.is_a?(Prism::DefinedNode)
+      end
+
+      super.map do |decision|
+        next decision unless range_within_defined_expression?(decision, defined_ranges)
+
+        decision.merge(
+          support_status: "UNSUPPORTED",
+          support_reasons: (Array(decision[:support_reasons]) + ["unsupported_defined_expression"]).uniq
+        )
+      end
+    end
+
+    def pattern_guard_nodes_for(program)
+      guards = {}.compare_by_identity
+      walk(program) do |node|
+        next unless node.is_a?(Prism::InNode)
+
+        pattern = node.pattern
+        guards[pattern] = true if pattern.is_a?(Prism::IfNode) || pattern.is_a?(Prism::UnlessNode)
+      end
+      guards
+    end
+
+    def range_within_defined_expression?(decision, defined_ranges)
+      start_offset = decision[:byte_start]
+      end_offset = start_offset + decision[:byte_length]
+      defined_ranges.any? do |defined_location|
+        defined_location.start_offset <= start_offset && defined_location.end_offset >= end_offset
       end
     end
 
@@ -111,23 +202,55 @@ module Branchproof
     end
 
     def decision_node?(node)
-      node.is_a?(Prism::IfNode) || node.is_a?(Prism::UnlessNode)
+      node.is_a?(Prism::IfNode) || node.is_a?(Prism::UnlessNode) ||
+        node.is_a?(Prism::WhileNode) || node.is_a?(Prism::UntilNode)
     end
 
-    def build_decision(node, bytes, source_id, file_reasons = [], encoding = "UTF-8")
-      predicate = unwrap_predicate(node.predicate)
+    def boolean_node?(node)
+      node.is_a?(Prism::AndNode) || node.is_a?(Prism::OrNode)
+    end
+
+    def subjectless_case?(node)
+      node.is_a?(Prism::CaseNode) && node.predicate.nil?
+    end
+
+    def when_nodes(node)
+      conditions = node.conditions
+      if conditions.is_a?(Array)
+        conditions
+      else
+        (conditions.respond_to?(:body) ? conditions.body : [])
+      end
+    end
+
+    def when_predicates(node)
+      conditions = node.conditions
+      if conditions.is_a?(Array)
+        conditions
+      else
+        (conditions.respond_to?(:body) ? conditions.body : [])
+      end
+    end
+
+    def decision_context(node, bytes)
+      return "unless" if node.is_a?(Prism::UnlessNode)
+      return "while" if node.is_a?(Prism::WhileNode)
+      return "until" if node.is_a?(Prism::UntilNode)
+      return "ternary" if node.if_keyword_loc.nil?
+
+      token = bytes.byteslice(node.if_keyword_loc.start_offset, node.if_keyword_loc.length)
+      token == "elsif" ? "elsif" : "if"
+    end
+
+    def build_decision(node, bytes, source_id, file_reasons = [], encoding = "UTF-8", predicate: nil,
+                       context: nil, additional_reasons: [])
+      original_predicate = node.respond_to?(:predicate) ? node.predicate : nil
+      predicate ||= unwrap_predicate(original_predicate)
+      context ||= decision_context(node, bytes)
       leaves = []
       tree = tree_for(predicate, bytes, leaves)
       start_offset = predicate.location.start_offset
       length = predicate.location.length
-      context = if node.is_a?(Prism::UnlessNode)
-                  "unless"
-                elsif node.if_keyword_loc.nil?
-                  "ternary"
-                else
-                  token = bytes.byteslice(node.if_keyword_loc.start_offset, node.if_keyword_loc.length)
-                  token == "elsif" ? "elsif" : "if"
-                end
       opaque_ranges = leaves.filter_map { |leaf| leaf.delete(:_opaque_range) }
       conditions = leaves.each_with_index.map do |leaf, index|
         expression = text_value(leaf.delete(:_expression), "UTF-8")
@@ -142,8 +265,9 @@ module Branchproof
       conditions = conditions.map do |condition|
         condition.merge(id: Records.condition_id(decision_id, condition[:index]))
       end
-      reasons = unsupported_reasons(predicate, bytes) + file_reasons
-      reasons << "unsupported_control_expression" if ambiguous_parentheses?(node.predicate)
+      reasons = unsupported_reasons(predicate, bytes) + additional_reasons + file_reasons
+      reasons << "unsupported_case_splat" if predicate.is_a?(Prism::SplatNode)
+      reasons << "unsupported_control_expression" if ambiguous_parentheses?(original_predicate)
       reasons << "condition_limit_exceeded" if conditions.length > @limits[:conditions_per_decision]
       discovered_condition_count = conditions.length
       if discovered_condition_count > @limits[:conditions_per_decision]
@@ -152,12 +276,35 @@ module Branchproof
       end
       support = reasons.empty? ? "SUPPORTED" : "UNSUPPORTED"
       expression = text_value(bytes.byteslice(predicate.location.start_offset, predicate.location.length), encoding)
-      Records.build(id: decision_id, source_id: source_id, context: context, byte_start: start_offset,
-                    byte_length: length, line: predicate.location.start_line, column: predicate.location.start_column,
+      Records.build(id: decision_id, source_id: source_id, kind: "boolean", context: context,
+                    byte_start: start_offset, byte_length: length,
+                    line: predicate.location.start_line, column: predicate.location.start_column,
                     expression: expression,
                     tree: tree,
                     conditions: conditions, discovered_condition_count: discovered_condition_count,
                     support_status: support, support_reasons: reasons.uniq, opaque_ranges: opaque_ranges)
+    end
+
+    def within_defined_expression?(node, defined_ranges)
+      location = node.location
+      defined_ranges.any? do |defined_location|
+        defined_location.start_offset <= location.start_offset &&
+          defined_location.end_offset >= location.end_offset
+      end
+    end
+
+    def mark_semantic_boolean_nodes(node, inventoried_boolean_nodes)
+      node = unwrap_predicate(node)
+      case node
+      when Prism::AndNode, Prism::OrNode
+        inventoried_boolean_nodes[node] = true
+        mark_semantic_boolean_nodes(node.left, inventoried_boolean_nodes)
+        mark_semantic_boolean_nodes(node.right, inventoried_boolean_nodes)
+      when Prism::MatchPredicateNode
+        inventoried_boolean_nodes[node] = true
+      when Prism::CallNode
+        mark_semantic_boolean_nodes(node.receiver, inventoried_boolean_nodes) if unary_not?(node)
+      end
     end
 
     def tree_for(node, bytes, leaves)
@@ -167,16 +314,32 @@ module Branchproof
         Records.build(type: :and, left: tree_for(node.left, bytes, leaves), right: tree_for(node.right, bytes, leaves))
       when Prism::OrNode
         Records.build(type: :or, left: tree_for(node.left, bytes, leaves), right: tree_for(node.right, bytes, leaves))
+      when Prism::CallNode
+        if unary_not?(node)
+          Records.build(type: :not, child: tree_for(node.receiver, bytes, leaves))
+        else
+          leaf_for(node, bytes, leaves)
+        end
       else
-        location = node.location
-        leaf = {
-          _expression: bytes.byteslice(location.start_offset, location.length), _location: location,
-          _literal_truth: literal_truth(node),
-          _opaque_range: opaque?(node) ? { start: location.start_offset, length: location.length } : nil
-        }
-        leaves << leaf
-        Records.build(type: :atom, index: leaves.length - 1)
+        leaf_for(node, bytes, leaves)
       end
+    end
+
+    def leaf_for(node, bytes, leaves)
+      location = node.location
+      leaf = {
+        _expression: bytes.byteslice(location.start_offset, location.length), _location: location,
+        _literal_truth: literal_truth(node),
+        _opaque_range: if node.is_a?(Prism::CallNode) && node.name == :!
+                         { start: location.start_offset, length: location.length }
+                       end
+      }
+      leaves << leaf
+      Records.build(type: :atom, index: leaves.length - 1)
+    end
+
+    def unary_not?(node)
+      node.is_a?(Prism::CallNode) && node.name == :! && node.receiver && node.call_operator_loc.nil?
     end
 
     def literal_truth(node)
@@ -186,10 +349,6 @@ module Branchproof
       nil
     end
 
-    def opaque?(node)
-      node.is_a?(Prism::CallNode) && node.name == :!
-    end
-
     def unsupported_reasons(predicate, bytes)
       reasons = []
       walk(predicate) do |node|
@@ -197,13 +356,10 @@ module Branchproof
           reasons << "unsupported_implicit_regexp"
         end
         reasons << "unsupported_flip_flop" if node.is_a?(Prism::FlipFlopNode)
+        reasons << "unsupported_defined_expression" if node.is_a?(Prism::DefinedNode)
         reasons << "unsupported_heredoc" if node.respond_to?(:opening_loc) && node.opening_loc &&
                                             bytes.byteslice(node.opening_loc.start_offset,
                                                             node.opening_loc.length).start_with?("<<")
-        if (node.is_a?(Prism::AndNode) || node.is_a?(Prism::OrNode)) && node.respond_to?(:operator_loc)
-          operator = bytes.byteslice(node.operator_loc.start_offset, node.operator_loc.length)
-          reasons << "unsupported_keyword_boolean" if %w[and or].include?(operator)
-        end
       end
       reasons
     end

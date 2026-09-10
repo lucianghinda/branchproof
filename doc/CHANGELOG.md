@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- Discover Boolean loop predicates, subjectless case candidates, standalone
+  short-circuit expressions, and pattern predicates through Prism.
+- Analyze unary NOT and keyword `and`/`or` with Ruby's parsed precedence.
+- Attribute selected paths for ordinary case, unguarded case/in, safe navigation,
+  and conditional assignments without adding them to MC/DC denominators.
+- Expose decision kinds, contexts, alternative evidence, and explicit unsupported
+  constructs in schema 1.2 reports while retaining older saved-report support.
+
 ## [0.6.0] - 2026-09-10
 
 - Report Decision, Condition, and Condition/Decision Coverage alongside

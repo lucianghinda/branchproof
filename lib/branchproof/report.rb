@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/BlockLength
+
 require "json"
 require "pathname"
 
 module Branchproof
   # Renders versioned terminal and JSON analysis reports.
   class Report
-    SCHEMA_VERSION = "1.1"
+    SCHEMA_VERSION = "1.2"
     CRITERION_VERSION = "masking_occurrence_v1"
 
     def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false,
@@ -103,7 +105,9 @@ module Branchproof
       return 1 if status == "FAILED"
       return 2 unless status == "PASSED" && value(@baseline, :finalized) == true
       return 2 if @saved_document && (value(@saved_document, :completeness) || {}).values.include?(false)
-      return 2 unless metrics[:eligible_conditions].positive?
+
+      eligible = metrics[:eligible_conditions].positive? || metrics[:eligible_alternatives].positive?
+      return 2 unless eligible
       return 2 unless valid_for_requested_level?
 
       0
@@ -118,7 +122,7 @@ module Branchproof
                 tool_version: (defined?(Branchproof::VERSION) ? Branchproof::VERSION : "unknown"),
                 criterion_version: CRITERION_VERSION, runtime: RUBY_DESCRIPTION,
                 run_ids: Array(value(@evidence, :run_ids)),
-                source_inventory: @inventory, baseline: @baseline, observations: @evidence,
+                source_inventory: inventory_with_default_kinds, baseline: @baseline, observations: @evidence,
                 analysis: @analysis, minima: @minima, metrics: metrics,
                 diagnostics: @diagnostics, completeness: completeness,
                 run_metadata: @run_metadata)
@@ -137,12 +141,13 @@ module Branchproof
                "Analysis: #{terminal_analysis_status}",
                "Decisions: #{metrics[:supported]} supported, #{metrics[:unsupported]} excluded, " \
                "#{metrics[:unexecuted]} unexecuted (#{metrics[:discovered]} discovered)",
+               decision_kind_summary_line,
                "Observations: #{metrics[:completed]} completed, #{metrics[:aborted]} aborted, " \
                "#{metrics[:unattributed]} unattributed",
-               "Values: T=true, F=false, -=short-circuited"]
+               values_legend]
       lines.concat(coverage_ladder_lines)
       lines << missing_summary_line if @missing_only
-      lines << "Scope: supported decisions and conditions"
+      lines << "Scope: supported decisions, conditions, and alternatives"
       lines << ""
       decisions_to_render.each { |decision| render_decision(lines, decision) }
       render_minima(lines) unless @missing_only
@@ -159,18 +164,23 @@ module Branchproof
       decision_label = "Decision #{short_id(value(decision, :id))} #{filename}:#{value(decision, :line)}"
       lines << decision_label
       lines << "  Decision: #{value(decision, :expression)}"
+      lines << "  Kind: #{decision_kind(decision)}"
+      context = value(decision, :context)
+      lines << "  Context: #{context}" unless context.nil? || context.to_s.empty?
       lines << "  Status: #{value(decision, :support_status) || "SUPPORTED"}"
-      conditions_to_render(decision).each do |condition|
-        result = condition_result(decision, condition)
-        detail = condition_detail(decision, condition, result)
-        status = if @analysis.nil? || (@level == 1 && !coverage_available?)
-                   "NOT CALCULATED"
-                 else
-                   value(result, :status) || "NOT_PROVEN"
-                 end
-        lines << "  Condition #{value(condition, :index)}: #{value(condition, :expression)}"
-        lines << "    #{status}#{detail}"
-        render_condition_coverage(lines, decision, condition, result) if @level >= 2 && coverage_available?
+      unless nonboolean_decision?(decision)
+        conditions_to_render(decision).each do |condition|
+          result = condition_result(decision, condition)
+          detail = condition_detail(decision, condition, result)
+          status = if @analysis.nil? || (@level == 1 && !coverage_available?)
+                     "NOT CALCULATED"
+                   else
+                     value(result, :status) || "NOT_PROVEN"
+                   end
+          lines << "  Condition #{value(condition, :index)}: #{value(condition, :expression)}"
+          lines << "    #{status}#{detail}"
+          render_condition_coverage(lines, decision, condition, result) if @level >= 2 && coverage_available?
+        end
       end
       render_decision_coverage(lines, decision) if coverage_available?
       vectors_to_render(decision).each do |vector|
@@ -183,8 +193,23 @@ module Branchproof
         end.join
         owners = Array(value(vector, :test_ids)).map { |test_id| test_label(test_id) }
         owners << "unattributed" if value(vector, :unattributed_count).to_i.positive?
-        vector_label = "  Vector #{short_id(value(vector, :id))} [#{values}] => " \
-                       "#{value(vector, :outcome) ? "T" : "F"}"
+        vector_label = if nonboolean_decision?(decision)
+                         selected = Array(value(vector, :values)).each_with_index.filter_map do |item, index|
+                           next unless item
+
+                           alternative = Array(value(decision, :alternatives))[index]
+                           value(alternative, :expression) || "alternative #{index}"
+                         end
+                         "  Vector #{short_id(value(vector, :id))} [#{values}] => selected: #{selected.join(", ")}"
+                       else
+                         "  Vector #{short_id(value(vector,
+                                                    :id))} [#{values}] => " + (if value(vector,
+                                                                                        :outcome)
+                                                                                 "T"
+                                                                               else
+                                                                                 "F"
+                                                                               end).to_s
+                       end
         lines << "#{vector_label} owners=#{owners.join(", ")}"
       end
       lines << ""
@@ -197,6 +222,11 @@ module Branchproof
     end
 
     def render_decision_coverage(lines, decision)
+      if nonboolean_decision?(decision)
+        render_alternative_coverage(lines, decision)
+        return
+      end
+
       decision_coverage = value(value(analysis_for(decision), :coverage), :decision)
       all_coverage = value(analysis_for(decision), :coverage) || {}
       statuses = [["D", :decision], ["C", :condition], ["C/D", :condition_decision],
@@ -224,6 +254,51 @@ module Branchproof
       lines << "  Missing decision outcomes: #{missing.map do |item|
         item ? "true" : "false"
       end.join(", ")}"
+    end
+
+    def render_alternative_coverage(lines, decision)
+      coverage = value(value(analysis_for(decision), :coverage), :alternative) || {}
+      status = value(coverage, :status)
+      required = value(coverage, :required_alternatives) || Array(value(decision, :alternatives)).length
+      covered = value(coverage, :covered_alternatives) || 0
+      lines << "  Alternatives: #{status || "NOT_CALCULATED"} (#{covered}/#{required})"
+      lines << "  MC/DC: N/A (not applicable)"
+      rows = Array(value(coverage, :alternatives))
+      rows_by_id = rows.to_h { |row| [value(row, :alternative_id).to_s, row] }
+      alternatives_to_render(decision).each do |alternative|
+        id = value(alternative, :id)
+        row = rows_by_id[id.to_s] || {}
+        lines << "  Alternative #{value(alternative, :index)}: #{value(alternative, :expression)}"
+        render_alternative_state(lines, "Selected", value(row, :selected)) if @level >= 2
+        render_alternative_state(lines, "Not selected", value(row, :not_selected)) if @level >= 2
+        render_alternative_state(lines, "Skipped", value(row, :skipped)) if @level >= 2
+      end
+      missing = Array(value(coverage, :missing_alternatives))
+      return if missing.empty?
+
+      labels = missing.map do |id|
+        alternative = Array(value(decision, :alternatives)).find { |item| value(item, :id).to_s == id.to_s }
+        value(alternative, :expression) || short_id(id)
+      end
+      label = labels.join(", ")
+      lines << "  Missing alternatives: #{label}"
+      lines << "  Need selection of: #{label}"
+    end
+
+    def render_alternative_state(lines, label, evidence)
+      evidence ||= {}
+      owners = Array(value(evidence, :test_ids)).map { |id| test_label(id) }
+      owners << "unattributed" if value(evidence, :unattributed_count).to_i.positive?
+      owners = owners.uniq
+      status = if value(evidence, :observed)
+                 "observed"
+               elsif label == "Selected"
+                 "missing"
+               else
+                 "none recorded"
+               end
+      detail = owners.empty? ? "none recorded" : owners.join(", ")
+      lines << "    #{label}: #{status}; tests: #{detail}"
     end
 
     def render_condition_coverage(lines, _decision, condition, result)
@@ -520,23 +595,73 @@ module Branchproof
       vectors.find { |vector| value(vector, :id).to_s == id }
     end
 
+    def values_legend
+      return "Values: T=true, F=false, -=short-circuited" unless inventory_decisions.any? do |decision|
+        nonboolean_decision?(decision)
+      end
+
+      "Values: Boolean T=true/F=false; flow T=selected, F=not-selected, -=skipped"
+    end
+
+    def inventory_with_default_kinds
+      decisions = inventory_decisions.map do |decision|
+        next decision if value(decision, :kind)
+
+        decision.respond_to?(:key?) ? decision.merge(kind: "boolean") : decision
+      end
+      return @inventory unless value(@inventory, :decisions)
+
+      @inventory.merge(decisions: decisions)
+    end
+
+    def decision_kind(decision)
+      kind = value(decision, :kind).to_s
+      kind.empty? ? "boolean" : kind
+    end
+
+    def nonboolean_decision?(decision)
+      %w[implicit multiway pattern exception].include?(decision_kind(decision))
+    end
+
+    def decision_kind_summary_line
+      counts = metrics[:kind_counts]
+      return "Decision kinds: none" if counts.empty?
+
+      contexts = metrics[:context_counts]
+      suffix = if contexts.empty?
+                 ""
+               else
+                 "; contexts: #{contexts.map do |context, count|
+                   "#{context}=#{count}"
+                 end.join(", ")}"
+               end
+      "Decision kinds: #{counts.map { |kind, count| "#{kind}=#{count}" }.join(", ")}#{suffix}"
+    end
+
     def metrics
       decisions = inventory_decisions
       unsupported, supported = decisions.partition { |decision| unsupported?(decision) }
       eligible = supported.sum { |decision| Array(value(decision, :conditions)).length }
       observed = vectors.map { |vector| value(vector, :decision_id).to_s }.uniq
       proven = @analysis ? value(@analysis, :proven_count).to_i : 0
+      kind_counts = decisions.group_by { |decision| decision_kind(decision) }.transform_values(&:length)
+      context_counts = decisions.group_by { |decision| value(decision, :context).to_s }
+      context_counts = context_counts.reject { |context, _| context.empty? }.transform_values(&:length)
       { discovered: decisions.length, supported: supported.length, unsupported: unsupported.length,
         unsupported_conditions: unsupported.sum do |decision|
           discovered_conditions(decision)
         end, eligible_conditions: eligible,
         opaque: decisions.sum { |decision| Array(value(decision, :opaque_ranges)).length },
         unexecuted: supported.count { |decision| !observed.include?(value(decision, :id).to_s) },
+        eligible_alternatives: supported.sum do |decision|
+          nonboolean_decision?(decision) ? Array(value(decision, :alternatives)).length : 0
+        end,
         completed: vectors.sum do |vector|
           value(vector, :count).to_i
         end, aborted: numeric_hash_value(@evidence, :abort_counts),
         unattributed: vectors.sum { |vector| value(vector, :unattributed_count).to_i }, limited: incomplete? ? 1 : 0,
-        proven: proven, percentage: percentage(eligible, proven) }
+        proven: proven, percentage: percentage(eligible, proven), kind_counts: kind_counts,
+        decision_kinds: kind_counts, context_counts: context_counts }
     end
 
     def completeness
@@ -594,18 +719,36 @@ module Branchproof
 
       inventory_decisions
         .reject { |decision| unsupported?(decision) }
-        .select { |decision| conditions_to_render(decision).any? }
+        .select do |decision|
+          nonboolean_decision?(decision) ? missing_alternatives_for(decision).any? : conditions_to_render(decision).any?
+        end
+    end
+
+    def alternatives_to_render(decision)
+      alternatives = Array(value(decision, :alternatives))
+      return alternatives unless @missing_only && analysis_available?
+
+      missing_ids = missing_alternatives_for(decision).map(&:to_s)
+      alternatives.select { |alternative| missing_ids.include?(value(alternative, :id).to_s) }
+    end
+
+    def missing_alternatives_for(decision)
+      coverage = value(value(analysis_for(decision), :coverage), :alternative)
+      Array(value(coverage, :missing_alternatives))
     end
 
     def conditions_to_render(decision)
       conditions = Array(value(decision, :conditions))
       return conditions unless @missing_only && analysis_available?
 
-      conditions.reject { |condition| value(condition_result(decision, condition), :status).to_s.upcase == "PROVEN" }
+      conditions.reject do |condition|
+        value(condition_result(decision, condition), :status).to_s.upcase == "PROVEN"
+      end
     end
 
     def vectors_to_render(decision)
       return vectors_for(decision) unless @missing_only
+      return [] if nonboolean_decision?(decision)
 
       []
     end
@@ -650,6 +793,14 @@ module Branchproof
                       end
         lines << "  #{label} (#{description}): #{shown} (#{numerator}/#{denominator} #{denominator_label})#{qualifier}"
       end
+      alternative = value(aggregate, :alternative)
+      if alternative
+        covered = value(alternative, :covered_alternatives) || 0
+        required = value(alternative, :required_alternatives) || 0
+        percentage = value(alternative, :percentage)
+        shown = percentage.nil? ? "N/A" : "#{percentage}%"
+        lines << "  Alternative coverage: #{covered}/#{required} alternatives (#{shown})"
+      end
       lines << ""
       lines
     end
@@ -683,11 +834,29 @@ module Branchproof
     def missing_summary_line
       return "Missing conditions: Cannot identify missing conditions (analysis unavailable)" unless analysis_available?
       return "Missing conditions: Cannot identify missing conditions (analysis incomplete)" unless analysis_complete?
-      return "No eligible conditions" if metrics[:eligible_conditions].zero?
-      return "No missing conditions" if analysis_complete? && missing_condition_count.zero?
+      return "No missing conditions or alternatives" if analysis_complete? && missing_condition_count.zero? &&
+                                                        missing_alternatives_count.zero?
+      return "No eligible conditions" if metrics[:eligible_conditions].zero? && metrics[:eligible_alternatives].zero?
 
       count = decisions_to_render.length
-      "Missing conditions: #{missing_condition_count} across #{count} #{count == 1 ? "decision" : "decisions"}"
+      if missing_alternatives_count.zero?
+        label = count == 1 ? "decision" : "decisions"
+        return "Missing conditions: #{missing_condition_count} across #{count} #{label}"
+      end
+      if missing_condition_count.zero?
+        label = count == 1 ? "decision" : "decisions"
+        return "Missing alternatives: #{missing_alternatives_count} across #{count} #{label}"
+      end
+
+      label = count == 1 ? "decision" : "decisions"
+      conditions = missing_condition_count
+      alternatives = missing_alternatives_count
+      "Missing conditions: #{conditions}; alternatives: #{alternatives} " \
+        "across #{count} #{label}"
+    end
+
+    def missing_alternatives_count
+      decisions_to_render.sum { |decision| missing_alternatives_for(decision).length }
     end
 
     def analysis_for(decision)
@@ -752,3 +921,5 @@ module Branchproof
     public :condition_coverage_evidence, :coverage_ladder_lines, :coverage_status_label
   end
 end
+
+# rubocop:enable Metrics/BlockLength

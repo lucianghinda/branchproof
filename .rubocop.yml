@@ -28,6 +28,7 @@ Metrics/AbcSize:
     - "test/**/*"
     # Inventory/reporting code is deliberately record-oriented and bounded.
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/report.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/records.rb"
@@ -47,6 +48,7 @@ Metrics/ClassLength:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/runtime.rb"
     - "lib/branchproof/report.rb"
@@ -61,6 +63,7 @@ Metrics/CyclomaticComplexity:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/records.rb"
     - "lib/branchproof/limits.rb"
@@ -78,6 +81,7 @@ Metrics/MethodLength:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/report.rb"
     - "lib/branchproof/records.rb"
@@ -93,6 +97,8 @@ Metrics/MethodLength:
 
 Metrics/ModuleLength:
   Exclude:
+    # Source records are assembled together to keep syntax boundaries auditable.
+    - "lib/branchproof/decision_syntax.rb"
     - "test/**/*"
     - "lib/branchproof/runtime.rb"
 
@@ -100,6 +106,7 @@ Metrics/ParameterLists:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/records.rb"
     - "lib/branchproof/report.rb"
@@ -110,6 +117,7 @@ Metrics/PerceivedComplexity:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/records.rb"
     - "lib/branchproof/limits.rb"

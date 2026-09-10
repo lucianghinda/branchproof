@@ -3,6 +3,7 @@
 |  |  |
 | --- | --- |
 | **Inherits** | Object |
+| **Includes** | [Branchproof::DecisionSyntax](DecisionSyntax.md) |
 | **Defined in** | lib/branchproof/source.rb |
 
 Inventories supported condition and decision occurrences from Ruby files.

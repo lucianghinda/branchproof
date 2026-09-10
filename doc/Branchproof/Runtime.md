@@ -2,6 +2,7 @@
 
 |  |  |
 | --- | --- |
+| **Extended by** | [Branchproof::RuntimeFlow](RuntimeFlow.md) |
 | **Defined in** | lib/branchproof/runtime.rb |
 
 Process-local execution recorder. It deliberately never coerces or stores
@@ -25,6 +26,24 @@ Not documented.
 Not documented.
 
 ### `finish(decision_id, value)` <a id="method-c-finish"></a> <a id="finish-class_method"></a>
+Not documented.
+
+### `flow_candidate(decision_id, index)` <a id="method-c-flow_candidate"></a> <a id="flow_candidate-class_method"></a>
+Not documented.
+
+### `flow_finish(decision_id, value, default_path = nil)` <a id="method-c-flow_finish"></a> <a id="flow_finish-class_method"></a>
+Not documented.
+
+### `flow_path(decision_id, index)` <a id="method-c-flow_path"></a> <a id="flow_path-class_method"></a>
+Not documented.
+
+### `flow_receiver(decision_id, receiver)` <a id="method-c-flow_receiver"></a> <a id="flow_receiver-class_method"></a>
+Not documented.
+
+### `flow_select(decision_id, index)` <a id="method-c-flow_select"></a> <a id="flow_select-class_method"></a>
+Not documented.
+
+### `flow_selected(decision_id)` <a id="method-c-flow_selected"></a> <a id="flow_selected-class_method"></a>
 Not documented.
 
 ### `leave(decision_id)` <a id="method-c-leave"></a> <a id="leave-class_method"></a>

@@ -127,7 +127,9 @@ class TestSource < Minitest::Test
       assert(ternaries.all? { |decision| decision[:byte_length].positive? })
       assert(ternaries.any? { |decision| decision[:support_status] == "SUPPORTED" })
       assert(decisions.any? { |decision| decision[:support_reasons].include?("unsupported_control_expression") })
-      assert(decisions.any? { |decision| decision[:support_reasons].include?("unsupported_keyword_boolean") })
+      assert(decisions.any? do |decision|
+        decision[:expression].include?("and") && decision[:support_status] == "SUPPORTED"
+      end)
     end
   end
 
@@ -207,7 +209,7 @@ class TestSource < Minitest::Test
       decisions = Branchproof::Source.new(root: root,
                                           limits: Branchproof::Limits.default).inventory(paths: [path])[:decisions]
       assert(decisions.all? { |d| d[:support_status] == "UNSUPPORTED" })
-      assert(decisions.any? { |d| d[:support_reasons].include?("unsupported_keyword_boolean") })
+      refute(decisions.any? { |d| d[:support_reasons].include?("unsupported_keyword_boolean") })
       assert(decisions.any? { |d| d[:support_reasons].include?("unsupported_implicit_regexp") })
       assert(decisions.any? { |d| d[:support_reasons].include?("unsupported_data_section") })
     end

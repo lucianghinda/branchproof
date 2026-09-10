@@ -208,11 +208,11 @@ module Branchproof
       decision = decisions.find { |d| d[:id].to_s == value[:decision_id].to_s }
       return "unknown decision" unless decision
 
-      conditions = Array(decision[:conditions])
-      return "condition count exceeds limit" if conditions.length > @limits[:conditions_per_decision]
+      dimensions = alternative_decision?(decision) ? Array(decision[:alternatives]) : Array(decision[:conditions])
+      return "condition count exceeds limit" if !alternative_decision?(decision) && dimensions.length > @limits[:conditions_per_decision]
       return "invalid condition index" unless value[:observations].map(&:first).uniq == value[:observations].map(&:first) && value[:observations].all? do |index, _|
-        conditions.any? do |c|
-          c[:index].to_i == index
+        dimensions.any? do |dimension|
+          dimension[:index].to_i == index
         end
       end
       return "invalid trace" unless value[:status].to_s != "completed" || valid_trace?(decision, value[:observations],
@@ -222,6 +222,8 @@ module Branchproof
     end
 
     def valid_trace?(decision, observations, outcome)
+      return valid_alternative_trace?(decision, observations, outcome) if alternative_decision?(decision)
+
       tree = symbolize(decision[:tree])
       unless tree
         return observations.map(&:first) == observations.map(&:first).sort &&
@@ -245,6 +247,13 @@ module Branchproof
 
         return [pair[1], cursor + 1]
       end
+      if type == "not"
+        child = replay_tree(node.fetch(:child), observations, cursor)
+        return nil unless child
+
+        child_value, next_cursor = child
+        return [!child_value, next_cursor]
+      end
       left = replay_tree(node.fetch(:left), observations, cursor)
       return nil unless left
 
@@ -265,7 +274,7 @@ module Branchproof
     end
 
     def condition_values(decision_id, observations)
-      count = decision_conditions(decision_id).length
+      count = decision_dimension_count(decision_id)
       values = Array.new(count)
       observations.each { |index, value| values[index] = value }
       values
@@ -306,9 +315,13 @@ module Branchproof
 
     def condition_shapes
       decisions.to_h do |decision|
-        [decision[:id].to_s, { conditions: Array(decision[:conditions]).map do |condition|
-          symbolize(condition)
-        end, tree: symbolize(decision[:tree]) }]
+        shape = { conditions: Array(decision[:conditions]).map { |condition| symbolize(condition) },
+                  tree: symbolize(decision[:tree]) }
+        if alternative_decision?(decision)
+          shape[:kind] = decision[:kind].to_s
+          shape[:alternatives] = Array(decision[:alternatives]).map { |alternative| symbolize(alternative) }
+        end
+        [decision[:id].to_s, shape]
       end
     end
 
@@ -337,7 +350,9 @@ module Branchproof
 
         decision = decisions.find { |item| item[:id].to_s == vector[:decision_id].to_s }
         return "unknown decision" unless decision
-        return "invalid vector shape" unless vector[:values].length == Array(decision[:conditions]).length &&
+
+        expected_values = decision_dimension_count(decision)
+        return "invalid vector shape" unless vector[:values].length == expected_values &&
                                              vector[:values].all? { |item| item.nil? || item == true || item == false }
 
         expected = Branchproof::Records.id([vector[:decision_id].to_s, vector[:values], vector[:outcome] ? true : false])
@@ -373,6 +388,36 @@ module Branchproof
       end
 
       nil
+    end
+
+    def alternative_decision?(decision)
+      kind = decision[:kind].to_s
+      !kind.empty? && kind != "boolean"
+    end
+
+    def decision_dimension_count(decision_or_id)
+      decision = decision_or_id.is_a?(Hash) ? decision_or_id : decisions.find { |item| item[:id].to_s == decision_or_id.to_s }
+      return 0 unless decision
+
+      alternative_decision?(decision) ? Array(decision[:alternatives]).length : Array(decision[:conditions]).length
+    end
+
+    def valid_alternative_trace?(decision, observations, outcome)
+      return false unless outcome == true
+
+      alternatives = Array(decision[:alternatives])
+      expected = alternatives.length
+      return false unless expected.positive?
+      if decision[:kind].to_s == "implicit"
+        return expected == 2 && observations.length == 2 &&
+               observations.map(&:first) == [0, 1] && observations.map(&:last).count(true) == 1
+      end
+
+      return false unless observations.length.between?(1, expected)
+
+      observations.each_with_index.all? do |(index, value), position|
+        index == position && value == (position == observations.length - 1)
+      end
     end
 
     def decisions = Array(fetch_value(@inventory, :decisions)).map { symbolize(_1) }
