@@ -28,6 +28,8 @@ module Branchproof
       @run_id = run_id.to_s
       @run_ids = [@run_id]
       @vectors = {}
+      @vector_counts_by_decision = Hash.new(0)
+      @owner_associations_count = 0
       @tests = {}
       @run_payloads = {}
       @abort_counts = Hash.new(0)
@@ -93,6 +95,7 @@ module Branchproof
       phase_map << value[:phase].to_s if phase_map && !phase_map.include?(value[:phase].to_s)
       vector[:unattributed_count] += 1 unless value[:test_id]
       vector[:count] += 1
+      @owner_associations_count += 1 if new_owner
       if value[:test_id] && @tests.key?(value[:test_id].to_s)
         test = @tests[value[:test_id].to_s]
         phase = value[:phase].to_s
@@ -286,24 +289,41 @@ module Branchproof
 
     def vector_for(decision_id, values, outcome)
       id = Branchproof::Records.id([decision_id, values, outcome])
-      @vectors[id] ||= { id: id, decision_id: decision_id, values: values.dup, outcome: outcome,
-                         test_ids: [], phases_by_test: {}, unattributed_count: 0, count: 0 }
+      existing = @vectors[id]
+      return existing if existing
+
+      vector = { id: id, decision_id: decision_id, values: values.dup, outcome: outcome,
+                 test_ids: [], phases_by_test: {}, unattributed_count: 0, count: 0 }
+      @vectors[id] = vector
+      @vector_counts_by_decision[decision_id] += 1
+      vector
     end
 
     def merge_vector(raw)
       vector = symbolize(raw)
-      existing = @vectors[vector[:id].to_s]
+      id = vector[:id].to_s
+      existing = @vectors[id]
       if existing
-        existing[:test_ids] |= Array(vector[:test_ids]).map(&:to_s)
+        new_test_ids = Array(vector[:test_ids]).map(&:to_s) - existing[:test_ids]
+        existing[:test_ids] |= new_test_ids
         vector.fetch(:phases_by_test, {}).each do |test, phases|
           existing[:phases_by_test][test.to_s] = (existing[:phases_by_test][test.to_s] || []) | phases
         end
+        was_unattributed = existing[:unattributed_count].positive?
         existing[:count] += vector[:count].to_i
         existing[:unattributed_count] += vector[:unattributed_count].to_i
+        @owner_associations_count += new_test_ids.length
+        @owner_associations_count += 1 if !was_unattributed && existing[:unattributed_count].positive?
       else
-        @vectors[vector[:id].to_s] = { id: vector[:id].to_s, decision_id: vector[:decision_id].to_s,
-                                       values: Array(vector[:values]).dup, outcome: !!vector[:outcome], test_ids: Array(vector[:test_ids]).map(&:to_s),
-                                       phases_by_test: vector.fetch(:phases_by_test, {}).transform_keys(&:to_s), unattributed_count: vector[:unattributed_count].to_i, count: vector[:count].to_i }
+        decision_id = vector[:decision_id].to_s
+        test_ids = Array(vector[:test_ids]).map(&:to_s)
+        unattributed_count = vector[:unattributed_count].to_i
+        @vectors[id] = { id: id, decision_id: decision_id,
+                         values: Array(vector[:values]).dup, outcome: !!vector[:outcome], test_ids: test_ids,
+                         phases_by_test: vector.fetch(:phases_by_test, {}).transform_keys(&:to_s), unattributed_count: unattributed_count, count: vector[:count].to_i }
+        @vector_counts_by_decision[decision_id] += 1
+        @owner_associations_count += test_ids.length
+        @owner_associations_count += 1 if unattributed_count.positive?
       end
     end
 
@@ -425,14 +445,10 @@ module Branchproof
     end
 
     def decision_conditions(id) = (@decisions_by_id[id.to_s] || {}).fetch(:conditions, [])
-    def vector_count(id) = @vectors.values.count { |v| v[:decision_id] == id.to_s }
+    def vector_count(id) = @vector_counts_by_decision[id.to_s]
     def new_vector?(id, values, outcome) = !@vectors.key?(Branchproof::Records.id([id, values, outcome]))
 
-    def owner_associations
-      @vectors.values.sum do |v|
-        v[:test_ids].length + (v[:unattributed_count].positive? ? 1 : 0)
-      end
-    end
+    def owner_associations = @owner_associations_count
 
     def incoming_owner_associations(incoming)
       owners = @vectors.each_with_object({}) do |(_id, vector), result|
@@ -503,7 +519,8 @@ module Branchproof
     def capture_state
       { vectors: deep_dup(@vectors), tests: deep_dup(@tests), run_ids: @run_ids.dup,
         run_payloads: @run_payloads.dup, diagnostics: deep_dup(@diagnostics),
-        abort_counts: @abort_counts.dup, limited: @limited, attribution_complete: @attribution_complete }
+        abort_counts: @abort_counts.dup, limited: @limited, attribution_complete: @attribution_complete,
+        vector_counts_by_decision: @vector_counts_by_decision.dup, owner_associations_count: @owner_associations_count }
     end
 
     def restore_state(state)
@@ -513,6 +530,8 @@ module Branchproof
       @run_payloads = state[:run_payloads]
       @diagnostics = state[:diagnostics]
       @abort_counts = state[:abort_counts]
+      @vector_counts_by_decision = state[:vector_counts_by_decision]
+      @owner_associations_count = state[:owner_associations_count]
       @limited = state[:limited]
       @attribution_complete = state[:attribution_complete]
     end
