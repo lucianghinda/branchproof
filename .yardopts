@@ -1,0 +1,14 @@
+--markup markdown
+--format markdown
+--output-dir doc
+--no-cache
+--no-save
+--fail-on-warning
+--title "Branchproof"
+--protected
+--no-private
+--plugin markdown
+--exclude '^(?!lib/|README\.md$|CHANGELOG\.md$)'
+lib/**/*.rb
+-
+README.md

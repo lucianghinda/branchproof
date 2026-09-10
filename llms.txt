@@ -1,0 +1,33 @@
+# Module Branchproof <a id="module-Branchproof"></a>
+
+|  |  |
+| --- | --- |
+| **Defined in** | lib/branchproof.rb, lib/branchproof/cli.rb, lib/branchproof/limits.rb, lib/branchproof/loader.rb, lib/branchproof/report.rb, lib/branchproof/source.rb, lib/branchproof/worker.rb, lib/branchproof/project.rb, lib/branchproof/records.rb, lib/branchproof/runtime.rb, lib/branchproof/version.rb, lib/branchproof/analyzer.rb, lib/branchproof/evidence.rb, lib/branchproof/minimizer.rb, lib/branchproof/instrumenter.rb, lib/branchproof/rails_support.rb, lib/branchproof/minitest_adapter.rb |
+
+Public namespace for source inventory and one-run MC/DC reporting.
+
+## Constants
+### `VERSION` <a id="constant-VERSION"></a> <a id="VERSION-constant"></a>
+Not documented.
+
+# Documentation
+
+- [Branchproof/Analyzer.md](doc/Branchproof/Analyzer.md)
+- [Branchproof/CLI.md](doc/Branchproof/CLI.md)
+- [Branchproof/Error.md](doc/Branchproof/Error.md)
+- [Branchproof/Evidence.md](doc/Branchproof/Evidence.md)
+- [Branchproof/Instrumenter.md](doc/Branchproof/Instrumenter.md)
+- [Branchproof/Limits.md](doc/Branchproof/Limits.md)
+- [Branchproof/Loader.md](doc/Branchproof/Loader.md)
+- [Branchproof/Minimizer.md](doc/Branchproof/Minimizer.md)
+- [Branchproof/MinitestAdapter.md](doc/Branchproof/MinitestAdapter.md)
+- [Branchproof/Project.md](doc/Branchproof/Project.md)
+- [Branchproof/RailsSupport/Error.md](doc/Branchproof/RailsSupport/Error.md)
+- [Branchproof/RailsSupport.md](doc/Branchproof/RailsSupport.md)
+- [Branchproof/Records.md](doc/Branchproof/Records.md)
+- [Branchproof/Report.md](doc/Branchproof/Report.md)
+- [Branchproof/Runtime.md](doc/Branchproof/Runtime.md)
+- [Branchproof/Source.md](doc/Branchproof/Source.md)
+- [Branchproof/Worker.md](doc/Branchproof/Worker.md)
+- [CHANGELOG.md](doc/CHANGELOG.md)
+- [README.md](doc/README.md)

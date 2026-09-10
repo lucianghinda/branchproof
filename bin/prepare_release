@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "digest"
+require "fileutils"
+require "rbconfig"
+require "rubygems/package"
+
+# Runs the checks and build needed before tagging a gem release.
+class ReleasePreparer
+  DEFAULT_RUNNER = ->(command, root) { system(*command, chdir: root) }
+  DEFAULT_BUILDER = lambda do |root|
+    Dir.chdir(root) do
+      gemspec = Dir["*.gemspec"].first
+      raise Gem::InvalidSpecificationException, "no *.gemspec found" unless gemspec
+
+      specification = Gem::Specification.load(gemspec)
+      raise Gem::InvalidSpecificationException, "cannot load #{gemspec}" unless specification
+
+      FileUtils.mkdir_p("pkg")
+      path = File.join("pkg", specification.file_name)
+      Gem::Package.build(specification, false, true, path)
+      checksum = Digest::SHA256.file(path).hexdigest
+      File.write("#{path}.sha256", "#{checksum}  #{File.basename(path)}\n")
+      true
+    end
+  end
+
+  def initialize(root: File.expand_path("..", __dir__), ruby: RbConfig.ruby, runner: DEFAULT_RUNNER,
+                 builder: DEFAULT_BUILDER, streams: { stdout: $stdout, stderr: $stderr })
+    @root = root
+    @ruby = ruby
+    @runner = runner
+    @builder = builder
+    @stdout = streams.fetch(:stdout)
+    @stderr = streams.fetch(:stderr)
+  end
+
+  def call
+    return false unless commands_succeed?
+    return false unless @builder.call(@root)
+
+    @stdout.puts "Built. Next: commit, then `git tag -a v<version> -m v<version>`, then push with --follow-tags."
+    true
+  rescue StandardError => e
+    @stderr.puts "Release preparation failed: #{e.message}"
+    false
+  end
+
+  private
+
+  def commands_succeed?
+    commands.each do |command|
+      next if @runner.call(command, @root)
+
+      @stderr.puts "Release preparation failed: #{command.join(" ")}"
+      return false
+    end
+    true
+  end
+
+  def commands
+    [[@ruby, "-S", "bundle", "exec", "rake"], [@ruby, "-S", "bundle", "exec", "rake", "yard"],
+     [@ruby, File.join(@root, "bin", "generate_llm.rb")]]
+  end
+end
+
+exit(ReleasePreparer.new.call ? 0 : 1) if $PROGRAM_NAME == __FILE__

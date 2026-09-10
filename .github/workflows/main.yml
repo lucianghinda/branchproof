@@ -1,0 +1,35 @@
+name: Main
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Core Ruby ${{ matrix.ruby }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.3", "3.4"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - run: bundle exec rake
+
+  rails-integration:
+    name: Rails 8.1 on Ruby 3.4
+    runs-on: ubuntu-latest
+    env:
+      BRANCHPROOF_RAILS_INTEGRATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+      - run: bundle exec rake
