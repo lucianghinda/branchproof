@@ -20,6 +20,10 @@ module Branchproof
       raise ArgumentError, "run_id is required" if run_id.nil? || run_id.to_s.empty?
 
       @inventory = inventory
+      @decisions_by_id = Array(fetch_value(@inventory, :decisions)).each_with_object({}) do |raw, index|
+        decision = symbolize(raw)
+        index[decision[:id].to_s] = decision
+      end
       @limits = normalize_limits(limits)
       @run_id = run_id.to_s
       @run_ids = [@run_id]
@@ -205,7 +209,7 @@ module Branchproof
         pair.is_a?(Array) && pair.length == 2 && pair[0].is_a?(Integer) && [true, false].include?(pair[1])
       end
 
-      decision = decisions.find { |d| d[:id].to_s == value[:decision_id].to_s }
+      decision = @decisions_by_id[value[:decision_id].to_s]
       return "unknown decision" unless decision
 
       dimensions = alternative_decision?(decision) ? Array(decision[:alternatives]) : Array(decision[:conditions])
@@ -314,14 +318,14 @@ module Branchproof
     end
 
     def condition_shapes
-      decisions.to_h do |decision|
+      @decisions_by_id.transform_values do |decision|
         shape = { conditions: Array(decision[:conditions]).map { |condition| symbolize(condition) },
                   tree: symbolize(decision[:tree]) }
         if alternative_decision?(decision)
           shape[:kind] = decision[:kind].to_s
           shape[:alternatives] = Array(decision[:alternatives]).map { |alternative| symbolize(alternative) }
         end
-        [decision[:id].to_s, shape]
+        shape
       end
     end
 
@@ -348,7 +352,7 @@ module Branchproof
         vector = symbolize(raw)
         return "invalid vector" unless vector[:id] && vector[:decision_id] && vector[:values].is_a?(Array)
 
-        decision = decisions.find { |item| item[:id].to_s == vector[:decision_id].to_s }
+        decision = @decisions_by_id[vector[:decision_id].to_s]
         return "unknown decision" unless decision
 
         expected_values = decision_dimension_count(decision)
@@ -396,7 +400,7 @@ module Branchproof
     end
 
     def decision_dimension_count(decision_or_id)
-      decision = decision_or_id.is_a?(Hash) ? decision_or_id : decisions.find { |item| item[:id].to_s == decision_or_id.to_s }
+      decision = decision_or_id.is_a?(Hash) ? decision_or_id : @decisions_by_id[decision_or_id.to_s]
       return 0 unless decision
 
       alternative_decision?(decision) ? Array(decision[:alternatives]).length : Array(decision[:conditions]).length
@@ -420,8 +424,7 @@ module Branchproof
       end
     end
 
-    def decisions = Array(fetch_value(@inventory, :decisions)).map { symbolize(_1) }
-    def decision_conditions(id) = (decisions.find { |d| d[:id].to_s == id.to_s } || {}).fetch(:conditions, [])
+    def decision_conditions(id) = (@decisions_by_id[id.to_s] || {}).fetch(:conditions, [])
     def vector_count(id) = @vectors.values.count { |v| v[:decision_id] == id.to_s }
     def new_vector?(id, values, outcome) = !@vectors.key?(Branchproof::Records.id([id, values, outcome]))
 
