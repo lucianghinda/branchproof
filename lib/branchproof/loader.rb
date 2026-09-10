@@ -5,8 +5,6 @@ require "digest"
 module Branchproof
   # Owns the process-local CRuby compilation hook when the VM exposes it.
   class Loader
-    STATUS_KEYS = %i[status reason].freeze
-
     def initialize(inventory:, instrumenter:)
       @inventory = inventory
       @instrumenter = instrumenter
