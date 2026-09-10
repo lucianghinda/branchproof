@@ -10,6 +10,8 @@ module Branchproof
   module Runtime
     extend RuntimeFlow
 
+    FRAME_STATE_KEY = :branchproof_runtime_frame_state
+
     class << self
       def boot(evidence:)
         return nil if defined?(@booted) && @booted && @evidence.equal?(evidence) && Process.pid == @process_id
@@ -17,8 +19,6 @@ module Branchproof
         @evidence = evidence
         @run_id = evidence.respond_to?(:run_id) ? evidence.run_id.to_s : SecureRandom.hex(16)
         @process_id = Process.pid
-        @frames = {}
-        @contexts = {}
         @diagnostics = []
         @storage_disabled = false
         @booted = true
@@ -50,6 +50,7 @@ module Branchproof
       end
 
       def leave(decision_id)
+        detect_fork
         frames = state[:frames]
         frame = frames.pop
         unless frame && frame[:decision_id] == String(decision_id)
@@ -117,24 +118,22 @@ module Branchproof
       private
 
       def state
-        @frames ||= {}
-        if @process_id && Process.pid != @process_id
-          @process_id = Process.pid
-          @run_id = SecureRandom.hex(16)
-          @frames = {}
-          @diagnostics = [{ code: "forked_process", severity: "error",
-                            message: "runtime process identity changed; evidence storage disabled",
-                            source_id: nil, decision_id: nil, execution_id: nil, test_id: nil, details: {} }]
-          @storage_disabled = true
-        end
-        key = [Process.pid, Thread.current, Fiber.current]
-        @frames[key] ||= { frames: [], context: nil }
+        Thread.current[FRAME_STATE_KEY] ||= { frames: [], context: nil }
       end
 
       def cleanup_state
-        key = [Process.pid, Thread.current, Fiber.current]
-        current = @frames[key]
-        @frames.delete(key) if current && current[:frames].empty? && current[:context].nil?
+        current = Thread.current[FRAME_STATE_KEY]
+        Thread.current[FRAME_STATE_KEY] = nil if current && current[:frames].empty? && current[:context].nil?
+      end
+
+      def detect_fork
+        return unless @process_id && Process.pid != @process_id
+
+        @process_id = Process.pid
+        @diagnostics = [{ code: "forked_process", severity: "error",
+                          message: "runtime process identity changed; evidence storage disabled",
+                          source_id: nil, decision_id: nil, execution_id: nil, test_id: nil, details: {} }]
+        @storage_disabled = true
       end
 
       def current_frame(decision_id)
