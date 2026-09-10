@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "branchproof/report"
+require "branchproof/analyzer"
 require "stringio"
 
 class TestReport < Minitest::Test
@@ -433,5 +434,66 @@ class TestReport < Minitest::Test
     complete_output = StringIO.new
     complete.write(io: complete_output, format: :terminal)
     assert_includes complete_output.string, "No missing conditions"
+  end
+
+  def test_coverage_ladder_terminal_has_denominators_evidence_and_level_one_status
+    tree = { type: :and, left: { type: :atom, index: 0 }, right: { type: :atom, index: 1 } }
+    inventory = { source_units: [{ source_id: "s", relative_path: "lib/example.rb" }],
+                  decisions: [{ id: "d", source_id: "s", line: 4, expression: "a && b", tree: tree,
+                                conditions: [{ id: "a", index: 0, expression: "a" }, { id: "b", index: 1, expression: "b" }] }] }
+    evidence = { tests: [{ id: "admin", name: "AdminTest#test_false" }], vectors: [
+      { id: "v1", decision_id: "d", values: [false, nil], outcome: false, test_ids: ["admin"], count: 1 },
+      { id: "v2", decision_id: "d", values: [true, true], outcome: true, test_ids: ["admin"], count: 1 }
+    ], completeness: { observation: true, attribution: true, analysis: true } }
+    analysis = Branchproof::Analyzer.new(inventory: inventory, evidence: evidence, limits: {}).call
+    report = Branchproof::Report.new(inventory: inventory, evidence: evidence, analysis: analysis, minima: [],
+                                     baseline: { status: "PASSED", finalized: true }, diagnostics: [], level: 1)
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+    assert_includes output.string, "Decision coverage"
+    assert_includes output.string, "truth values"
+    assert_includes output.string, "Coverage: D=PASS"
+    assert_includes output.string, "C=FAIL"
+    assert_includes output.string, "1/2 conditions fully covered"
+    refute_includes output.string, "Outcome true:"
+    assert_equal 0, report.exit_code
+
+    detailed = Branchproof::Report.new(inventory: inventory, evidence: evidence, analysis: analysis, minima: [],
+                                       baseline: { status: "PASSED", finalized: true }, diagnostics: [], level: 3)
+    detail_output = StringIO.new
+    detailed.write(io: detail_output, format: :terminal)
+    assert_includes detail_output.string, "C=FAIL (3/4 values; 1/2 conditions fully covered)"
+    assert_includes detail_output.string, "C/D=FAIL"
+    assert_includes detail_output.string, "MC/DC=FAIL (1/2 conditions)"
+    assert_includes detail_output.string, "Outcome true: observed; tests: AdminTest#test_false"
+    assert_includes detail_output.string, "Value false: missing; tests: none recorded"
+    assert_includes detail_output.string, "Missing values for b: false"
+    assert_includes detail_output.string, "b is falsey"
+  end
+
+  def test_level_one_honors_errors_in_available_analysis
+    report = base_report(level: 1, baseline: { status: "PASSED", finalized: true },
+                         analysis: { proven_count: 0,
+                                     completeness: { observation: true, attribution: true, analysis: false } },
+                         evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: true } })
+
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+
+    assert_includes output.string, "Analysis: PARTIAL"
+    assert_equal 2, report.exit_code
+  end
+
+  def test_all_levels_retain_the_same_live_analysis
+    analysis = { proven_count: 1, coverage: { mcdc: { proven_conditions: 1, supported_conditions: 1, percentage: 100.0 } },
+                 completeness: { observation: true, attribution: true, analysis: true } }
+    documents = [1, 2, 3].map do |level|
+      output = StringIO.new
+      base_report(level: level, analysis: analysis).write(io: output, format: :json)
+      JSON.parse(output.string)
+    end
+
+    actual = documents.map { |document| document.fetch("analysis") }
+    assert_equal Array.new(3, JSON.parse(JSON.generate(analysis))), actual
   end
 end

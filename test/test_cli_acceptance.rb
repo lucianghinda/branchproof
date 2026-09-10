@@ -194,19 +194,29 @@ class CLIAcceptanceTest < Minitest::Test
   end
 
   def test_levels_one_two_and_three_run_the_tests_once_each
+    ladder = nil
     [1, 2, 3].each do |level|
       counter = "#{Dir.tmpdir}/branchproof-counter-#{Process.pid}-#{level}-#{rand(1_000_000)}"
       result = run_project(source: decision_source, test_source: <<~RUBY, extra_files: { "counter.path" => counter }, args: ["--level", level.to_s])
         class OneRunTest < Minitest::Test
           def test_once
             File.open(#{counter.inspect}, "a") { |file| file.puts "run" }
-            assert true
+            assert_equal :yes, branchproof_value(true)
+            assert_equal :no, branchproof_value(false)
           end
         end
       RUBY
 
       assert_equal 0, result[:status].exitstatus, "level #{level}: #{result[:stderr]}"
       assert_equal 1, File.readlines(counter).length, "level #{level} reran the test suite"
+      analysis_coverage = result.fetch(:json).dig("analysis", "coverage")
+      assert_kind_of Hash, analysis_coverage
+      ladder ||= analysis_coverage
+      assert_equal ladder, analysis_coverage
+      assert_equal({ "covered_decisions" => 1, "supported_decisions" => 1, "percentage" => 100.0 }, analysis_coverage.fetch("decision"))
+      assert_equal({ "covered_values" => 3, "required_values" => 4, "covered_conditions" => 1, "condition_count" => 2, "percentage" => 75.0 }, analysis_coverage.fetch("condition"))
+      assert_equal({ "covered_decisions" => 0, "supported_decisions" => 1, "percentage" => 0.0 }, analysis_coverage.fetch("condition_decision"))
+      assert_equal({ "proven_conditions" => 1, "supported_conditions" => 2, "percentage" => 50.0 }, analysis_coverage.fetch("mcdc"))
     ensure
       FileUtils.rm_f(counter)
     end

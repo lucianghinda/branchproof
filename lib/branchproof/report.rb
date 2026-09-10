@@ -70,6 +70,31 @@ module Branchproof
       "#{prefix}#{path}: #{message}"
     end
 
+    # Returns condition-value evidence for focused renderers without exposing
+    # the report's internal document traversal or mutating saved records.
+    def condition_coverage_evidence(decision_id:, condition_id:)
+      decision = inventory_decisions.find { |item| value(item, :id).to_s == decision_id.to_s }
+      condition = Array(value(decision, :conditions)).find do |item|
+        value(item, :id).to_s == condition_id.to_s
+      end
+      coverage = value(condition_result(decision, condition), :coverage)
+      return [] unless coverage
+
+      @terminal_ids ||= terminal_ids
+      lines = Array(value(coverage, :values)).map do |entry|
+        value_label = value(entry, :value) ? "true" : "false"
+        owners = Array(value(entry, :test_ids)).map { |id| test_label(id) }
+        owners << "unattributed" if value(entry, :unattributed_count).to_i.positive?
+        evidence = owners.empty? ? "none recorded" : owners.uniq.join(", ")
+        "  Value #{value_label}: #{value(entry, :observed) ? "observed" : "missing"}; tests: #{evidence}"
+      end
+      missing = Array(value(coverage, :missing_values))
+      unless missing.empty?
+        lines << "  Missing values: #{missing.map { |item| item ? "true" : "false" }.join(", ")}"
+      end
+      lines
+    end
+
     def exit_code
       return 2 unless usage_valid?
 
@@ -94,7 +119,7 @@ module Branchproof
                 criterion_version: CRITERION_VERSION, runtime: RUBY_DESCRIPTION,
                 run_ids: Array(value(@evidence, :run_ids)),
                 source_inventory: @inventory, baseline: @baseline, observations: @evidence,
-                analysis: @level == 1 ? nil : @analysis, minima: @minima, metrics: metrics,
+                analysis: @analysis, minima: @minima, metrics: metrics,
                 diagnostics: @diagnostics, completeness: completeness,
                 run_metadata: @run_metadata)
     end
@@ -115,6 +140,7 @@ module Branchproof
                "Observations: #{metrics[:completed]} completed, #{metrics[:aborted]} aborted, " \
                "#{metrics[:unattributed]} unattributed",
                "Values: T=true, F=false, -=short-circuited"]
+      lines.concat(coverage_ladder_lines)
       lines << missing_summary_line if @missing_only
       lines << "Scope: supported decisions and conditions"
       lines << ""
@@ -137,14 +163,16 @@ module Branchproof
       conditions_to_render(decision).each do |condition|
         result = condition_result(decision, condition)
         detail = condition_detail(decision, condition, result)
-        status = if @analysis.nil? || @level == 1
+        status = if @analysis.nil? || (@level == 1 && !coverage_available?)
                    "NOT CALCULATED"
                  else
                    value(result, :status) || "NOT_PROVEN"
                  end
         lines << "  Condition #{value(condition, :index)}: #{value(condition, :expression)}"
         lines << "    #{status}#{detail}"
+        render_condition_coverage(lines, decision, condition, result) if @level >= 2 && coverage_available?
       end
+      render_decision_coverage(lines, decision) if coverage_available?
       vectors_to_render(decision).each do |vector|
         values = Array(value(vector, :values)).map do |item|
           if item.nil?
@@ -160,6 +188,64 @@ module Branchproof
         lines << "#{vector_label} owners=#{owners.join(", ")}"
       end
       lines << ""
+    end
+
+    def coverage_status_label(status)
+      { "covered" => "PASS", "partial" => "FAIL", "unexecuted" => "UNEXECUTED", "unsupported" => "EXCLUDED" }.fetch(
+        status.to_s.downcase, status.to_s.upcase
+      )
+    end
+
+    def render_decision_coverage(lines, decision)
+      decision_coverage = value(value(analysis_for(decision), :coverage), :decision)
+      all_coverage = value(analysis_for(decision), :coverage) || {}
+      statuses = [["D", :decision], ["C", :condition], ["C/D", :condition_decision],
+                  ["MC/DC", :mcdc]].filter_map do |label, key|
+        row = value(all_coverage, key)
+        status = value(row, :status)
+        status ? criterion_status_text(label, row) : nil
+      end
+      lines << "  Coverage: #{statuses.join(", ")}" unless statuses.empty?
+      coverage = decision_coverage
+      return unless coverage
+
+      return unless @level >= 2
+
+      Array(value(coverage, :outcomes)).each do |outcome|
+        value_label = value(outcome, :value) ? "true" : "false"
+        owners = Array(value(outcome, :test_ids)).map { |id| test_label(id) }
+        owners << "unattributed" if value(outcome, :unattributed_count).to_i.positive?
+        evidence = owners.empty? ? "none recorded" : owners.uniq.join(", ")
+        lines << "  Outcome #{value_label}: #{value(outcome, :observed) ? "observed" : "missing"}; tests: #{evidence}"
+      end
+      missing = Array(value(coverage, :missing_outcomes))
+      return if missing.empty?
+
+      lines << "  Missing decision outcomes: #{missing.map do |item|
+        item ? "true" : "false"
+      end.join(", ")}"
+    end
+
+    def render_condition_coverage(lines, _decision, condition, result)
+      coverage = value(result, :coverage)
+      return unless coverage
+
+      values = Array(value(coverage, :values))
+      return if values.empty?
+
+      values.each do |entry|
+        value_label = value(entry, :value) ? "true" : "false"
+        owners = Array(value(entry, :test_ids)).map { |id| test_label(id) }
+        owners << "unattributed" if value(entry, :unattributed_count).to_i.positive?
+        evidence = owners.empty? ? "none recorded" : owners.uniq.join(", ")
+        lines << "    Value #{value_label}: #{value(entry, :observed) ? "observed" : "missing"}; tests: #{evidence}"
+      end
+      missing = Array(value(coverage, :missing_values))
+      return if missing.empty?
+
+      lines << "    Missing values for #{value(condition, :expression)}: #{missing.map do |item|
+        item ? "true" : "false"
+      end.join(", ")}"
     end
 
     def render_minima(lines)
@@ -189,19 +275,19 @@ module Branchproof
     end
 
     def terminal_coverage_label
-      return "not calculated" if @analysis.nil? || @level == 1
+      return "not calculated" if @analysis.nil?
 
       coverage_label
     end
 
     def terminal_coverage_line
-      return "MC/DC: not calculated" if @analysis.nil? || @level == 1
+      return "MC/DC: not calculated" if @analysis.nil?
 
       "MC/DC: #{terminal_coverage_label} (#{metrics[:proven]}/#{metrics[:eligible_conditions]} conditions proven)"
     end
 
     def terminal_analysis_status
-      return "NOT CALCULATED" if @analysis.nil? || @level == 1
+      return "NOT CALCULATED" if @analysis.nil?
 
       analysis_status
     end
@@ -473,7 +559,7 @@ module Branchproof
     end
 
     def valid_for_requested_level?
-      return completeness[:observation] && completeness[:attribution] if @level == 1
+      return completeness[:observation] && completeness[:attribution] if @level == 1 && @analysis.nil?
 
       completeness.values.all? { |item| item == true }
     end
@@ -486,13 +572,14 @@ module Branchproof
     end
 
     def analysis_status
-      return "NOT_REQUESTED" if @analysis.nil? || @level == 1
+      return "NOT_REQUESTED" if @analysis.nil?
 
       valid_for_requested_level? ? "COMPLETE" : "PARTIAL"
     end
 
     def incomplete?
-      !completeness[:observation] || !completeness[:attribution] || (@level > 1 && !completeness[:analysis])
+      !completeness[:observation] || !completeness[:attribution] ||
+        (analysis_available? && !completeness[:analysis])
     end
 
     def vectors_for(decision)
@@ -524,7 +611,65 @@ module Branchproof
     end
 
     def analysis_available?
-      !@analysis.nil? && @level > 1
+      !@analysis.nil?
+    end
+
+    def coverage_available?
+      analysis_available? && !value(@analysis, :coverage).nil?
+    end
+
+    # Render the shared ladder in every terminal view.
+    def coverage_ladder_lines
+      return [] unless coverage_available?
+
+      aggregate = value(@analysis, :coverage) || {}
+      rows = [["D", :decision, :covered_decisions, :supported_decisions],
+              ["C", :condition, :covered_values, :required_values],
+              ["C/D", :condition_decision, :covered_decisions, :supported_decisions],
+              ["MC/DC", :mcdc, :proven_conditions, :supported_conditions]]
+      lines = ["Coverage ladder:"]
+      rows.each do |label, key, numerator_key, denominator_key|
+        row = value(aggregate, key)
+        next unless row
+
+        percentage = value(row, :percentage)
+        numerator = value(row, numerator_key) || 0
+        denominator = value(row, denominator_key) || 0
+        shown = percentage.nil? ? "N/A" : "#{percentage}%"
+        denominator_label = if ["D", "C/D"].include?(label)
+                              "decisions"
+                            else
+                              label == "C" ? "truth values" : "conditions"
+                            end
+        qualifier = incomplete? ? " (lower bound)" : ""
+        description = case label
+                      when "D" then "Decision coverage"
+                      when "C" then "Condition coverage"
+                      when "C/D" then "Condition/decision coverage"
+                      else "MC/DC coverage"
+                      end
+        lines << "  #{label} (#{description}): #{shown} (#{numerator}/#{denominator} #{denominator_label})#{qualifier}"
+      end
+      lines << ""
+      lines
+    end
+
+    def criterion_status_text(label, row)
+      raw_status = value(row, :status).to_s.downcase
+      status = coverage_status_label(raw_status)
+      return "#{label}=#{status}" if raw_status == "unsupported"
+
+      case label
+      when "D"
+        "#{label}=#{status} (#{value(row, :covered_outcomes) || 0}/#{value(row, :required_outcomes) || 0} outcomes)"
+      when "C"
+        "#{label}=#{status} (#{value(row, :covered_values) || 0}/#{value(row, :required_values) || 0} values; " \
+        "#{value(row, :covered_conditions) || 0}/#{value(row, :condition_count) || 0} conditions fully covered)"
+      when "MC/DC"
+        "#{label}=#{status} (#{value(row, :proven_conditions) || 0}/#{value(row, :condition_count) || 0} conditions)"
+      else
+        "#{label}=#{status}"
+      end
     end
 
     def analysis_complete?
@@ -604,5 +749,6 @@ module Branchproof
     def normalize_unknown(object)
       object.to_s
     end
+    public :condition_coverage_evidence, :coverage_ladder_lines, :coverage_status_label
   end
 end

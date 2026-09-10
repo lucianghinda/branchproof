@@ -69,8 +69,13 @@ class TestSavedReportAcceptance < Minitest::Test
     with_project do |root|
       command(root, "analyze", "lib/**/*.rb", "--level", "1", "--format", "json", "--output", "saved.json")
       assert_equal 0, command(root, "report", "saved.json").last
-      assert_equal 2, command(root, "report", "saved.json", "--level", "3").last
-      assert_equal 2, command(root, "report", "saved.json", "--missing-only").last
+      assert_equal 0, command(root, "report", "saved.json", "--level", "3").last
+      assert_equal 0, command(root, "report", "saved.json", "--missing-only").last
+      legacy = JSON.parse(File.read(File.join(root, "saved.json")))
+      legacy["analysis"] = nil
+      File.write(File.join(root, "legacy.json"), JSON.generate(legacy))
+      assert_equal 0, command(root, "report", "legacy.json", "--level", "1").last
+      assert_equal 2, command(root, "report", "legacy.json", "--level", "3").last
       File.write(File.join(root, "test/decision_test.rb"), "require 'minitest/autorun'\nclass BrokenTest < Minitest::Test\n def test_failure; flunk; end\nend\n")
       assert_equal 1, command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "failed.json").last
       assert_equal 1, command(root, "report", "failed.json").last
