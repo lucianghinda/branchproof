@@ -1,15 +1,19 @@
 # frozen_string_literal: true
 
 require "json"
+require "pathname"
 
 module Branchproof
   # Renders versioned terminal and JSON analysis reports.
   class Report
-    SCHEMA_VERSION = "1.0"
+    SCHEMA_VERSION = "1.1"
     CRITERION_VERSION = "masking_occurrence_v1"
 
-    def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false)
+    def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false,
+                   view: :decisions, run_metadata: {}, saved_document: nil)
       raise ArgumentError, "level must be 1, 2, or 3" unless [1, 2, 3].include?(level.to_i)
+      raise ArgumentError, "view must be :decisions, :conditions, or :tests" unless %i[decisions conditions
+                                                                                       tests].include?(view.to_sym)
 
       @inventory = inventory || {}
       @evidence = evidence || {}
@@ -18,7 +22,20 @@ module Branchproof
       @baseline = baseline || {}
       @diagnostics = Array(diagnostics)
       @level = level.to_i
-      @missing_only = !!missing_only
+      @missing_only = missing_only ? true : false
+      @view = view.to_sym
+      @run_metadata = run_metadata || {}
+      @saved_document = saved_document
+    end
+
+    def self.from_document(document:, level: nil, view: :decisions, missing_only: false)
+      data = document || {}
+      new(inventory: data[:source_inventory] || data["source_inventory"] || data[:inventory] || data["inventory"],
+          evidence: data[:observations] || data["observations"] || data[:evidence] || data["evidence"],
+          analysis: data[:analysis] || data["analysis"], minima: data[:minima] || data["minima"],
+          baseline: data[:baseline] || data["baseline"], diagnostics: data[:diagnostics] || data["diagnostics"],
+          level: level || (data[:analysis] || data["analysis"] ? 3 : 1), view: view, missing_only: missing_only,
+          run_metadata: data[:run_metadata] || data["run_metadata"], saved_document: data)
     end
 
     def write(io:, format:)
@@ -29,6 +46,18 @@ module Branchproof
       nil
     end
 
+    # Shares the existing missing-case wording with focused terminal views.
+    def condition_explanation(decision_id:, condition_id:)
+      decision = inventory_decisions.find { |item| value(item, :id).to_s == decision_id.to_s }
+      return "" unless decision
+
+      condition = Array(value(decision, :conditions)).find { |item| value(item, :id).to_s == condition_id.to_s }
+      return "" unless condition
+
+      @terminal_ids ||= terminal_ids
+      condition_detail(decision, condition, condition_result(decision, condition))
+    end
+
     def exit_code
       return 2 unless usage_valid?
 
@@ -36,6 +65,7 @@ module Branchproof
       return 2 if %w[ERROR INCOMPLETE].include?(status)
       return 1 if status == "FAILED"
       return 2 unless status == "PASSED" && value(@baseline, :finalized) == true
+      return 2 if @saved_document && (value(@saved_document, :completeness) || {}).values.include?(false)
       return 2 unless metrics[:eligible_conditions].positive?
       return 2 unless valid_for_requested_level?
 
@@ -45,16 +75,24 @@ module Branchproof
     private
 
     def json_document
+      return normalize(@saved_document) if @saved_document
+
       normalize(schema_version: SCHEMA_VERSION,
                 tool_version: (defined?(Branchproof::VERSION) ? Branchproof::VERSION : "unknown"),
                 criterion_version: CRITERION_VERSION, runtime: RUBY_DESCRIPTION,
                 run_ids: Array(value(@evidence, :run_ids)),
                 source_inventory: @inventory, baseline: @baseline, observations: @evidence,
                 analysis: @level == 1 ? nil : @analysis, minima: @minima, metrics: metrics,
-                diagnostics: @diagnostics, completeness: completeness)
+                diagnostics: @diagnostics, completeness: completeness,
+                run_metadata: @run_metadata)
     end
 
     def terminal_document
+      unless @view == :decisions
+        return FocusedReport.new(document: json_document, view: @view, level: @level,
+                                 missing_only: @missing_only).render
+      end
+
       @terminal_ids = terminal_ids
       lines = ["Branchproof #{defined?(Branchproof::VERSION) ? Branchproof::VERSION : "unknown"}",
                "Tests: #{baseline_status} (#{baseline_test_counts})",
@@ -224,15 +262,30 @@ module Branchproof
     end
 
     def test_location(test)
+      saved_location = value(value(@run_metadata, :test_locations), value(test, :id))
+      return [relative_test_path(value(saved_location, :relative_path)), value(saved_location, :line)] if saved_location
+
       location = value(test, :source)
       source_line = nil
       if location.respond_to?(:key?)
         source_line = value(location, :line)
-        location = value(location, :path) || value(location, :relative_path)
+        location = value(location, :relative_path) || value(location, :path)
       end
       location ||= value(test, :source_path)
+      location = relative_test_path(location)
       line = value(test, :line) || value(test, :source_line) || source_line
       [location, line]
+    end
+
+    def relative_test_path(path)
+      return path unless path && Pathname.new(path.to_s).absolute?
+
+      root = value(@inventory, :root) || value(@run_metadata, :project_root)
+      return nil unless root && Pathname.new(root.to_s).absolute?
+
+      Pathname.new(path.to_s).relative_path_from(Pathname.new(root.to_s)).to_s
+    rescue ArgumentError
+      nil
     end
 
     def minimum_member_label(objective, id)

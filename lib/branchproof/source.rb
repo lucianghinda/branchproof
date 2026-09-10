@@ -134,6 +134,7 @@ module Branchproof
         location = leaf.delete(:_location)
         literal_truth = leaf.delete(:_literal_truth)
         Records.build(id: nil, index: index, byte_start: location.start_offset, byte_length: location.length,
+                      line: location.start_line, column: location.start_column,
                       expression: expression, literal_truth: literal_truth, coupling: "unknown")
       end
       decision_id = Records.decision_id(source_id: source_id, context: context, byte_start: start_offset,

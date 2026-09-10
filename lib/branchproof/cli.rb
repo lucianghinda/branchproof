@@ -10,6 +10,7 @@ require "rbconfig"
 require "stringio"
 require "fileutils"
 require "securerandom"
+require "time"
 
 module Branchproof
   # Coordinates source inventory, isolated test execution, and report output.
@@ -20,8 +21,12 @@ module Branchproof
     end
 
     def call(argv)
+      argv = Array(argv)
+      return help if [["--help"], ["help"], ["analyze", "--help"]].include?(argv)
+      return offline(argv) if %w[report compare].include?(argv.first)
+
       options = parse(Array(argv))
-      return usage_error("analyze is the only supported command") unless options
+      return usage_error("expected analyze, report, or compare; use branchproof --help") unless options
 
       inventory = build_inventory(options)
       evidence = empty_evidence(inventory, options)
@@ -69,16 +74,144 @@ module Branchproof
       minima = options[:level] == 1 ? [] : Array(value(baseline, :minima))
       report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || evidence.snapshot,
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
-                          level: options[:level], missing_only: options[:missing_only])
+                          level: options[:level], missing_only: options[:missing_only], view: options[:view],
+                          run_metadata: run_metadata(options, baseline))
       output_report(report, options)
       report.exit_code
     rescue ArgumentError => e
       usage_error(e.message)
     rescue JSON::ParserError => e
       usage_error("invalid JSON limits: #{e.message}")
+    rescue SystemCallError, IOError => e
+      usage_error("report IO failed: #{e.message}")
     end
 
     private
+
+    def help
+      @stdout.write(<<~HELP)
+        Usage:
+          branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails]
+            [--view decisions|conditions|tests] [--level 1|2|3] [--missing-only]
+            [--format terminal|json] [--output PATH] [--limits PATH] [-- RUNNER_ARGS]
+          branchproof report SNAPSHOT [--view decisions|conditions|tests] [--level 1|2|3]
+            [--missing-only] [--format terminal|json] [--output PATH]
+          branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
+        mcdc accepts the same commands as a compatibility alias.
+        JSON always contains full evidence; --view requires terminal output.
+      HELP
+      0
+    end
+
+    def parse_view(view)
+      raise ArgumentError, "view must be decisions, conditions, or tests" unless %w[decisions conditions tests].include?(view)
+
+      view.to_sym
+    end
+
+    def validate_view!(options)
+      return unless options[:explicit_view] && options[:format] == :json
+
+      raise ArgumentError, "--view requires terminal format; JSON contains full evidence"
+    end
+
+    def offline(argv)
+      command = argv.first
+      return help if argv.drop(1) == ["--help"]
+
+      options, paths = parse_offline(command, argv.drop(1))
+      reject_input_output_collision!(paths, options[:output]) if options[:output]
+      documents = paths.map { |path| SavedReport.read(path) }
+      if command == "compare"
+        report = ComparisonReport.new(document: Comparison.new(before: documents[0], after: documents[1]).call)
+        output_report(report, options)
+        report.exit_code(fail_on_regression: options[:fail_on_regression])
+      else
+        document = documents.first
+        options[:level] ||= document["analysis"] ? 3 : 1
+        if options[:level] > 1 && !document["analysis"]
+          raise ArgumentError, "saved report has no analysis; use --level 1"
+        end
+        if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
+          raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
+        end
+
+        report = Report.from_document(document: document, level: options[:level], view: options[:view],
+                                      missing_only: options[:missing_only])
+        output_report(report, options)
+        report.exit_code
+      end
+    end
+
+    def parse_offline(command, args)
+      options = { format: :terminal, view: :decisions, missing_only: false }
+      paths = []
+      until args.empty?
+        token = args.shift
+        case token
+        when "--format"
+          format = args.shift
+          raise ArgumentError, "format must be terminal or json" unless %w[terminal json].include?(format)
+
+          options[:format] = format.to_sym
+        when "--output"
+          options[:output] = args.shift
+          raise ArgumentError, "--output requires a path" if options[:output].to_s.empty?
+        when "--fail-on-regression"
+          raise ArgumentError, "--fail-on-regression requires compare" unless command == "compare"
+
+          options[:fail_on_regression] = true
+        when "--view", "--level", "--missing-only"
+          raise ArgumentError, "#{token} requires report" unless command == "report"
+
+          case token
+          when "--view"
+            options[:view] = parse_view(args.shift)
+            options[:explicit_view] = true
+          when "--level"
+            options[:level] = Integer(args.shift.to_s, 10)
+            raise ArgumentError, "level must be 1, 2, or 3" unless (1..3).cover?(options[:level])
+          else options[:missing_only] = true
+          end
+        else
+          raise ArgumentError, "unknown option: #{token}" if token.start_with?("-")
+
+          paths << token
+        end
+      end
+      expected = command == "compare" ? 2 : 1
+      raise ArgumentError, "#{command} requires #{expected} saved report #{expected == 1 ? "path" : "paths"}" unless paths.length == expected
+
+      validate_view!(options)
+      [options, paths]
+    end
+
+    def reject_input_output_collision!(paths, output)
+      collision = paths.any? do |input|
+        File.expand_path(input) == File.expand_path(output) ||
+          (File.exist?(input) && File.exist?(output) && File.identical?(input, output))
+      end
+      raise ArgumentError, "output must not overwrite an input report" if collision
+    end
+
+    def run_metadata(options, baseline)
+      root = options[:project][:root]
+      locations = Array(value(baseline, :tests)).to_h do |test|
+        source = value(test, :source) || {}
+        [value(test, :id), { relative_path: relative_path(value(source, :path), root), line: value(source, :line) }]
+      end
+      { captured_at: Time.now.utc.iso8601, requested_level: options[:level], project_kind: options[:project][:kind],
+        project_root: root, source_patterns: options[:source_patterns].map { |path| relative_path(path, root) },
+        test_patterns: options[:test_patterns].map { |path| relative_path(path, root) },
+        test_files: options[:tests].map { |path| relative_path(path, root) }, runner_args: options[:runner_args],
+        seed: value(baseline, :seed), limits: options[:limits], test_locations: locations }
+    end
+
+    def relative_path(path, root)
+      return nil if path.to_s.empty?
+
+      Pathname.new(File.expand_path(path, root)).relative_path_from(Pathname.new(root)).to_s
+    end
 
     def parse(argv)
       return nil if argv.empty? || argv.first != "analyze"
@@ -88,10 +221,13 @@ module Branchproof
       runner_args = delimiter ? args[(delimiter + 1)..] : []
       args = args[0...delimiter] if delimiter
       options = { level: 3, format: :terminal, output: nil, tests: [], source_paths: [], limits: Limits.default,
-                  runner_args: runner_args, project: nil, missing_only: false }
+                  runner_args: runner_args, project: nil, missing_only: false, view: :decisions }
       until args.empty?
         token = args.shift
         case token
+        when "--view"
+          options[:view] = parse_view(args.shift)
+          options[:explicit_view] = true
         when "--missing-only"
           options[:missing_only] = true
         when "--level"
@@ -128,6 +264,7 @@ module Branchproof
           options[:source_paths] << token
         end
       end
+      validate_view!(options)
       if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
         raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
       end
@@ -135,6 +272,8 @@ module Branchproof
       options[:project] ||= Project.new(root: Dir.pwd, mode: "auto").to_h
       options[:source_paths] = default_sources if options[:source_paths].empty?
       options[:tests] = default_tests if options[:tests].empty?
+      options[:source_patterns] = options[:source_paths].dup
+      options[:test_patterns] = argv.include?("--test") ? options[:tests].dup : %w[test/**/*_test.rb test/**/test_*.rb]
       options[:tests] = expand_paths(options[:tests], root: options[:project][:root])
       options
     end
@@ -199,13 +338,19 @@ module Branchproof
     end
 
     def output_report(report, options)
+      created = false
       if options[:output]
-        temporary = "#{options[:output]}.tmp-#{Process.pid}"
-        File.binwrite(temporary, report_string(report, options[:format]))
+        temporary = "#{options[:output]}.tmp-#{SecureRandom.hex(12)}"
+        File.open(temporary, "wx") do |file|
+          created = true
+          file.write(report_string(report, options[:format]))
+        end
         File.rename(temporary, options[:output])
       else
         @stdout.write(report_string(report, options[:format]))
       end
+    ensure
+      File.unlink(temporary) if created && temporary && File.file?(temporary)
     end
 
     def report_string(report, format)
@@ -215,7 +360,7 @@ module Branchproof
     end
 
     def usage_error(message)
-      @stderr.write("mcdc: #{message}\n")
+      @stderr.write("branchproof: #{message}\n")
       2
     end
 
@@ -245,7 +390,7 @@ module Branchproof
     def value(hash, key)
       return nil unless hash.respond_to?(:key?)
 
-      hash[key] || hash[key.to_s]
+      hash.key?(key) ? hash[key] : hash[key.to_s]
     end
 
     def normalize(value)

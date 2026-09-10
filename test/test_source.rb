@@ -38,9 +38,72 @@ class TestSource < Minitest::Test
       assert_equal source.index("first"), decision[:byte_start]
       assert_equal "first && second".bytesize, decision[:byte_length]
       assert_equal 2, decision[:conditions].length
+      assert_equal([[1, 8], [1, 17]], decision[:conditions].map { |condition| [condition[:line], condition[:column]] })
       assert_equal :and, decision[:tree][:type]
       assert_equal "SUPPORTED", decision[:support_status]
       refute_includes decision[:support_reasons], "unsupported_ternary"
+    end
+  end
+
+  def test_conditions_record_each_leaf_start_location_across_multiline_predicate
+    Dir.mktmpdir do |root|
+      path = File.join(root, "multiline.rb")
+      File.write(path, "if first &&\n   second ||\n   third\nend\n")
+
+      decision = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(paths: [path])[:decisions].first
+
+      assert_equal([["first", 1, 3], ["second", 2, 3], ["third", 3, 3]],
+                   decision[:conditions].map { |condition| condition.values_at(:expression, :line, :column) })
+      assert_equal([1, 2, 3], decision[:conditions].map { |condition| condition[:line] })
+    end
+  end
+
+  def test_repeated_same_line_conditions_keep_distinct_occurrences_and_locations
+    Dir.mktmpdir do |root|
+      path = File.join(root, "repeated.rb")
+      File.write(path, "if ready && ready\nend\n")
+
+      decision = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(paths: [path])[:decisions].first
+
+      assert_equal([0, 1], decision[:conditions].map { |condition| condition[:index] })
+      assert_equal(%w[ready ready], decision[:conditions].map { |condition| condition[:expression] })
+      assert_equal([[1, 3], [1, 12]], decision[:conditions].map { |condition| condition.values_at(:line, :column) })
+      assert_equal 2, decision[:conditions].map { |condition| condition[:id] }.uniq.length
+    end
+  end
+
+  def test_location_metadata_does_not_change_existing_identity_values
+    Dir.mktmpdir do |root|
+      path = File.join(root, "stable.rb")
+      File.write(path, "if left && right\nend\n")
+      decision = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(paths: [path])[:decisions].first
+
+      assert_equal "f9e7ad22c67e309f96f3be3fac0671d96004ec5474693eab853c42462216ba7a", decision[:source_id]
+      assert_equal "84e4bba844808ecd9ce26acbcea647763e9ce4cb4a950dbc1dd5e0a5a03a1cb3", decision[:id]
+      assert_equal(%w[d14c6e17f5ee406db20d9f66365934020493a010ef75df783b4c8594eb87a17d
+                      9f1ecf613513e900cadec31d9ab90fcd79af72bf1d3a6e6abd7da8aca6c1ba3e],
+                   decision[:conditions].map { |condition| condition[:id] })
+    end
+  end
+
+  def test_utf8_and_declared_non_utf8_sources_keep_locations_and_do_not_crash
+    Dir.mktmpdir do |root|
+      utf8_path = File.join(root, "utf8.rb")
+      latin_path = File.join(root, "latin.rb")
+      File.binwrite(utf8_path, "if café && ready\nend\n")
+      File.binwrite(latin_path, "# encoding: ISO-8859-1\nif café && ready\nend\n".encode(Encoding::ISO_8859_1))
+
+      inventory = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(
+        paths: [utf8_path, latin_path]
+      )
+      utf8_id = inventory[:source_units].find { |unit| unit[:relative_path] == "utf8.rb" }[:source_id]
+      latin_id = inventory[:source_units].find { |unit| unit[:relative_path] == "latin.rb" }[:source_id]
+      utf8 = inventory[:decisions].find { |decision| decision[:source_id] == utf8_id }
+      latin = inventory[:decisions].find { |decision| decision[:source_id] == latin_id }
+
+      assert_equal([[1, 3], [1, 12]], utf8[:conditions].map { |condition| condition.values_at(:line, :column) })
+      assert_equal([[2, 3], [2, 11]], latin[:conditions].map { |condition| condition.values_at(:line, :column) })
+      assert_equal "ISO-8859-1", inventory[:source_units].find { |unit| unit[:relative_path] == "latin.rb" }[:encoding]
     end
   end
 

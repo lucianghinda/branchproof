@@ -6,8 +6,8 @@ modifier, and ordinary ternary (`?:`) decisions, records observed vectors,
 and reports independence evidence, missing counterpart constraints, and
 smaller supporting test sets.
 
-The gem is named `branchproof`; its command and compatibility namespace are
-`mcdc` and `MCDC`.
+The gem and primary command are named `branchproof`. The `mcdc` command and
+`MCDC` namespace remain compatibility aliases with the same behavior.
 
 ## Installation
 
@@ -30,12 +30,12 @@ instead of being counted as coverage.
 
 ## Analyze a test run
 
-Run `mcdc analyze` with the source files or globs to inspect, followed by
+Run `branchproof analyze` with the source files or globs to inspect, followed by
 options. A second `--` separates Branchproof options from arguments passed to
 Minitest unchanged:
 
 ```sh
-mcdc analyze 'lib/**/*.rb' --test 'test/**/*_test.rb' \
+branchproof analyze 'lib/**/*.rb' --test 'test/**/*_test.rb' \
   --level 3 \
   --format terminal \
   --output tmp/branchproof.txt \
@@ -47,14 +47,14 @@ For a plain Ruby application, select the project policy explicitly when
 running from the application root:
 
 ```sh
-bundle exec mcdc analyze 'lib/**/*.rb' --project ruby --test 'test/**/*_test.rb'
+bundle exec branchproof analyze 'lib/**/*.rb' --project ruby --test 'test/**/*_test.rb'
 ```
 
 For a Rails application, run the same command from the application root so
 the application's bundle and Rails version remain in effect:
 
 ```sh
-bundle exec mcdc analyze 'app/**/*.rb' --project rails --test 'test/**/*_test.rb'
+bundle exec branchproof analyze 'app/**/*.rb' --project rails --test 'test/**/*_test.rb'
 ```
 
 For a project rooted at the current directory, `--project auto` is the
@@ -132,7 +132,7 @@ Use `--missing-only` to focus the terminal report on conditions that still
 lack independence evidence:
 
 ```sh
-bundle exec mcdc analyze 'lib/**/*.rb' --missing-only
+bundle exec branchproof analyze 'lib/**/*.rb' --missing-only
 ```
 
 This keeps the overall summary and diagnostics, hides proven conditions and
@@ -185,6 +185,95 @@ test suite. A failed, unsupported, or incomplete run is reported with its
 status and diagnostics and cannot become a successful coverage result by
 changing the display level.
 
+### Focused condition and test views
+
+Use `--view conditions` to group the report by condition. Each condition shows
+its expression, decision, and project-relative source location with the
+condition's own 1-based start line. The view separates tests that evaluated
+the condition true or false from tests where it was short-circuited. Level 3
+also shows the canonical witness observations selected by the analyzer and
+their owning tests.
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' --view conditions
+bundle exec branchproof analyze 'lib/**/*.rb' --view conditions --missing-only
+```
+
+Use `--view tests` to group the same evidence by test. Rows include each
+exercised condition, its relative source location, observed values, and the
+recorded `setup`, `body`, or `teardown` phases. Tests with no completed
+condition observation remain visible, as do unattributed and unexecuted
+conditions. A test that evaluates both Boolean values is evidence of execution;
+it is a proof contributor only when the analyzer's independent witness pair
+uses its observations.
+
+`--view` changes terminal grouping and does not change instrumentation or test
+execution. JSON output always contains the complete evidence document, so an
+explicit view cannot be combined with `--format json`. The `mcdc` executable
+accepts the same arguments for existing scripts.
+
+### Saved reports and offline comparison
+
+Reports are saved only when requested. Create a local artifact directory and
+write a complete JSON baseline with the existing atomic `--output` option:
+
+```sh
+mkdir -p .branchproof
+bundle exec branchproof analyze 'lib/**/*.rb' --format json \
+  --output .branchproof/baseline.json
+bundle exec branchproof report .branchproof/baseline.json --view conditions
+bundle exec branchproof report .branchproof/baseline.json --view tests
+```
+
+The output's parent directory must already exist. Replacing a baseline is an
+explicit `analyze --format json --output` operation; keep CI snapshots as
+artifacts when you need to retain multiple runs.
+
+The `report` command reads the saved document without loading the application
+or running tests. It uses locations and metadata captured in the report, so
+rendering remains useful after the original checkout has moved or been
+removed. Level 1 reports observations; levels 2 and 3 require corresponding
+analysis in the saved report. The repository ignores `.branchproof/`; choose a
+different path and CI artifact policy when a project needs to retain reports.
+Saved JSON includes existing raw metadata such as test names and expressions;
+relative terminal labels do not mean every legacy JSON field is sanitized.
+
+To compare two explicitly saved runs:
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' --format json \
+  --output .branchproof/current.json
+bundle exec branchproof compare .branchproof/baseline.json \
+  .branchproof/current.json
+bundle exec branchproof compare .branchproof/baseline.json \
+  .branchproof/current.json --fail-on-regression
+```
+
+Comparison matches exact condition identities from unchanged source files.
+Changed source files, changed selection or runtime context, incomplete runs,
+and legacy reports missing comparison metadata are reported as partial or
+incomplete context rather than guessed regressions. The output distinguishes
+gained proof, lost proof, changed sources, newly selected files, and files no
+longer present in a report. Previous witness values and owner names are shown
+for lost proof; an absent owner is described as `not observed in current run`,
+not as a deleted test. A different test population under unchanged discovery
+patterns is valid comparison context, and seed differences are disclosed.
+
+`compare` exits 0 for a complete comparison, including one with coverage
+changes; `--fail-on-regression` exits 1 when a complete comparable run loses
+proof. Invalid input or an incomplete comparison exits 2, which takes
+precedence. Reports are explicit snapshots: comparison never creates history,
+promotes a baseline, or overwrites either input.
+
+MC/DC has two related questions. Evaluation asks whether a condition was
+observed with a value, including short-circuiting. Independent proof asks
+whether the analyzer found a pair of observations where that condition changes
+the decision outcome under the masking criterion. Other conditions may be
+short-circuited or masked rather than fixed to the same observed values. For example,
+`left && right` observed as `[TT]` and `[F-]` evaluates `right` once and
+short-circuits it once, but does not prove `right`; `[TF]` is also required.
+The condition and test views preserve that distinction.
+
 ### Supported conditional forms
 
 Ordinary Ruby ternaries use the same predicate instrumentation and `&&`/`||`
@@ -230,7 +319,7 @@ Everything after the argument separator is passed as individual arguments to
 the serial Minitest runner. This is useful for seeds and name filters:
 
 ```sh
-mcdc analyze 'lib/**/*.rb' --level 1 -- --seed 9001 -n /checkout/
+branchproof analyze 'lib/**/*.rb' --level 1 -- --seed 9001 -n /checkout/
 ```
 
 The 0.2 release supports serial Minitest execution in plain Ruby projects and

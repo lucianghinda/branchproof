@@ -5,6 +5,20 @@ require "branchproof/report"
 require "stringio"
 
 class TestReport < Minitest::Test
+  def test_offline_json_preserves_the_saved_document_and_completeness
+    io = StringIO.new
+    base_report.write(io: io, format: :json)
+    document = JSON.parse(io.string)
+    document["runtime"] = "original Ruby runtime"
+    document["run_metadata"] = { "project_root" => "/old/root", "requested_level" => 3 }
+    document["completeness"]["observation"] = false
+    report = Branchproof::Report.from_document(document: document, level: 1)
+    output = StringIO.new
+    report.write(io: output, format: :json)
+    assert_equal document, JSON.parse(output.string)
+    assert_equal 2, report.exit_code
+  end
+
   def base_report(**overrides)
     Branchproof::Report.new(inventory: { decisions: [{ conditions: [{ index: 0 }, { index: 1 }] }] },
                             evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: true } },
@@ -16,7 +30,7 @@ class TestReport < Minitest::Test
     output = StringIO.new
     base_report(inventory: { decisions: [] }).write(io: output, format: :json)
     document = JSON.parse(output.string)
-    assert_equal "1.0", document.fetch("schema_version")
+    assert_equal "1.1", document.fetch("schema_version")
     assert_nil document.fetch("metrics").fetch("percentage")
   end
 
