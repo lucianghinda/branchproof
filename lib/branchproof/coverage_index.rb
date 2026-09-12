@@ -7,7 +7,7 @@ require "pathname"
 module Branchproof
   # Derives condition- and test-oriented rows from one report document.
   class CoverageIndex
-    attr_reader :conditions, :alternatives, :tests
+    attr_reader :conditions, :alternatives, :tests, :decision_tables
 
     def initialize(document:)
       @document = symbolize(document || {})
@@ -28,6 +28,7 @@ module Branchproof
       end
       @conditions = build_conditions.freeze
       @alternatives = build_alternatives.freeze
+      @decision_tables = build_decision_tables.freeze
       @tests = build_tests.freeze
     end
 
@@ -118,6 +119,31 @@ module Branchproof
           }
         end
       end
+    end
+
+    def build_decision_tables
+      rows = records(@inventory, :decisions).filter_map do |decision|
+        next unless boolean_decision?(decision)
+
+        table = symbolize(analysis_for(decision)[:decision_table] || {})
+        next if table.empty?
+
+        source = @source_units_by_id[decision[:source_id].to_s] || {}
+        {
+          decision_id: decision[:id], decision_expression: decision[:expression],
+          context: decision[:context], kind: decision_kind(decision),
+          relative_path: relative_path(source[:relative_path]), line: decision[:line],
+          conditions: records(decision, :conditions).map { |condition| condition[:expression].to_s },
+          status: table[:status], reason: table[:reason],
+          schema_version: table[:schema_version], constraint_analysis_version: table[:constraint_analysis_version],
+          rules: Array(table[:rules]).map { |rule| symbolize(rule) },
+          generated_rules: table[:generated_rules].to_i, impossible_rules: table[:impossible_rules].to_i,
+          required_rules: table[:required_rules].to_i, covered_rules: table[:covered_rules].to_i,
+          missing_rules: table[:missing_rules].to_i, percentage: table[:percentage],
+          coverage_status: table[:coverage_status], reachability_analyzed: table[:reachability_analyzed]
+        }
+      end
+      rows.sort_by { |row| [row[:relative_path].to_s, row[:line].to_i, row[:decision_id].to_s] }
     end
 
     def build_tests

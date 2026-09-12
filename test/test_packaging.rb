@@ -16,7 +16,7 @@ class TestPackaging < Minitest::Test
       capture_io { Gem::Package.build(specification, false, true, archive) }
       package = Gem::Package.new(archive)
       %w[branchproof mcdc].each { |name| assert_includes package.contents, "exe/#{name}" }
-      %w[decision_syntax flow_instrumentation runtime_flow].each do |name|
+      %w[decision_syntax flow_instrumentation runtime_flow decision_table constraints].each do |name|
         assert_includes package.contents, "lib/branchproof/#{name}.rb"
       end
 

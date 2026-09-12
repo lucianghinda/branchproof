@@ -28,6 +28,8 @@ Metrics/AbcSize:
     - "test/**/*"
     # Inventory/reporting code is deliberately record-oriented and bounded.
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/constraints.rb"
+    - "lib/branchproof/decision_table.rb"
     - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/report.rb"
     - "lib/branchproof/evidence.rb"
@@ -48,6 +50,8 @@ Metrics/ClassLength:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/comparison_report.rb"
+    - "lib/branchproof/constraints.rb"
     - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/runtime.rb"
@@ -63,6 +67,8 @@ Metrics/CyclomaticComplexity:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/constraints.rb"
+    - "lib/branchproof/decision_table.rb"
     - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/records.rb"
@@ -81,6 +87,8 @@ Metrics/MethodLength:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/constraints.rb"
+    - "lib/branchproof/decision_table.rb"
     - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/report.rb"
@@ -99,6 +107,10 @@ Metrics/ModuleLength:
   Exclude:
     # Source records are assembled together to keep syntax boundaries auditable.
     - "lib/branchproof/decision_syntax.rb"
+    # Decision-table derivation and its constraint model stay in one readable
+    # unit so the logical semantics remain inspectable end to end.
+    - "lib/branchproof/decision_table.rb"
+    - "lib/branchproof/constraints.rb"
     - "test/**/*"
     - "lib/branchproof/runtime.rb"
 
@@ -117,6 +129,8 @@ Metrics/PerceivedComplexity:
   Exclude:
     - "test/**/*"
     - "lib/branchproof/source.rb"
+    - "lib/branchproof/constraints.rb"
+    - "lib/branchproof/decision_table.rb"
     - "lib/branchproof/decision_syntax.rb"
     - "lib/branchproof/evidence.rb"
     - "lib/branchproof/records.rb"

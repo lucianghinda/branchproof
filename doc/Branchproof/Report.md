@@ -11,6 +11,12 @@ Renders versioned terminal and JSON analysis reports.
 ### `CRITERION_VERSION` <a id="constant-CRITERION_VERSION"></a> <a id="CRITERION_VERSION-constant"></a>
 Not documented.
 
+### `DECISION_TABLE_LABELS` <a id="constant-DECISION_TABLE_LABELS"></a> <a id="DECISION_TABLE_LABELS-constant"></a>
+Not documented.
+
+### `DECISION_TABLE_STATUS_LABELS` <a id="constant-DECISION_TABLE_STATUS_LABELS"></a> <a id="DECISION_TABLE_STATUS_LABELS-constant"></a>
+Not documented.
+
 ### `SCHEMA_VERSION` <a id="constant-SCHEMA_VERSION"></a> <a id="SCHEMA_VERSION-constant"></a>
 Not documented.
 

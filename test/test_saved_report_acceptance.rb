@@ -22,7 +22,7 @@ class TestSavedReportAcceptance < Minitest::Test
       _, stderr, status = command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "saved.json")
       assert_equal 0, status, stderr
       document = JSON.parse(File.read(File.join(root, "saved.json")))
-      assert_equal "1.2", document["schema_version"]
+      assert_equal "1.3", document["schema_version"]
       assert_equal ["lib/**/*.rb"], document.dig("run_metadata", "source_patterns")
       assert_equal ["test/decision_test.rb"], document.dig("run_metadata", "test_files")
       count = marker_count(root)

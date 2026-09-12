@@ -15,9 +15,6 @@ Returns the value of attribute active_adapter.
 Returns the value of attribute tests.
 
 ## Public Instance Methods
-### `capabilities()` <a id="method-i-capabilities"></a> <a id="capabilities-instance_method"></a>
-Not documented.
-
 ### `initialize(runtime:)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [MinitestAdapter] a new instance of MinitestAdapter
 

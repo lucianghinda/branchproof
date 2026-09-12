@@ -8,14 +8,18 @@ require "pathname"
 module Branchproof
   # Renders versioned terminal and JSON analysis reports.
   class Report
-    SCHEMA_VERSION = "1.2"
+    SCHEMA_VERSION = "1.3"
     CRITERION_VERSION = "masking_occurrence_v1"
+    DECISION_TABLE_LABELS = { "true" => "T", "false" => "F", "dont_care" => "-" }.freeze
+    DECISION_TABLE_STATUS_LABELS = { "covered" => "COVERED", "missing" => "MISSING",
+                                     "excluded" => "EXCLUDED" }.freeze
 
     def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false,
                    view: :decisions, run_metadata: {}, saved_document: nil)
       raise ArgumentError, "level must be 1, 2, or 3" unless [1, 2, 3].include?(level.to_i)
-      raise ArgumentError, "view must be :decisions, :conditions, or :tests" unless %i[decisions conditions
-                                                                                       tests].include?(view.to_sym)
+      unless %i[decisions conditions tests decision_tables].include?(view.to_sym)
+        raise ArgumentError, "view must be :decisions, :conditions, :tests, or :decision_tables"
+      end
 
       @inventory = inventory || {}
       @evidence = evidence || {}
@@ -183,6 +187,7 @@ module Branchproof
         end
       end
       render_decision_coverage(lines, decision) if coverage_available?
+      render_decision_table(lines, decision) if analysis_available? && !nonboolean_decision?(decision)
       vectors_to_render(decision).each do |vector|
         values = Array(value(vector, :values)).map do |item|
           if item.nil?
@@ -230,7 +235,7 @@ module Branchproof
       decision_coverage = value(value(analysis_for(decision), :coverage), :decision)
       all_coverage = value(analysis_for(decision), :coverage) || {}
       statuses = [["D", :decision], ["C", :condition], ["C/D", :condition_decision],
-                  ["MC/DC", :mcdc]].filter_map do |label, key|
+                  ["MC/DC", :mcdc], ["DT", :decision_table]].filter_map do |label, key|
         row = value(all_coverage, key)
         status = value(row, :status)
         status ? criterion_status_text(label, row) : nil
@@ -254,6 +259,137 @@ module Branchproof
       lines << "  Missing decision outcomes: #{missing.map do |item|
         item ? "true" : "false"
       end.join(", ")}"
+    end
+
+    # Renders the reduced decision table, its runtime overlay, and the
+    # actionable detail for rules that no observation reached.
+    def render_decision_table(lines, decision)
+      table = decision_table_for(decision)
+      return unless table
+
+      unless value(table, :status).to_s == "calculated"
+        return if value(table, :reason).to_s == "unsupported_decision" && unsupported?(decision)
+
+        lines << "  Decision Table: NOT CALCULATED"
+        lines << "  Reason: #{value(table, :reason)}"
+        return
+      end
+
+      covered = value(table, :covered_rules).to_i
+      required = value(table, :required_rules).to_i
+      percentage = value(table, :percentage)
+      lines << "  Decision Table: #{covered}/#{required} rules covered" \
+               "#{" (#{percentage}%)" unless percentage.nil?}"
+      impossible = value(table, :impossible_rules).to_i
+      lines << "  Statically impossible rules excluded: #{impossible}" if impossible.positive?
+      lines << "  Reachability: not analyzed" unless value(table, :reachability_analyzed)
+      rules = decision_table_rules_to_render(table)
+      lines.concat(decision_table_rows(decision, rules))
+      return unless @level >= 2
+
+      rules.each { |rule| render_decision_table_rule(lines, decision, rule) }
+    end
+
+    def decision_table_rows(decision, rules)
+      return [] if rules.empty?
+
+      conditions = Array(value(decision, :conditions))
+      header = ["Rule"] + conditions.map { |condition| truncate(value(condition, :expression).to_s, 24) } +
+               %w[Result Status]
+      body = rules.map do |rule|
+        [value(rule, :label).to_s] +
+          Array(value(rule, :conditions)).map { |item| DECISION_TABLE_LABELS.fetch(item.to_s, item.to_s) } +
+          [value(rule, :outcome) ? "T" : "F", decision_table_rule_status(rule)]
+      end
+      return [] unless body.all? { |row| row.length == header.length }
+
+      widths = ([header] + body).transpose.map { |column| column.map(&:length).max }
+      ([header] + body).map do |row|
+        "    #{row.each_with_index.map { |cell, index| cell.ljust(widths[index]) }.join("  ").rstrip}"
+      end
+    end
+
+    def decision_table_rule_status(rule)
+      DECISION_TABLE_STATUS_LABELS.fetch(value(rule, :coverage).to_s, value(rule, :coverage).to_s.upcase)
+    end
+
+    def render_decision_table_rule(lines, decision, rule)
+      case value(rule, :coverage).to_s
+      when "covered" then render_covered_rule(lines, rule)
+      when "excluded" then lines.concat(impossible_rule_lines(rule))
+      else lines.concat(missing_rule_lines(decision, rule))
+      end
+    end
+
+    def render_covered_rule(lines, rule)
+      owners = Array(value(rule, :tests)).map { |id| test_label(id) }
+      owners << "unattributed" if value(rule, :unattributed_count).to_i.positive?
+      lines << "    #{value(rule, :label)} tests: #{owners.empty? ? "none recorded" : owners.uniq.join(", ")}"
+      return unless value(rule, :impossible_withdrawn)
+
+      lines << "    #{value(rule, :label)} note: runtime evidence overrides the static impossibility claim " \
+               "(#{value(rule, :withdrawn_reason)}); diagnostic constraint_model_conflict"
+    end
+
+    # Impossible rules stay visible even though they leave the denominator.
+    def impossible_rule_lines(rule)
+      ["    #{value(rule, :label)} #{rule_signature(rule)}",
+       "    Status:", "      EXCLUDED",
+       "    Reachability:", "      STATICALLY IMPOSSIBLE",
+       "    Reason:", "      #{Constraints.message(value(rule, :reachability_reason))}"]
+    end
+
+    # Condition values only: Branchproof never claims which application inputs
+    # would produce them.
+    def missing_rule_lines(decision, rule)
+      requirements = decision_table_requirements(decision, rule)
+      width = requirements.map { |name, _| name.length }.max.to_i
+      lines = ["    #{value(rule, :label)}", "    Need:"]
+      requirements.each { |name, requirement| lines << "      #{name.ljust(width)} #{requirement}" }
+      lines << "    Expected decision:"
+      lines << "      #{value(rule, :outcome) ? "true" : "false"}"
+      lines << "    Reachability:"
+      lines << "      #{value(rule, :reachability)}"
+      lines
+    end
+
+    def decision_table_requirements(decision, rule)
+      Array(value(rule, :conditions)).each_with_index.map do |required, index|
+        expression = condition_expression(decision, index) || "condition #{index}"
+        requirement = case required.to_s
+                      when "true" then "= truthy"
+                      when "false" then "= falsey"
+                      else "not evaluated (short-circuited)"
+                      end
+        [expression.to_s, requirement]
+      end
+    end
+
+    def rule_signature(rule)
+      values = Array(value(rule, :conditions)).map { |item| DECISION_TABLE_LABELS.fetch(item.to_s, item.to_s) }
+      "#{values.join} => #{value(rule, :outcome) ? "T" : "F"}"
+    end
+
+    def decision_table_rules_to_render(table)
+      rules = Array(value(table, :rules))
+      return rules unless @missing_only
+
+      rules.select { |rule| value(rule, :coverage).to_s == "missing" }
+    end
+
+    def decision_table_for(decision)
+      value(analysis_for(decision), :decision_table)
+    end
+
+    def missing_decision_table_rules(decision)
+      table = decision_table_for(decision)
+      return [] unless table && value(table, :status).to_s == "calculated"
+
+      Array(value(table, :rules)).select { |rule| value(rule, :coverage).to_s == "missing" }
+    end
+
+    def truncate(text, width)
+      text.length <= width ? text : "#{text[0, width - 3]}..."
     end
 
     def render_alternative_coverage(lines, decision)
@@ -737,7 +873,11 @@ module Branchproof
       inventory_decisions
         .reject { |decision| unsupported?(decision) }
         .select do |decision|
-          nonboolean_decision?(decision) ? missing_alternatives_for(decision).any? : conditions_to_render(decision).any?
+          if nonboolean_decision?(decision)
+            missing_alternatives_for(decision).any?
+          else
+            conditions_to_render(decision).any? || missing_decision_table_rules(decision).any?
+          end
         end
     end
 
@@ -809,6 +949,21 @@ module Branchproof
                       end
         lines << "  #{label} (#{description}): #{shown} (#{numerator}/#{denominator} #{denominator_label})#{qualifier}"
       end
+      table = value(aggregate, :decision_table)
+      if table
+        covered = value(table, :covered_rules) || 0
+        required = value(table, :required_rules) || 0
+        percentage = value(table, :percentage)
+        shown = percentage.nil? ? "N/A" : "#{percentage}%"
+        qualifier = incomplete? ? " (lower bound)" : ""
+        lines << "  DT (Decision table coverage): #{shown} (#{covered}/#{required} rules)#{qualifier}"
+        lines << "  Decision tables fully covered: #{value(table, :fully_covered_decisions) || 0}/" \
+                 "#{value(table, :decisions_analyzed) || 0} decisions"
+        impossible = value(table, :impossible_rules).to_i
+        lines << "  Statically impossible rules excluded: #{impossible}" if impossible.positive?
+        not_calculated = value(table, :not_calculated_decisions).to_i
+        lines << "  Decision tables not calculated: #{not_calculated} decisions" if not_calculated.positive?
+      end
       alternative = value(aggregate, :alternative)
       if alternative
         covered = value(alternative, :covered_alternatives) || 0
@@ -834,6 +989,10 @@ module Branchproof
         "#{value(row, :covered_conditions) || 0}/#{value(row, :condition_count) || 0} conditions fully covered)"
       when "MC/DC"
         "#{label}=#{status} (#{value(row, :proven_conditions) || 0}/#{value(row, :condition_count) || 0} conditions)"
+      when "DT"
+        return "#{label}=NOT CALCULATED (#{value(row, :reason)})" if raw_status == "not_calculated"
+
+        "#{label}=#{status} (#{value(row, :covered_rules) || 0}/#{value(row, :required_rules) || 0} rules)"
       else
         "#{label}=#{status}"
       end
@@ -850,25 +1009,32 @@ module Branchproof
     def missing_summary_line
       return "Missing conditions: Cannot identify missing conditions (analysis unavailable)" unless analysis_available?
       return "Missing conditions: Cannot identify missing conditions (analysis incomplete)" unless analysis_complete?
-      return "No missing conditions or alternatives" if analysis_complete? && missing_condition_count.zero? &&
-                                                        missing_alternatives_count.zero?
+      if missing_condition_count.zero? && missing_alternatives_count.zero? && missing_rule_count.zero?
+        return "No missing conditions, alternatives, or decision-table rules"
+      end
       return "No eligible conditions" if metrics[:eligible_conditions].zero? && metrics[:eligible_alternatives].zero?
 
       count = decisions_to_render.length
+      label = count == 1 ? "decision" : "decisions"
+      suffix = missing_rule_count.positive? ? "; decision-table rules: #{missing_rule_count}" : ""
+      if missing_condition_count.zero? && missing_alternatives_count.zero?
+        return "Missing decision-table rules: #{missing_rule_count} across #{count} #{label}"
+      end
       if missing_alternatives_count.zero?
-        label = count == 1 ? "decision" : "decisions"
-        return "Missing conditions: #{missing_condition_count} across #{count} #{label}"
+        return "Missing conditions: #{missing_condition_count} across #{count} #{label}#{suffix}"
       end
       if missing_condition_count.zero?
-        label = count == 1 ? "decision" : "decisions"
-        return "Missing alternatives: #{missing_alternatives_count} across #{count} #{label}"
+        return "Missing alternatives: #{missing_alternatives_count} across #{count} #{label}#{suffix}"
       end
 
-      label = count == 1 ? "decision" : "decisions"
       conditions = missing_condition_count
       alternatives = missing_alternatives_count
       "Missing conditions: #{conditions}; alternatives: #{alternatives} " \
-        "across #{count} #{label}"
+        "across #{count} #{label}#{suffix}"
+    end
+
+    def missing_rule_count
+      decisions_to_render.sum { |decision| missing_decision_table_rules(decision).length }
     end
 
     def missing_alternatives_count
