@@ -13,10 +13,6 @@ module Branchproof
       @tests = {}
     end
 
-    def capabilities
-      { serial: true, phases: true }.freeze
-    end
-
     def run(test_files:, runner_args:, on_complete:, before_load: nil)
       raise ArgumentError, "test_files must be an Array" unless test_files.is_a?(Array)
       raise ArgumentError, "on_complete must respond to call" unless on_complete.respond_to?(:call)
@@ -158,12 +154,7 @@ module Branchproof
       record = @tests[test_id]
       return unless record
 
-      skipped = test.failures.any? do |failure|
-        (failure.respond_to?(:skipped?) && failure.skipped?) ||
-          (defined?(Minitest::Skip) && failure.respond_to?(:error) && failure.error.is_a?(Minitest::Skip)) ||
-          failure.class.name.to_s.include?("Skip")
-      end
-      record[:status] = if skipped
+      record[:status] = if test.skipped?
                           "skipped"
                         else
                           (test.failures.empty? ? "passed" : "failed")
@@ -182,17 +173,21 @@ module Branchproof
     end
 
     def test_id_for(test)
+      return test.instance_variable_get(:@branchproof_test_id) if test.instance_variable_defined?(:@branchproof_test_id)
+
       source = begin
         test.method(test.name).source_location
       rescue NameError
         nil
       end
-      if defined?(Branchproof::Records)
-        Branchproof::Records.id(adapter: "minitest", class_name: test.class.name, method_name: test.name,
-                                source: source)
-      else
-        "minitest:#{test.class}:#{test.name}:#{source}"
-      end
+      id = if defined?(Branchproof::Records)
+             Branchproof::Records.id(adapter: "minitest", class_name: test.class.name, method_name: test.name,
+                                     source: source)
+           else
+             "minitest:#{test.class}:#{test.name}:#{source}"
+           end
+      test.instance_variable_set(:@branchproof_test_id, id)
+      id
     end
 
     def register_test(test)

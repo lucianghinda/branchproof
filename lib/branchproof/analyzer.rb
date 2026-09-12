@@ -13,15 +13,26 @@ module Branchproof
       @evidence = evidence || {}
       @limits = limits || {}
       @vectors = records(@evidence, :vectors)
+      @vectors_by_decision = @vectors.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |vector, hash|
+        hash[id(vector, :decision_id)] << vector
+      end
+      @decisions = records(@inventory, :decisions)
+      @decisions_by_id = @decisions.each_with_object({}) do |decision, hash|
+        key = id(decision, :id)
+        hash[key] = decision unless hash.key?(key)
+      end
       @constraint_states = Hash.new(0)
       @missing_cache = {}
       @invalid_diagnostics = []
       @analysis_invalid = false
       @diagnostic_keys = Set.new
+      # Keyed by vector object identity (not content), so a validated vector's
+      # values are checked once and reused on every later read.
+      @values_cache = {}.compare_by_identity
     end
 
     def call
-      decisions = records(@inventory, :decisions).map { analyze_decision(_1) }
+      decisions = @decisions.map { analyze_decision(_1) }
       proven = decisions.sum { |decision| decision[:condition_results].count { |result| result[:status] == "PROVEN" } }
       eligible = decisions.sum { |decision| decision[:unsupported] ? 0 : decision[:conditions].length }
       {
@@ -35,22 +46,21 @@ module Branchproof
       }.freeze
     end
 
-    def pair?(decision_id:, condition_index:, left:, right:)
+    def pair?(decision_id:, condition_index:, left:, right:, masks: nil)
       return false if alternative_decision_for_id?(decision_id)
       return false unless compatible_vectors?(left, right, decision_id)
       return false unless observed?(left, condition_index) && observed?(right, condition_index)
       return false if value(left, condition_index) == value(right, condition_index)
       return false if outcome(left) == outcome(right)
 
-      masks = [left, right].map { effective_mask(_1, decision_id) }
-      masks.all? { |mask| mask&.anybits?(1 << condition_index) }
+      [left, right].all? { |vector| masked_bits(vector, decision_id, masks)&.anybits?(1 << condition_index) }
     end
 
     def missing(decision_id:, condition_index:)
       cache_key = [decision_id, condition_index]
       return @missing_cache[cache_key] if @missing_cache.key?(cache_key)
 
-      decision = records(@inventory, :decisions).find { id(_1, :id) == decision_id }
+      decision = @decisions_by_id[decision_id]
       return @missing_cache[cache_key] = nil unless decision
 
       return @missing_cache[cache_key] = nil if alternative_decision?(decision)
@@ -58,7 +68,7 @@ module Branchproof
       support_status = id(decision, :support_status).to_s
       return @missing_cache[cache_key] = nil unless support_status.empty? || support_status.upcase == "SUPPORTED"
 
-      relevant = @vectors.select { id(_1, :decision_id) == decision_id }
+      relevant = @vectors_by_decision[decision_id]
       valid = relevant.filter_map { valid_vector(_1, decision) }
       if valid.empty?
         return @missing_cache[cache_key] = {
@@ -67,14 +77,15 @@ module Branchproof
           feasibility_statement: "No completed structural observation exists."
         }
       end
-      return @missing_cache[cache_key] = nil if first_pair(valid, condition_index, decision_id)
+      masks = valid.to_h { |vector| [id(vector, :id), effective_mask(vector, decision_id)] }
+      return @missing_cache[cache_key] = nil if first_pair(valid, condition_index, decision_id, masks)
 
-      existing = valid.find { |vector| effective_mask(vector, decision_id).anybits?(1 << condition_index) }
+      existing = valid.find { |vector| masks[id(vector, :id)].anybits?(1 << condition_index) }
       signs = existing ? [!value(existing, condition_index)] : [true, false]
       candidates = signs.filter_map { counterpart(decision, condition_index, _1) }
       candidates.select! do |candidate|
         !existing || pair?(decision_id: decision_id, condition_index: condition_index, left: existing,
-                           right: candidate[:vector])
+                           right: candidate[:vector], masks: masks)
       end
       limited = @constraint_states[id(decision, :id)] > constraint_limit
       if limited
@@ -102,14 +113,14 @@ module Branchproof
       decision_id = id(decision, :id)
       unless id(decision, :support_status).to_s.empty? || id(decision, :support_status).to_s.upcase == "SUPPORTED"
         return {
-          decision_id: decision_id, effective_masks_by_vector: {}, condition_results: [], witness_buckets: {},
+          decision_id: decision_id, effective_masks_by_vector: {}, condition_results: [],
           conditions: [], unsupported: true, coverage: unsupported_coverage,
           completeness: { observation: true, attribution: true, analysis: true },
           diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
         }
       end
 
-      vectors = @vectors.filter_map { |vector| valid_vector(vector, decision) }
+      vectors = @vectors_by_decision[decision_id].filter_map { |vector| valid_vector(vector, decision) }
       masks = vectors.to_h { |vector| [id(vector, :id), effective_mask(vector, decision_id)] }
       buckets = {}
       conditions(decision).each do |condition|
@@ -132,7 +143,7 @@ module Branchproof
         true_ids = buckets[index][:true]
         false_ids = buckets[index][:false]
         # rubocop:enable Lint/BooleanSymbol
-        pair = first_pair(vectors, index, decision_id)
+        pair = first_pair(vectors, index, decision_id, masks)
         {
           condition_id: id(condition, :id),
           status: pair ? "PROVEN" : "NOT_PROVEN",
@@ -153,7 +164,6 @@ module Branchproof
         decision_id: decision_id,
         effective_masks_by_vector: masks,
         condition_results: results,
-        witness_buckets: buckets,
         edge_table: edge_table(decision[:tree]),
         conditions: conditions(decision),
         coverage: { decision: decision_coverage, condition: condition_coverage_summary,
@@ -169,7 +179,7 @@ module Branchproof
       unless id(decision, :support_status).to_s.empty? || id(decision, :support_status).to_s.upcase == "SUPPORTED"
         return {
           decision_id: decision_id, kind: id(decision, :kind), effective_masks_by_vector: {},
-          condition_results: [], witness_buckets: {},
+          condition_results: [],
           conditions: [], alternatives: alternatives(decision), unsupported: true,
           coverage: unsupported_alternative_coverage,
           completeness: { observation: true, attribution: true, analysis: true },
@@ -177,7 +187,7 @@ module Branchproof
         }
       end
 
-      vectors = @vectors.filter_map { |vector| valid_vector(vector, decision) }
+      vectors = @vectors_by_decision[decision_id].filter_map { |vector| valid_vector(vector, decision) }
       rows = alternatives(decision).map do |alternative|
         index = id(alternative, :index).to_i
         selected = vectors.select { |vector| value(vector, index) == true }
@@ -195,7 +205,7 @@ module Branchproof
       covered = rows.count { |row| row[:selected][:observed] }
       {
         decision_id: decision_id, kind: id(decision, :kind), effective_masks_by_vector: {},
-        condition_results: [], witness_buckets: {},
+        condition_results: [],
         conditions: [], alternatives: alternatives(decision), unsupported: false,
         coverage: { alternative: { status: coverage_status(covered, rows.length), covered_alternatives: covered,
                                    required_alternatives: rows.length, alternatives: rows,
@@ -223,7 +233,7 @@ module Branchproof
     end
 
     def alternative_decision_for_id?(decision_id)
-      decision = records(@inventory, :decisions).find { |item| id(item, :id) == decision_id }
+      decision = @decisions_by_id[decision_id]
       decision && alternative_decision?(decision)
     end
 
@@ -433,7 +443,7 @@ module Branchproof
     end
 
     def effective_mask(vector, decision_id, tree = nil)
-      decision = records(@inventory, :decisions).find { id(_1, :id) == decision_id } unless tree
+      decision = @decisions_by_id[decision_id] unless tree
       tree ||= decision && decision[:tree]
       raise ArgumentError, "unknown decision" unless tree
 
@@ -446,6 +456,15 @@ module Branchproof
       end
 
       mask
+    end
+
+    # Returns the effective mask for a vector, reusing a precomputed
+    # vector-id => mask hash when the caller has one, instead of
+    # replaying the whole Boolean tree again.
+    def masked_bits(vector, decision_id, masks)
+      return effective_mask(vector, decision_id) unless masks
+
+      masks[id(vector, :id)] || effective_mask(vector, decision_id)
     end
 
     def replay(node, values, offset)
@@ -472,9 +491,9 @@ module Branchproof
       end
     end
 
-    def first_pair(vectors, index, decision_id)
+    def first_pair(vectors, index, decision_id, masks = nil)
       observed_vectors = vectors.select do |vector|
-        observed?(vector, index) && effective_mask(vector, decision_id).anybits?(1 << index)
+        observed?(vector, index) && masked_bits(vector, decision_id, masks)&.anybits?(1 << index)
       end
       observed_vectors.sort_by! { |vector| id(vector, :id).to_s }
       grouped = observed_vectors.group_by do |vector|
@@ -491,7 +510,9 @@ module Branchproof
 
         left = left_vectors.first
         right = right_vectors.first
-        return [left, right] if pair?(decision_id: decision_id, condition_index: index, left: left, right: right)
+        if pair?(decision_id: decision_id, condition_index: index, left: left, right: right, masks: masks)
+          return [left, right]
+        end
       end
       nil
     end
@@ -613,18 +634,6 @@ module Branchproof
       end
     end
 
-    def evaluate(node, values)
-      type = id(node, :type).to_sym
-      return values[id(node, :index)] if type == :atom
-      return !evaluate(node.fetch(:child), values) if type == :not
-
-      left = evaluate(node[:left], values)
-      return left if id(node, :type).to_sym == :and && !left
-      return left if id(node, :type).to_sym == :or && left
-
-      evaluate(node[:right], values)
-    end
-
     def evaluate_with_trace(node, values, trace = [])
       type = id(node, :type).to_sym
       if type == :atom
@@ -654,13 +663,15 @@ module Branchproof
     end
 
     def values_for(vector)
+      return @values_cache[vector] if @values_cache.key?(vector)
+
       raw = vector[:values] || vector["values"]
       raise ArgumentError, "observation must contain booleans or nil" unless raw.is_a?(Array)
       unless raw.all? { |value| value.nil? || value == true || value == false }
         raise ArgumentError, "observation must contain booleans or nil"
       end
 
-      raw
+      @values_cache[vector] = raw
     end
 
     def outcome(vector) = vector[:outcome].nil? ? vector["outcome"] : vector[:outcome]

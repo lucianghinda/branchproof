@@ -20,10 +20,16 @@ module Branchproof
       raise ArgumentError, "run_id is required" if run_id.nil? || run_id.to_s.empty?
 
       @inventory = inventory
+      @decisions_by_id = Array(fetch_value(@inventory, :decisions)).each_with_object({}) do |raw, index|
+        decision = symbolize(raw)
+        index[decision[:id].to_s] = decision
+      end
       @limits = normalize_limits(limits)
       @run_id = run_id.to_s
       @run_ids = [@run_id]
       @vectors = {}
+      @vector_counts_by_decision = Hash.new(0)
+      @owner_associations_count = 0
       @tests = {}
       @run_payloads = {}
       @abort_counts = Hash.new(0)
@@ -68,12 +74,13 @@ module Branchproof
       end
       decision_id = value[:decision_id].to_s
       vector_values = condition_values(decision_id, value[:observations])
-      if new_vector?(decision_id, vector_values,
-                     value[:outcome]) && vector_count(decision_id) >= @limits[:vectors_per_decision]
+      outcome = value[:outcome] ? true : false
+      vector_id = Branchproof::Records.id([decision_id, vector_values, outcome])
+      if new_vector?(vector_id) && vector_count(decision_id) >= @limits[:vectors_per_decision]
         @limited = true
         return status("limited", "vectors_per_decision reached")
       end
-      vector = vector_for(decision_id, vector_values, value[:outcome] ? true : false)
+      vector = vector_for(decision_id, vector_values, outcome, vector_id)
       new_owner = if value[:test_id]
                     !vector[:test_ids].include?(value[:test_id].to_s)
                   else
@@ -89,6 +96,7 @@ module Branchproof
       phase_map << value[:phase].to_s if phase_map && !phase_map.include?(value[:phase].to_s)
       vector[:unattributed_count] += 1 unless value[:test_id]
       vector[:count] += 1
+      @owner_associations_count += 1 if new_owner
       if value[:test_id] && @tests.key?(value[:test_id].to_s)
         test = @tests[value[:test_id].to_s]
         phase = value[:phase].to_s
@@ -194,18 +202,17 @@ module Branchproof
     def validate_execution(value)
       return "execution must be a hash" unless value.is_a?(Hash)
 
-      %i[run_id execution_id decision_id test_id phase owner observations outcome status].each do |key|
+      %i[run_id decision_id test_id phase observations outcome status].each do |key|
         return "missing #{key}" unless value.key?(key)
       end
       return "run mismatch" unless value[:run_id].to_s == @run_id
-      return "invalid owner" unless value[:owner].is_a?(Hash)
       return "invalid status" unless %w[completed aborted invalid].include?(value[:status].to_s)
       return "invalid phase" unless %w[setup body teardown suite unattributed].include?(value[:phase].to_s)
       return "invalid observations" unless value[:observations].is_a?(Array) && value[:observations].all? do |pair|
         pair.is_a?(Array) && pair.length == 2 && pair[0].is_a?(Integer) && [true, false].include?(pair[1])
       end
 
-      decision = decisions.find { |d| d[:id].to_s == value[:decision_id].to_s }
+      decision = @decisions_by_id[value[:decision_id].to_s]
       return "unknown decision" unless decision
 
       dimensions = alternative_decision?(decision) ? Array(decision[:alternatives]) : Array(decision[:conditions])
@@ -224,7 +231,7 @@ module Branchproof
     def valid_trace?(decision, observations, outcome)
       return valid_alternative_trace?(decision, observations, outcome) if alternative_decision?(decision)
 
-      tree = symbolize(decision[:tree])
+      tree = decision[:tree]
       unless tree
         return observations.map(&:first) == observations.map(&:first).sort &&
                (outcome ? true : false) == evaluate_fallback(observations)
@@ -239,7 +246,6 @@ module Branchproof
     end
 
     def replay_tree(node, observations, cursor)
-      node = symbolize(node)
       type = node[:type].to_s
       if type == "atom"
         pair = observations[cursor]
@@ -280,26 +286,42 @@ module Branchproof
       values
     end
 
-    def vector_for(decision_id, values, outcome)
-      id = Branchproof::Records.id([decision_id, values, outcome])
-      @vectors[id] ||= { id: id, decision_id: decision_id, values: values.dup, outcome: outcome,
-                         test_ids: [], phases_by_test: {}, unattributed_count: 0, count: 0 }
+    def vector_for(decision_id, values, outcome, id)
+      existing = @vectors[id]
+      return existing if existing
+
+      vector = { id: id, decision_id: decision_id, values: values.dup, outcome: outcome,
+                 test_ids: [], phases_by_test: {}, unattributed_count: 0, count: 0 }
+      @vectors[id] = vector
+      @vector_counts_by_decision[decision_id] += 1
+      vector
     end
 
     def merge_vector(raw)
       vector = symbolize(raw)
-      existing = @vectors[vector[:id].to_s]
+      id = vector[:id].to_s
+      existing = @vectors[id]
       if existing
-        existing[:test_ids] |= Array(vector[:test_ids]).map(&:to_s)
+        new_test_ids = Array(vector[:test_ids]).map(&:to_s) - existing[:test_ids]
+        existing[:test_ids] |= new_test_ids
         vector.fetch(:phases_by_test, {}).each do |test, phases|
           existing[:phases_by_test][test.to_s] = (existing[:phases_by_test][test.to_s] || []) | phases
         end
+        was_unattributed = existing[:unattributed_count].positive?
         existing[:count] += vector[:count].to_i
         existing[:unattributed_count] += vector[:unattributed_count].to_i
+        @owner_associations_count += new_test_ids.length
+        @owner_associations_count += 1 if !was_unattributed && existing[:unattributed_count].positive?
       else
-        @vectors[vector[:id].to_s] = { id: vector[:id].to_s, decision_id: vector[:decision_id].to_s,
-                                       values: Array(vector[:values]).dup, outcome: !!vector[:outcome], test_ids: Array(vector[:test_ids]).map(&:to_s),
-                                       phases_by_test: vector.fetch(:phases_by_test, {}).transform_keys(&:to_s), unattributed_count: vector[:unattributed_count].to_i, count: vector[:count].to_i }
+        decision_id = vector[:decision_id].to_s
+        test_ids = Array(vector[:test_ids]).map(&:to_s)
+        unattributed_count = vector[:unattributed_count].to_i
+        @vectors[id] = { id: id, decision_id: decision_id,
+                         values: Array(vector[:values]).dup, outcome: !!vector[:outcome], test_ids: test_ids,
+                         phases_by_test: vector.fetch(:phases_by_test, {}).transform_keys(&:to_s), unattributed_count: unattributed_count, count: vector[:count].to_i }
+        @vector_counts_by_decision[decision_id] += 1
+        @owner_associations_count += test_ids.length
+        @owner_associations_count += 1 if unattributed_count.positive?
       end
     end
 
@@ -314,14 +336,14 @@ module Branchproof
     end
 
     def condition_shapes
-      decisions.to_h do |decision|
+      @decisions_by_id.transform_values do |decision|
         shape = { conditions: Array(decision[:conditions]).map { |condition| symbolize(condition) },
                   tree: symbolize(decision[:tree]) }
         if alternative_decision?(decision)
           shape[:kind] = decision[:kind].to_s
           shape[:alternatives] = Array(decision[:alternatives]).map { |alternative| symbolize(alternative) }
         end
-        [decision[:id].to_s, shape]
+        shape
       end
     end
 
@@ -348,7 +370,7 @@ module Branchproof
         vector = symbolize(raw)
         return "invalid vector" unless vector[:id] && vector[:decision_id] && vector[:values].is_a?(Array)
 
-        decision = decisions.find { |item| item[:id].to_s == vector[:decision_id].to_s }
+        decision = @decisions_by_id[vector[:decision_id].to_s]
         return "unknown decision" unless decision
 
         expected_values = decision_dimension_count(decision)
@@ -396,7 +418,7 @@ module Branchproof
     end
 
     def decision_dimension_count(decision_or_id)
-      decision = decision_or_id.is_a?(Hash) ? decision_or_id : decisions.find { |item| item[:id].to_s == decision_or_id.to_s }
+      decision = decision_or_id.is_a?(Hash) ? decision_or_id : @decisions_by_id[decision_or_id.to_s]
       return 0 unless decision
 
       alternative_decision?(decision) ? Array(decision[:alternatives]).length : Array(decision[:conditions]).length
@@ -420,16 +442,11 @@ module Branchproof
       end
     end
 
-    def decisions = Array(fetch_value(@inventory, :decisions)).map { symbolize(_1) }
-    def decision_conditions(id) = (decisions.find { |d| d[:id].to_s == id.to_s } || {}).fetch(:conditions, [])
-    def vector_count(id) = @vectors.values.count { |v| v[:decision_id] == id.to_s }
-    def new_vector?(id, values, outcome) = !@vectors.key?(Branchproof::Records.id([id, values, outcome]))
+    def decision_conditions(id) = (@decisions_by_id[id.to_s] || {}).fetch(:conditions, [])
+    def vector_count(id) = @vector_counts_by_decision[id.to_s]
+    def new_vector?(id) = !@vectors.key?(id)
 
-    def owner_associations
-      @vectors.values.sum do |v|
-        v[:test_ids].length + (v[:unattributed_count].positive? ? 1 : 0)
-      end
-    end
+    def owner_associations = @owner_associations_count
 
     def incoming_owner_associations(incoming)
       owners = @vectors.each_with_object({}) do |(_id, vector), result|
@@ -500,7 +517,8 @@ module Branchproof
     def capture_state
       { vectors: deep_dup(@vectors), tests: deep_dup(@tests), run_ids: @run_ids.dup,
         run_payloads: @run_payloads.dup, diagnostics: deep_dup(@diagnostics),
-        abort_counts: @abort_counts.dup, limited: @limited, attribution_complete: @attribution_complete }
+        abort_counts: @abort_counts.dup, limited: @limited, attribution_complete: @attribution_complete,
+        vector_counts_by_decision: @vector_counts_by_decision.dup, owner_associations_count: @owner_associations_count }
     end
 
     def restore_state(state)
@@ -510,6 +528,8 @@ module Branchproof
       @run_payloads = state[:run_payloads]
       @diagnostics = state[:diagnostics]
       @abort_counts = state[:abort_counts]
+      @vector_counts_by_decision = state[:vector_counts_by_decision]
+      @owner_associations_count = state[:owner_associations_count]
       @limited = state[:limited]
       @attribution_complete = state[:attribution_complete]
     end

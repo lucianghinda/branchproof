@@ -5,8 +5,6 @@ require "digest"
 module Branchproof
   # Owns the process-local CRuby compilation hook when the VM exposes it.
   class Loader
-    STATUS_KEYS = %i[status reason].freeze
-
     def initialize(inventory:, instrumenter:)
       @inventory = inventory
       @instrumenter = instrumenter
@@ -41,7 +39,7 @@ module Branchproof
     def load_iseq(path)
       return nil unless @installed
 
-      unit = @units[canonical(path)]
+      unit = @units[path] || @units[canonical(path)]
       return nil unless unit
 
       bytes = File.binread(path)
@@ -60,6 +58,8 @@ module Branchproof
         end
         return nil
       end
+
+      return rewritten[:iseq] if reusable_iseq?(unit, rewritten)
 
       RubyVM::InstructionSequence.compile(
         rewritten[:bytes], unit[:real_path] || canonical(path), unit[:real_path] || canonical(path), 1,
@@ -108,13 +108,14 @@ module Branchproof
     end
 
     def preloaded_target?
-      @units.keys.any? { |path| $LOADED_FEATURES.any? { |feature| canonical(feature) == path } }
+      loaded = $LOADED_FEATURES.each_with_object(Set.new) { |feature, set| set << canonical(feature) }
+      @units.keys.any? { |path| loaded.include?(canonical(path)) }
     end
 
     def index_units(inventory)
       Array(inventory[:source_units]).each_with_object({}) do |unit, index|
-        path = unit[:absolute_path] || unit[:real_path]
-        index[canonical(path)] = unit if path
+        index[unit[:absolute_path]] = unit if unit[:absolute_path]
+        index[unit[:real_path]] = unit if unit[:real_path]
       end
     end
 
@@ -134,6 +135,17 @@ module Branchproof
 
     def compile_options(unit)
       unit[:compile_options] || {}
+    end
+
+    # The instrumenter already compiled the rewritten source once to validate it.
+    # Reuse that instruction sequence instead of compiling again, but only when
+    # it was built with the exact file/path/options this loader would use:
+    # real_path present and equal to absolute_path (so the instrumenter's file
+    # and path arguments match what we pass below), and no custom compile
+    # options (the instrumenter compiles without any).
+    def reusable_iseq?(unit, rewritten)
+      rewritten[:iseq] && compile_options(unit).empty? &&
+        unit[:real_path] && unit[:absolute_path] == unit[:real_path]
     end
 
     def status(state, reason)

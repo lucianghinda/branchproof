@@ -27,7 +27,10 @@ module Branchproof
       before_conditions = condition_map(@before)
       after_conditions = condition_map(@after)
       matched_ids = before_conditions.keys & after_conditions.keys
-      matched_ids.select! { |id| compatible_condition?(before_conditions[id], after_conditions[id], changed_paths) }
+      matched_ids.select! do |id|
+        compatible_condition?(before_conditions[id], after_conditions[id], changed_paths, before_sources,
+                              after_sources)
+      end
       changes = matched_ids.filter_map { |id| condition_change(id, before_conditions[id], after_conditions[id]) }
       reasons = comparability_reasons(changed_paths)
       reasons.concat(metadata_requirements)
@@ -127,13 +130,13 @@ module Branchproof
       end
     end
 
-    def compatible_condition?(before, after, changed_paths)
+    def compatible_condition?(before, after, changed_paths, before_sources, after_sources)
       before_path = source_path(@before, before[:decision])
       after_path = source_path(@after, after[:decision])
       return false if before_path.nil? || changed_paths.include?(before_path) || before_path != after_path
 
-      before_digest = digest(sources(@before)[before_path])
-      after_digest = digest(sources(@after)[after_path])
+      before_digest = digest(before_sources[before_path])
+      after_digest = digest(after_sources[after_path])
       return false unless before_digest && before_digest == after_digest
 
       %i[index expression byte_start byte_length].all? do |key|
@@ -159,7 +162,6 @@ module Branchproof
              else
                "unknown"
              end
-      return if kind.nil?
 
       decision = after[:decision]
       source_path = source_path(@after, decision)
@@ -188,11 +190,11 @@ module Branchproof
         results = Array(value(value(document, :analysis), :decisions)).flat_map do |decision|
           Array(value(decision, :condition_results))
         end
+        vectors = Array(value(value(document, :observations), :vectors))
         { conditions: index.conditions.to_h { |row| [row[:id].to_s, row] }, tests: tests, test_rows: rows,
           test_keys: keys, key_owners: keys.keys.group_by { |id| keys[id] },
-          vectors: Array(value(value(document, :observations), :vectors)).to_h do |vector|
-            [value(vector, :id).to_s, vector]
-          end,
+          vectors: vectors.to_h { |vector| [value(vector, :id).to_s, vector] },
+          vectors_by_decision: vectors.group_by { |vector| value(vector, :decision_id).to_s },
           decisions: Array(value(value(document, :source_inventory), :decisions)).to_h do |decision|
             [value(decision, :id).to_s, decision]
           end,
@@ -211,10 +213,9 @@ module Branchproof
           key = before[:test_keys][id.to_s]
           unique = key && before[:key_owners][key]&.length == 1 && after[:key_owners][key]&.length == 1
           current_id = unique ? after[:key_owners][key].first : nil
-          observed = current_id && after[:vectors].values.any? do |current|
-            value(current, :decision_id) == value(decision, :id) &&
-              value(current,
-                    :values) == value(vector, :values) && value(current, :outcome) == value(vector, :outcome) &&
+          decision_vectors = after[:vectors_by_decision][value(decision, :id).to_s]
+          observed = current_id && Array(decision_vectors).any? do |current|
+            value(current, :values) == value(vector, :values) && value(current, :outcome) == value(vector, :outcome) &&
               Array(value(current, :test_ids)).include?(current_id)
           end
           test_status = current_id ? "present in current run" : "not observed in current run (no unique test match)"
@@ -264,9 +265,7 @@ module Branchproof
     def comparability_reasons(changed_paths)
       reasons = []
       reasons << "source files changed: #{changed_paths.sort.join(", ")}" unless changed_paths.empty?
-      %i[criterion_version project_kind runner_args source_patterns test_patterns limits runtime].each do |key|
-        next if key == :criterion_version
-
+      %i[project_kind runner_args source_patterns test_patterns limits runtime].each do |key|
         left = metadata(@before, key)
         right = metadata(@after, key)
         if key == :runner_args

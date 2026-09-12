@@ -140,15 +140,18 @@ module Branchproof
     end
 
     def greedy(ids, candidates, target)
+      positions = ids.each_with_index.to_h
       chosen = []
+      chosen_set = Set.new
       covered = Set.new
       until covered >= target
-        available = ids.reject { |candidate| chosen.include?(candidate) }
-        id = available.max_by { |candidate| [(candidates[candidate] - covered).length, -ids.index(candidate)] }
+        available = ids.reject { |candidate| chosen_set.include?(candidate) }
+        id = available.max_by { |candidate| [(candidates[candidate] - covered).length, -positions[candidate]] }
         break unless id
         break if (candidates[id] - covered).empty?
 
         chosen << id
+        chosen_set << id
         covered |= candidates[id]
       end
       chosen.sort.reverse_each do |candidate|
@@ -159,16 +162,20 @@ module Branchproof
       chosen.sort
     end
 
+    # For each target obligation, how many candidates cover it. An obligation
+    # covered by exactly one candidate makes that candidate irreplaceable.
+    def coverage_counts(candidates)
+      candidates.each_value.with_object(Hash.new(0)) do |signs, counts|
+        signs.each { |obligation| counts[obligation] += 1 }
+      end
+    end
+
     def result(objective, scope, target, selected, status, lower, visited, reasons, candidates = {})
-      necessary = candidates.keys.reject do |candidate|
-        others = candidates.reject { |key, _| key == candidate }.values.reduce(Set.new, :|)
-        covers?(others, target)
-      end
-      interchangeable = candidates.keys.select do |candidate|
-        candidates.fetch(candidate).intersect?(target) && candidates.reject do |key, _|
-          key == candidate
-        end.values.reduce(Set.new, :|) >= target
-      end
+      counts = coverage_counts(candidates)
+      necessary = candidates.select { |_, signs| signs.any? { |obligation| counts[obligation] == 1 } }.keys
+      interchangeable = candidates.select do |_, signs|
+        !signs.empty? && signs.none? { |obligation| counts[obligation] == 1 }
+      end.keys
       { objective: objective, scope_decision_ids: scope,
         target_obligations: target.to_a.sort_by do |decision, index, sign|
           [decision.to_s, index.to_i, sign ? 1 : 0]
@@ -188,8 +195,6 @@ module Branchproof
       value = id(@limits, key)
       value&.to_i&.positive? ? value.to_i : default
     end
-
-    def covers?(set, target) = set >= target
 
     def value(vector, index) = (vector[:values] || vector["values"])[index]
     def id(record, key) = record[key].nil? ? record[key.to_s] : record[key]

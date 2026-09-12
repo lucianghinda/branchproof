@@ -6,7 +6,7 @@ require "pathname"
 module Branchproof
   # Terminal renderings grouped around conditions or tests.
   class FocusedReport
-    def initialize(document:, view:, level:, missing_only: false)
+    def initialize(document:, view:, level:, missing_only: false, coordinator: nil)
       @document = document || {}
       @view = view.to_sym
       raise ArgumentError, "view must be :conditions or :tests" unless %i[conditions tests].include?(@view)
@@ -15,7 +15,10 @@ module Branchproof
       @missing_only = missing_only ? true : false
       @index = CoverageIndex.new(document: @document)
       @tests = @index.tests.to_h { |test| [test[:id].to_s, test] }
-      @coordinator = Report.from_document(document: @document, level: @level)
+      @test_name_counts = @index.tests.each_with_object(Hash.new(0)) do |test, counts|
+        counts[[test[:name], test[:relative_path], test[:line]]] += 1
+      end
+      @coordinator = coordinator || Report.from_document(document: @document, level: @level)
     end
 
     def render
@@ -271,9 +274,7 @@ module Branchproof
       return id.to_s unless test
 
       label = "#{test[:name]} (#{location(test[:relative_path], test[:line])})"
-      duplicates = @index.tests.count do |row|
-        [row[:name], row[:relative_path], row[:line]] == [test[:name], test[:relative_path], test[:line]]
-      end
+      duplicates = @test_name_counts[[test[:name], test[:relative_path], test[:line]]]
       duplicates > 1 ? "#{label} [#{id}]" : label
     end
 

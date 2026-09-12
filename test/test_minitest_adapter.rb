@@ -8,12 +8,6 @@ class TestMinitestAdapter < Minitest::Test
     def context(test_id:, phase:) = contexts << [test_id, phase]
   end
 
-  def test_capabilities_declare_serial_phases
-    capabilities = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([])).capabilities
-    assert_equal({ serial: true, phases: true }, capabilities)
-    assert_predicate capabilities, :frozen?
-  end
-
   def test_parallel_runner_tokens_are_rejected
     adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
     error = assert_raises(ArgumentError) do

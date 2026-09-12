@@ -10,6 +10,8 @@ module Branchproof
   module Runtime
     extend RuntimeFlow
 
+    FRAME_STATE_KEY = :branchproof_runtime_frame_state
+
     class << self
       def boot(evidence:)
         return nil if defined?(@booted) && @booted && @evidence.equal?(evidence) && Process.pid == @process_id
@@ -17,8 +19,6 @@ module Branchproof
         @evidence = evidence
         @run_id = evidence.respond_to?(:run_id) ? evidence.run_id.to_s : SecureRandom.hex(16)
         @process_id = Process.pid
-        @frames = {}
-        @contexts = {}
         @diagnostics = []
         @storage_disabled = false
         @booted = true
@@ -26,9 +26,8 @@ module Branchproof
       end
 
       def enter(decision_id)
-        state[:frames] << { decision_id: String(decision_id), context: state[:context]&.dup,
-                            observations: [], outcome: nil, finished: false,
-                            execution_id: SecureRandom.hex(12) }
+        state[:frames] << { decision_id: decision_id, context: state[:context]&.dup,
+                            observations: [], outcome: nil, finished: false }
         nil
       end
 
@@ -36,7 +35,7 @@ module Branchproof
         frame = current_frame(decision_id)
         if frame
           truth = value ? true : false
-          frame[:observations] << [Integer(index), truth]
+          frame[:observations] << [index, truth]
         end
         value
       end
@@ -51,9 +50,10 @@ module Branchproof
       end
 
       def leave(decision_id)
+        detect_fork
         frames = state[:frames]
         frame = frames.pop
-        unless frame && frame[:decision_id] == String(decision_id)
+        unless frame && frame[:decision_id] == decision_id
           latch("runtime_frame_mismatch", "decision frame stack is not balanced")
           cleanup_state
           return nil
@@ -62,12 +62,10 @@ module Branchproof
 
         execution = {
           run_id: @run_id,
-          execution_id: frame[:execution_id],
           decision_id: frame[:decision_id],
           test_id: frame[:context]&.fetch(:test_id, nil),
           phase: frame[:context]&.fetch(:phase, "unattributed") || "unattributed",
-          owner: owner_tuple,
-          observations: frame[:observations].map(&:dup),
+          observations: frame[:observations],
           outcome: frame[:finished] ? frame[:outcome] : nil,
           status: frame[:finished] ? "completed" : "aborted"
         }
@@ -120,36 +118,30 @@ module Branchproof
       private
 
       def state
-        @frames ||= {}
-        if @process_id && Process.pid != @process_id
-          @process_id = Process.pid
-          @run_id = SecureRandom.hex(16)
-          @frames = {}
-          @diagnostics = [{ code: "forked_process", severity: "error",
-                            message: "runtime process identity changed; evidence storage disabled",
-                            source_id: nil, decision_id: nil, execution_id: nil, test_id: nil, details: {} }]
-          @storage_disabled = true
-        end
-        key = [Process.pid, Thread.current, Fiber.current]
-        @frames[key] ||= { frames: [], context: nil }
+        Thread.current[FRAME_STATE_KEY] ||= { frames: [], context: nil }
       end
 
       def cleanup_state
-        key = [Process.pid, Thread.current, Fiber.current]
-        current = @frames[key]
-        @frames.delete(key) if current && current[:frames].empty? && current[:context].nil?
+        current = Thread.current[FRAME_STATE_KEY]
+        Thread.current[FRAME_STATE_KEY] = nil if current && current[:frames].empty? && current[:context].nil?
+      end
+
+      def detect_fork
+        return unless @process_id && Process.pid != @process_id
+
+        @process_id = Process.pid
+        @diagnostics = [{ code: "forked_process", severity: "error",
+                          message: "runtime process identity changed; evidence storage disabled",
+                          source_id: nil, decision_id: nil, execution_id: nil, test_id: nil, details: {} }]
+        @storage_disabled = true
       end
 
       def current_frame(decision_id)
         frame = state[:frames].last
-        return frame if frame && frame[:decision_id] == String(decision_id)
+        return frame if frame && frame[:decision_id] == decision_id
 
         latch("runtime_frame_mismatch", "no active frame for #{decision_id}") if frame
         nil
-      end
-
-      def owner_tuple
-        { process_id: Process.pid, thread_id: Thread.current.object_id, fiber_id: Fiber.current.object_id }
       end
 
       def safely_record(execution)

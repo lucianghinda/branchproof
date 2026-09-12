@@ -1,31 +1,48 @@
 # frozen_string_literal: true
 
+require "prism"
+
 module Branchproof
   # Discovers control-flow expressions whose truth is not represented by an
   # ordinary Prism IfNode.  The records intentionally contain byte ranges and
   # scalar metadata only; Prism nodes must not escape the source pass.
   module DecisionSyntax
-    OR_WRITE_NODE_NAMES = %w[
-      CallOrWriteNode ClassVariableOrWriteNode ConstantOrWriteNode
-      ConstantPathOrWriteNode GlobalVariableOrWriteNode IndexOrWriteNode
-      InstanceVariableOrWriteNode LocalVariableOrWriteNode
-    ].freeze
+    # Some of these node classes were added in later Prism 1.x releases, so
+    # look them up by name and skip any that this Prism version lacks.
+    def self.node_classes(*names)
+      names.filter_map { |name| Prism.const_get(name) if Prism.const_defined?(name) }.to_set.freeze
+    end
+    private_class_method :node_classes
 
-    AND_WRITE_NODE_NAMES = %w[
-      CallAndWriteNode ClassVariableAndWriteNode ConstantAndWriteNode
-      ConstantPathAndWriteNode GlobalVariableAndWriteNode IndexAndWriteNode
-      InstanceVariableAndWriteNode LocalVariableAndWriteNode
-    ].freeze
+    OR_WRITE_NODE_CLASSES = node_classes(
+      :CallOrWriteNode, :ClassVariableOrWriteNode, :ConstantOrWriteNode,
+      :ConstantPathOrWriteNode, :GlobalVariableOrWriteNode, :IndexOrWriteNode,
+      :InstanceVariableOrWriteNode, :LocalVariableOrWriteNode
+    )
 
-    def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
-      nodes = []
-      walk(program) { |node| nodes << node if flow_decision_node?(node) }
+    AND_WRITE_NODE_CLASSES = node_classes(
+      :CallAndWriteNode, :ClassVariableAndWriteNode, :ConstantAndWriteNode,
+      :ConstantPathAndWriteNode, :GlobalVariableAndWriteNode, :IndexAndWriteNode,
+      :InstanceVariableAndWriteNode, :LocalVariableAndWriteNode
+    )
+
+    # nodes: flow-decision nodes already collected by a caller's own AST walk
+    # (Source merges this discovery into one pass). Falls back to its own
+    # walk when nothing is passed in, so this method still works standalone.
+    def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8", nodes: nil)
+      nodes ||= collect_flow_decision_nodes(program)
       nodes.sort_by { |node| [node.location.start_offset, node.location.length] }.map do |node|
         build_flow_decision(node, bytes, source_id, file_reasons, encoding)
       end
     end
 
     private
+
+    def collect_flow_decision_nodes(program)
+      nodes = []
+      walk(program) { |node| nodes << node if flow_decision_node?(node) }
+      nodes
+    end
 
     def flow_decision_node?(node)
       return true if node.is_a?(Prism::CaseNode) && node.predicate
@@ -38,8 +55,7 @@ module Branchproof
     end
 
     def assignment_node?(node)
-      OR_WRITE_NODE_NAMES.include?(node.class.name.split("::").last) ||
-        AND_WRITE_NODE_NAMES.include?(node.class.name.split("::").last)
+      OR_WRITE_NODE_CLASSES.include?(node.class) || AND_WRITE_NODE_CLASSES.include?(node.class)
     end
 
     def build_flow_decision(node, bytes, source_id, file_reasons, encoding)
