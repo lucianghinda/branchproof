@@ -11,7 +11,12 @@ require "set"
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
   class SavedReport
-    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2].freeze
+    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3].freeze
+    STRICT_FLOW_SCHEMAS = %w[1.2 1.3].freeze
+    DECISION_TABLE_STATUSES = %w[calculated not_calculated].freeze
+    RULE_CONDITION_VALUES = %w[true false dont_care].freeze
+    RULE_COVERAGE_STATUSES = %w[covered missing excluded].freeze
+    RULE_REACHABILITY_STATUSES = %w[observed unknown statically_impossible].freeze
     DECISION_KINDS = %w[boolean implicit multiway pattern exception].freeze
     NONBOOLEAN_KINDS = (DECISION_KINDS - ["boolean"]).freeze
     CRITERION_VERSION = "masking_occurrence_v1"
@@ -211,6 +216,8 @@ module Branchproof
         if nonboolean_kind?(decision_kind(inventory_decision))
           fail_with("nonboolean condition results must be empty") unless results.empty?
           validate_nonboolean_analysis(decision, inventory_decision)
+        elsif decision.key?("decision_table")
+          validate_decision_table(decision["decision_table"], inventory_decision)
         end
         seen_conditions = {}
         results.each do |result|
@@ -230,6 +237,67 @@ module Branchproof
           fail_with("canonical pair must reference vectors") unless valid_pair
         end
       end
+    end
+
+    # The persisted decision table must describe the same decision it was
+    # derived from, so a saved report can be reported on and compared offline.
+    def validate_decision_table(table, decision)
+      fail_with("decision_table must be an object") unless hash_with_string_keys?(table)
+      fail_with("decision_table status is invalid") unless DECISION_TABLE_STATUSES.include?(table["status"])
+      %w[schema_version constraint_analysis_version].each do |field|
+        fail_with("decision_table #{field} must be an integer") unless table[field].is_a?(Integer)
+      end
+      validate_string_field(table, "reason", nullable: true)
+      validate_string_field(table, "coverage_status", nullable: true)
+      %w[generated_rules impossible_rules required_rules covered_rules missing_rules].each do |field|
+        validate_integer_field(table, field)
+      end
+      rules = table["rules"]
+      fail_with("decision_table rules must be an array") unless rules.is_a?(Array)
+      unique_ids(rules, "id", "decision table rule")
+      condition_count = decision["conditions"].length
+      rules.each { |rule| validate_decision_table_rule(rule, decision, condition_count) }
+      validate_decision_table_counts(table, rules)
+    end
+
+    def validate_decision_table_rule(rule, decision, condition_count)
+      fail_with("invalid decision table rule") unless hash_with_string_keys?(rule)
+      validate_string_field(rule, "label")
+      validate_integer_field(rule, "index")
+      conditions = rule["conditions"]
+      valid = conditions.is_a?(Array) && conditions.length == condition_count &&
+              conditions.all? { |value| RULE_CONDITION_VALUES.include?(value) }
+      fail_with("decision table rule conditions do not match the decision") unless valid
+      fail_with("decision table rule outcome must be boolean") unless [true, false].include?(rule["outcome"])
+      fail_with("invalid decision table rule coverage") unless RULE_COVERAGE_STATUSES.include?(rule["coverage"])
+      unless RULE_REACHABILITY_STATUSES.include?(rule["reachability"])
+        fail_with("invalid decision table rule reachability")
+      end
+      validate_string_field(rule, "reachability_reason", nullable: true)
+      if rule["reachability"] == "statically_impossible" && !rule["reachability_reason"].is_a?(String)
+        fail_with("statically impossible rule requires a reason code")
+      end
+      fail_with("decision table rule tests must be strings") unless strings?(rule["tests"])
+      fail_with("unknown decision table rule test") unless rule["tests"].all? { |id| @test_id_set.include?(id) }
+      fail_with("decision table rule vector_ids must be strings") unless strings?(rule["vector_ids"])
+      fail_with("unknown decision table rule vector") unless rule["vector_ids"].all? do |id|
+        @vector_decision_by_id[id] == decision["id"]
+      end
+      validate_integer_field(rule, "unattributed_count")
+      return unless rule["coverage"] == "covered" && rule["vector_ids"].empty?
+
+      fail_with("covered decision table rule requires evidence")
+    end
+
+    def validate_decision_table_counts(table, rules)
+      return unless table["status"] == "calculated"
+
+      fail_with("decision_table generated_rules mismatch") unless table["generated_rules"] == rules.length
+      impossible = rules.count { |rule| rule["coverage"] == "excluded" }
+      covered = rules.count { |rule| rule["coverage"] == "covered" }
+      fail_with("decision_table impossible_rules mismatch") unless table["impossible_rules"] == impossible
+      fail_with("decision_table required_rules mismatch") unless table["required_rules"] == rules.length - impossible
+      fail_with("decision_table covered_rules mismatch") unless table["covered_rules"] == covered
     end
 
     def decision_kind(decision)
@@ -419,7 +487,7 @@ module Branchproof
     end
 
     def strict_flow_decision?(decision)
-      @schema_version == "1.2" &&
+      STRICT_FLOW_SCHEMAS.include?(@schema_version) &&
         nonboolean_kind?(decision_kind(decision)) &&
         decision["support_status"].to_s.upcase != "UNSUPPORTED"
     end

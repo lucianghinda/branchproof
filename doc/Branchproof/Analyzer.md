@@ -22,5 +22,5 @@ Not documented.
 ### `missing(decision_id:, condition_index:)` <a id="method-i-missing"></a> <a id="missing-instance_method"></a>
 Not documented.
 
-### `pair?(decision_id:, condition_index:, left:, right:)` <a id="method-i-pair-3F"></a> <a id="pair?-instance_method"></a>
+### `pair?(decision_id:, condition_index:, left:, right:, masks: = nil)` <a id="method-i-pair-3F"></a> <a id="pair?-instance_method"></a>
 - **@return** [Boolean]

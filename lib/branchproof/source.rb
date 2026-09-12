@@ -4,6 +4,7 @@ require "digest"
 require "pathname"
 require "prism"
 require_relative "decision_syntax"
+require_relative "constraints"
 
 module Branchproof
   # Inventories supported condition and decision occurrences from Ruby files.
@@ -267,9 +268,11 @@ module Branchproof
         expression = text_value(leaf.delete(:_expression), "UTF-8")
         location = leaf.delete(:_location)
         literal_truth = leaf.delete(:_literal_truth)
+        constraint = leaf.delete(:_constraint)
         Records.build(id: nil, index: index, byte_start: location.start_offset, byte_length: location.length,
                       line: location.start_line, column: location.start_column,
-                      expression: expression, literal_truth: literal_truth, coupling: "unknown")
+                      expression: expression, literal_truth: literal_truth, coupling: "unknown",
+                      constraint: constraint)
       end
       decision_id = Records.decision_id(source_id: source_id, context: context, byte_start: start_offset,
                                         byte_length: length, tree: tree)
@@ -344,6 +347,7 @@ module Branchproof
       leaf = {
         _expression: bytes.byteslice(location.start_offset, location.length), _location: location,
         _literal_truth: literal_truth(node),
+        _constraint: Constraints.for_node(node),
         _opaque_range: if node.is_a?(Prism::CallNode) && node.name == :!
                          { start: location.start_offset, length: location.length }
                        end

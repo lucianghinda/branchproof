@@ -15,6 +15,9 @@ require "time"
 module Branchproof
   # Coordinates source inventory, isolated test execution, and report output.
   class CLI
+    VIEWS = { "decisions" => :decisions, "conditions" => :conditions, "tests" => :tests,
+              "decision-tables" => :decision_tables, "decision_tables" => :decision_tables }.freeze
+
     def initialize(stdout:, stderr:)
       @stdout = stdout
       @stderr = stderr
@@ -90,10 +93,10 @@ module Branchproof
       @stdout.write(<<~HELP)
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails]
-            [--view decisions|conditions|tests] [--level 1|2|3] [--missing-only]
+            [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only]
             [--format terminal|json] [--output PATH] [--limits PATH] [-- RUNNER_ARGS]
-          branchproof report SNAPSHOT [--view decisions|conditions|tests] [--level 1|2|3]
-            [--missing-only] [--format terminal|json] [--output PATH]
+          branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
+            [--level 1|2|3] [--missing-only] [--format terminal|json] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
         JSON always contains full evidence; --view requires terminal output.
@@ -102,9 +105,10 @@ module Branchproof
     end
 
     def parse_view(view)
-      raise ArgumentError, "view must be decisions, conditions, or tests" unless %w[decisions conditions tests].include?(view)
+      resolved = VIEWS[view.to_s]
+      raise ArgumentError, "view must be decisions, conditions, tests, or decision-tables" unless resolved
 
-      view.to_sym
+      resolved
     end
 
     def validate_view!(options)

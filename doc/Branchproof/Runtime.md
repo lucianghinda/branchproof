@@ -9,6 +9,10 @@ Process-local execution recorder. It deliberately never coerces or stores
 application values: Ruby's conditional expression is used for truthiness.
 Captures condition evaluations while preserving application values.
 
+## Constants
+### `FRAME_STATE_KEY` <a id="constant-FRAME_STATE_KEY"></a> <a id="FRAME_STATE_KEY-constant"></a>
+Not documented.
+
 ## Public Class Methods
 ### `boot(evidence:)` <a id="method-c-boot"></a> <a id="boot-class_method"></a>
 Not documented.

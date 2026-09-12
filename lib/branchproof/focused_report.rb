@@ -6,10 +6,14 @@ require "pathname"
 module Branchproof
   # Terminal renderings grouped around conditions or tests.
   class FocusedReport
+    DECISION_TABLE_LABELS = { "true" => "T", "false" => "F", "dont_care" => "-" }.freeze
+
     def initialize(document:, view:, level:, missing_only: false, coordinator: nil)
       @document = document || {}
       @view = view.to_sym
-      raise ArgumentError, "view must be :conditions or :tests" unless %i[conditions tests].include?(@view)
+      unless %i[conditions tests decision_tables].include?(@view)
+        raise ArgumentError, "view must be :conditions, :tests, or :decision_tables"
+      end
 
       @level = level.to_i
       @missing_only = missing_only ? true : false
@@ -42,14 +46,19 @@ module Branchproof
       lines << "Empty groups mean no recorded completed observation."
       lines << ""
       lines.concat(@coordinator.coverage_ladder_lines)
-      if @view == :conditions
+      case @view
+      when :conditions
         render_conditions(lines)
         render_alternatives(lines)
+      when :decision_tables
+        render_decision_tables(lines)
       else
         render_tests(lines)
       end
-      render_unowned(lines)
-      render_unsupported(lines)
+      unless @view == :decision_tables
+        render_unowned(lines)
+        render_unsupported(lines)
+      end
       Array(fetch(@document, :diagnostics)).each do |diagnostic|
         lines << "Diagnostic: #{@coordinator.diagnostic_message(diagnostic)}"
       end
@@ -118,6 +127,69 @@ module Branchproof
       else
         ids.each { |id| lines << "    #{test_label(id)}" }
       end
+    end
+
+    # One block per Boolean decision that carries a decision table. With
+    # --missing-only only uncovered, non-impossible rules remain: a rule proven
+    # impossible is not a missing obligation.
+    def render_decision_tables(lines)
+      rows = @index.decision_tables
+      rendered = 0
+      impossible = 0
+      rows.each do |row|
+        impossible += row[:impossible_rules].to_i
+        rules = @missing_only ? row[:rules].select { |rule| rule[:coverage].to_s == "missing" } : row[:rules]
+        next if @missing_only && rules.empty?
+
+        rendered += 1
+        lines << "Decision: #{row[:decision_expression]}"
+        lines << "Location: #{location(row[:relative_path], row[:line], unavailable: "decision line unavailable")}"
+        lines << "Context: #{row[:context]}" unless row[:context].to_s.empty?
+        if row[:status].to_s != "calculated"
+          lines << "Decision Table: NOT CALCULATED"
+          lines << "Reason: #{row[:reason]}"
+          lines << ""
+          next
+        end
+        lines << "Decision Table: #{row[:covered_rules]}/#{row[:required_rules]} rules covered" \
+                 "#{" (#{row[:percentage]}%)" unless row[:percentage].nil?}"
+        rules.each { |rule| render_decision_table_rule(lines, row, rule) }
+        lines << ""
+      end
+      lines << "No missing decision-table rules" if @missing_only && rendered.zero?
+      return unless impossible.positive?
+
+      lines << "#{impossible} statically impossible rule#{"s" unless impossible == 1} excluded"
+    end
+
+    def render_decision_table_rule(lines, row, rule)
+      signature = rule[:conditions].map { |item| DECISION_TABLE_LABELS.fetch(item.to_s, item.to_s) }.join
+      status = rule[:coverage].to_s.upcase
+      lines << "  #{rule[:label]} #{signature} => #{rule[:outcome] ? "T" : "F"}  #{status}"
+      row[:conditions].each_with_index do |expression, index|
+        requirement = case rule[:conditions][index].to_s
+                      when "true" then "truthy"
+                      when "false" then "falsey"
+                      else next
+                      end
+        lines << "    #{expression} = #{requirement}"
+      end
+      lines << "    Expected decision: #{rule[:outcome] ? "true" : "false"}"
+      if rule[:coverage].to_s == "covered"
+        owners = Array(rule[:tests]).map { |id| test_label(id) }
+        owners << "unattributed" if rule[:unattributed_count].to_i.positive?
+        lines << "    Tests: #{owners.empty? ? "none recorded" : owners.uniq.join(", ")}"
+      else
+        lines << "    Tests: NOT COVERED"
+      end
+      lines << "    Reachability: #{reachability_label(rule)}"
+      return if rule[:reachability_reason].to_s.empty?
+
+      lines << "    Reason: #{Constraints.message(rule[:reachability_reason])}"
+    end
+
+    def reachability_label(rule)
+      rule[:reachability].to_s == "statically_impossible" ? "STATICALLY IMPOSSIBLE" : rule[:reachability].to_s
     end
 
     def render_alternatives(lines)

@@ -7,6 +7,10 @@
 
 Coordinates source inventory, isolated test execution, and report output.
 
+## Constants
+### `VIEWS` <a id="constant-VIEWS"></a> <a id="VIEWS-constant"></a>
+Not documented.
+
 ## Public Instance Methods
 ### `call(argv)` <a id="method-i-call"></a> <a id="call-instance_method"></a>
 Not documented.

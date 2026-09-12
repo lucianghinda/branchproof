@@ -7,10 +7,6 @@
 
 Owns the process-local CRuby compilation hook when the VM exposes it.
 
-## Constants
-### `STATUS_KEYS` <a id="constant-STATUS_KEYS"></a> <a id="STATUS_KEYS-constant"></a>
-Not documented.
-
 ## Public Instance Methods
 ### `diagnostics()` <a id="method-i-diagnostics"></a> <a id="diagnostics-instance_method"></a>
 Not documented.

@@ -1,10 +1,11 @@
 # Branchproof
 
-Branchproof measures decision, condition, and modified condition/decision
-coverage (MC/DC) from one serial Minitest run. It discovers Ruby decisions
-through Prism, records their runtime paths, and attributes evidence to tests.
-Boolean decisions receive the coverage ladder; `case`, pattern alternatives,
-safe navigation, and conditional assignments receive alternative coverage.
+Branchproof measures decision, condition, modified condition/decision (MC/DC),
+and decision-table coverage from one serial Minitest run. It discovers Ruby
+decisions through Prism, records their runtime paths, and attributes evidence
+to tests. Boolean decisions receive the coverage ladder; `case`, pattern
+alternatives, safe navigation, and conditional assignments receive alternative
+coverage.
 
 The gem and primary command are named `branchproof`. The `mcdc` command and
 `MCDC` namespace remain compatibility aliases with the same behavior.
@@ -128,7 +129,7 @@ json` when a consumer needs the complete identifiers and versioned schema.
 
 ### Coverage ladder
 
-Each successful `analyze` run calculates four criteria from the same completed
+Each successful `analyze` run calculates five criteria from the same completed
 observations. The report shows their status for each supported decision and
 aggregate counts with explicit denominators:
 
@@ -138,6 +139,7 @@ aggregate counts with explicit denominators:
 | Condition | Every atomic condition evaluated both true and false | Two required truth values per supported condition |
 | Condition/Decision | Both Decision and Condition Coverage hold for a decision | Supported decisions |
 | MC/DC | Every condition has an independence witness pair | Supported conditions |
+| Decision Table | Every executable logical rule was exercised | Non-impossible generated rules |
 
 For `logged_in? && admin?`, observations `[F-] => F` and `[TT] => T` give:
 
@@ -146,6 +148,7 @@ Decision                    PASS
 Condition                   FAIL (3/4 values observed)
 Condition/Decision          FAIL
 MC/DC                       FAIL (1/2 conditions proven)
+Decision Table              FAIL (2/3 rules covered)
 ```
 
 The skipped `admin?` in `[F-]` counts as neither true nor false. Conditions
@@ -155,6 +158,12 @@ for `logged_in?`; `admin?` still needs `[TF] => F`.
 
 Decision and Condition Coverage are calculated independently from the captured
 evidence. Condition/Decision requires both; MC/DC adds independence evidence.
+Decision Table Coverage is calculated independently of all of them: MC/DC asks
+whether each condition can independently affect the outcome, while Decision
+Table Coverage asks whether each logical rule was exercised. Neither status is
+inferred from the other, so `MC/DC PASS` with `Decision Table FAIL` and the
+reverse are both valid results.
+
 Unsupported decisions are excluded from every denominator, while
 unexecuted supported decisions remain in scope. Empty denominators are N/A.
 
@@ -169,6 +178,168 @@ under `analysis.decisions[].coverage`, and condition value evidence under
 `analysis.decisions[].condition_results[].coverage`. Existing MC/DC witness
 pairs, counterpart constraints, and raw vectors remain available. Statuses
 distinguish `covered`, `partial`, `unexecuted`, and `unsupported` results.
+
+### Decision table coverage
+
+For a Boolean decision Branchproof can represent with `AND`, `OR`, `NOT`, and
+atomic conditions, it derives a reduced decision table statically from the
+Boolean structure and then overlays the runtime evidence of the same run. No
+application code is executed while the table is derived, and no extra test run
+is performed while it is overlaid.
+
+The table is reduced, not exhaustive: rules come from the short-circuit
+evaluation paths of the Ruby expression, so a condition the interpreter would
+skip appears as an explicit don't-care (`-`) rather than as two separate rules.
+For `premium? && (admin? || owner?)`:
+
+```text
+Decision Table: 3/4 rules covered (75.0%)
+  Rule  premium?  admin?  owner?  Result  Status
+  R1    F         -       -       F       COVERED
+  R2    T         T       -       T       COVERED
+  R3    T         F       T       T       MISSING
+  R4    T         F       F       F       COVERED
+  R1 tests: UserAccessTest#test_free_user
+  R2 tests: UserAccessTest#test_admin
+  R3
+  Need:
+    premium? = truthy
+    admin?   = falsey
+    owner?   = truthy
+  Expected decision:
+    true
+  Reachability:
+    unknown
+  R4 tests: UserAccessTest#test_denied
+```
+
+A missing rule describes condition values only. It does not claim which
+application inputs would produce them.
+
+An observation matches a rule when every required condition value matches and
+the decision outcome matches. Conditions Ruby skipped can only line up with
+don't-care positions; they never satisfy a required true or false. Every rule
+carries a stable identity derived from the decision, its normalized condition
+vector, the expected outcome, and the table schema version — never from a test
+name, an observation order, or the Minitest seed, so saved reports compare
+across runs.
+
+Decision tables are derived for `if`, `unless`, `elsif`, ternary, `while`,
+`until`, subjectless `case`/`when`, and supported Boolean pattern guards.
+Multi-way `case`/`when`, `case`/`in` alternatives, safe navigation, conditional
+assignment, and exception handling keep their alternative coverage model and
+produce no Boolean table.
+
+#### Reachability and impossible rules
+
+Each rule carries a reachability status: `observed`, `unknown`, or
+`statically_impossible`. Branchproof proves impossibility or leaves
+reachability unknown. It never infers impossibility from a missing test, a
+missing observation, application conventions, Rails validations, database
+constraints, comments, or method names.
+
+Simple related conditions over the same local variable, instance variable,
+class variable, global variable, or constant are normalized into a small
+constraint model: numeric comparisons (`<`, `<=`, `>`, `>=`, `==`, `!=`)
+against integer and float literals, equality against `nil`, `true`, `false`,
+integers, floats, and symbols, `nil?` checks, and bare truthiness. Ruby
+truthiness is preserved: `if value` does not mean `value == true`, because only
+`false` and `nil` are falsey.
+
+For `age > 10 && age < 5`, the rule that requires both conditions cannot hold:
+
+```text
+Decision Table: 2/2 rules covered (100.0%)
+Statically impossible rules excluded: 1
+  Rule  age > 10  age < 5  Result  Status
+  R1    F         -        F       COVERED
+  R2    T         F        F       COVERED
+  R3    T         T        T       EXCLUDED
+  R3 TT => T
+  Status:
+    EXCLUDED
+  Reachability:
+    STATICALLY IMPOSSIBLE
+  Reason:
+    conflicting numeric bounds
+```
+
+Impossible rules stay visible in the full report but leave the coverage
+denominator. Reason codes are stable: `conflicting_numeric_bounds`,
+`conflicting_equalities`, `equality_outside_numeric_range`, `nil_conflict`, and
+`boolean_literal_conflict`. Human-readable messages may change independently.
+
+Runtime evidence is authoritative. If an observation matches a rule the static
+model called impossible, the rule becomes `observed`, the impossibility claim is
+withdrawn, the rule returns to the denominator, and a `constraint_model_conflict`
+diagnostic records the disagreement.
+
+Method-call subjects such as `user.age` stay outside the constraint model,
+because a repeated call may return a different value or have side effects. So
+do string equality, custom comparison methods, collection, date, regexp, and
+cross-subject relationships, external state, and mutation between condition
+evaluations. Those rules remain `unknown`, which is a valid and expected result
+and keeps the rule a coverage obligation.
+
+#### Decision table views and limits
+
+`--view decision-tables` groups the terminal report by decision table, and
+`--missing-only` narrows it to uncovered, non-impossible rules:
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' \
+  --view decision-tables \
+  --missing-only
+```
+
+Tables grow exponentially with condition count, so
+`max_conditions_for_decision_table` (default 12) and
+`decision_table_rules_per_decision` (default 4096) bound the derivation. A
+decision above either limit reports `Decision Table: NOT CALCULATED` with the
+reason `decision_table_condition_limit_exceeded` or
+`decision_table_rule_limit_exceeded` instead of a partial table.
+
+JSON stores the table under `analysis.decisions[].decision_table` with its
+`schema_version`, `constraint_analysis_version`, rules, rule identities, rule
+coverage, test attribution, reachability, and reachability reason:
+
+```json
+{
+  "decision_table": {
+    "status": "calculated",
+    "schema_version": 1,
+    "constraint_analysis_version": 1,
+    "rules": [
+      {
+        "id": "8f1c...",
+        "label": "R1",
+        "conditions": ["false", "dont_care", "dont_care"],
+        "outcome": false,
+        "coverage": "covered",
+        "reachability": "observed",
+        "tests": ["..."]
+      },
+      {
+        "id": "3ad0...",
+        "label": "R3",
+        "conditions": ["true", "false", "true"],
+        "outcome": true,
+        "coverage": "missing",
+        "reachability": "unknown",
+        "tests": []
+      }
+    ]
+  }
+}
+```
+
+Aggregate counts live under `analysis.coverage.decision_table` and keep rule
+coverage and fully covered decisions as distinct metrics:
+
+```text
+DT (Decision table coverage): 83.9% (47/56 rules)
+Decision tables fully covered: 13/18 decisions
+```
 
 ### Find missing cases
 
@@ -231,7 +402,7 @@ analysis even at Level 1. A failed, unsupported, or incomplete run is reported
 with its status and diagnostics and cannot become a successful coverage
 result by changing the display level.
 
-### Focused condition and test views
+### Focused condition, test, and decision-table views
 
 Use `--view conditions` to group the report by condition. Each condition shows
 its expression, decision, and project-relative source location with the
@@ -252,6 +423,10 @@ condition observation remain visible, as do unattributed and unexecuted
 conditions. A test that evaluates both Boolean values is evidence of execution;
 it is a proof contributor only when the analyzer's independent witness pair
 uses its observations.
+
+Use `--view decision-tables` to group the report by decision table. See
+[Decision table coverage](#decision-table-coverage) for the rule, reachability,
+and attribution detail it renders.
 
 `--view` changes terminal grouping and does not change instrumentation or test
 execution. JSON output always contains the complete evidence document, so an
@@ -389,8 +564,12 @@ exclusions. Ruby-defined custom `!` methods keep their runtime behavior;
 evidence that contradicts Boolean negation is rejected instead of proving
 coverage with an invalid logical model.
 
-New reports use schema `1.2`; saved schema `1.0` and `1.1` reports remain
-readable. Expanded discovery changes coverage denominators, so compare reports
+New reports use schema `1.3`; saved schema `1.0`, `1.1`, and `1.2` reports
+remain readable. Comparison distinguishes decision-table coverage movement
+(`rule coverage gained`, `rule coverage lost`) from analysis movement
+(`rule reachability changed`), and treats a structurally changed decision as a
+changed decision-table context instead of guessing which old rule a new rule
+corresponds to. Expanded discovery changes coverage denominators, so compare reports
 with their supported syntax scope in mind.
 
 ### Limits
@@ -398,7 +577,8 @@ with their supported syntax scope in mind.
 `--limits` accepts a JSON object containing positive integer overrides. The
 available keys are `conditions_per_decision`, `vectors_per_decision`,
 `owner_associations_per_run`, `tests_per_run`, `exact_candidates`,
-`exact_search_nodes`, and `constraint_search_states`.
+`exact_search_nodes`, `constraint_search_states`,
+`max_conditions_for_decision_table`, and `decision_table_rules_per_decision`.
 
 ```json
 {
