@@ -18,7 +18,7 @@ class DecisionTableAcceptanceTest < Minitest::Test
 
     def window?(age)
       File.write(ENV.fetch("BRANCHPROOF_COUNTER"), "x", mode: "a")
-      age > 10 && age < 5
+      age && false
     end
   RUBY
 
@@ -37,7 +37,7 @@ class DecisionTableAcceptanceTest < Minitest::Test
       end
 
       def test_window
-        refute window?(3)
+        refute window?(nil)
         refute window?(20)
       end
     end
@@ -82,7 +82,7 @@ class DecisionTableAcceptanceTest < Minitest::Test
 
     assert_equal %w[true true], excluded.fetch("conditions")
     assert_equal "statically_impossible", excluded.fetch("reachability")
-    assert_equal "conflicting_numeric_bounds", excluded.fetch("reachability_reason")
+    assert_equal "boolean_literal_conflict", excluded.fetch("reachability_reason")
     assert_equal 3, table.fetch("generated_rules")
     assert_equal 2, table.fetch("required_rules")
     assert_equal 2, table.fetch("covered_rules")

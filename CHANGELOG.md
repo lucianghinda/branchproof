@@ -12,10 +12,9 @@
 - Report Decision Table Coverage as its own criterion in the coverage ladder,
   per decision and in aggregate, independently from MC/DC in both directions.
 - Add conservative reachability: `observed`, `unknown`, and
-  `statically_impossible` with stable reason codes, derived from a small
-  constraint model over numeric comparisons, equality, `nil` checks, symbol
-  equality, and Ruby truthiness for local, instance, class, global, and
-  constant subjects. Everything else stays `unknown`.
+  `statically_impossible` with stable reason codes. Constraint analysis version 2
+  requires safe source constraints before excluding rules, keeping arbitrary
+  comparison receivers, mutation, and unordered numeric cases unknown.
 - Exclude statically impossible rules from coverage denominators while keeping
   them visible, and let runtime evidence withdraw an impossibility claim with a
   `constraint_model_conflict` diagnostic.
@@ -26,6 +25,13 @@
 - Persist the table, rule identities, coverage, attribution, and reachability in
   schema `1.3` reports, and distinguish rule-coverage changes from reachability
   changes in offline comparison.
+- Enforce exact rule-limit boundaries and index runtime rule matching rather
+  than scanning all observations per rule.
+- Add `--no-reachability` to keep all generated rules as coverage obligations.
+- Align the JSON regression flag with decision-table CLI failures, report
+  analysis-version changes, and validate saved rule identities and evidence.
+- Keep uncalculated decision locations and reasons in missing-only reports;
+  label `unless` and `until` outcomes as predicate values.
 
 ## [0.7.0] - 2026-09-10
 

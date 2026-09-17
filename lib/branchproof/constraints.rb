@@ -13,7 +13,7 @@ module Branchproof
   # unrepresented, which leaves the owning decision-table rule reachability
   # +unknown+.
   module Constraints
-    VERSION = 1
+    VERSION = 2
 
     NUMERIC_OPERATORS = %w[< <= > >=].freeze
     COMPARISON_OPERATORS = %w[< <= > >= == !=].freeze
@@ -47,6 +47,13 @@ module Branchproof
         constraint = Constraints.symbolize(constraint)
         return nil unless Constraints.usable?(constraint)
 
+        add_prepared(constraint, truth)
+      end
+
+      # Adds a constraint that has already been symbolized and validated by
+      # +usable?+. Source inventory can use this path after preparing each leaf
+      # once instead of repeating normalization for every solver state.
+      def add_prepared(constraint, truth)
         state = (@subjects[Constraints.subject_key(constraint[:subject])] ||= new_state)
         apply(state, constraint[:operator].to_s, constraint[:literal], truth ? true : false)
       end
@@ -54,18 +61,30 @@ module Branchproof
       private
 
       def new_state
-        { lower: nil, upper: nil, equality: nil, exclusions: [], nil_required: nil, truthy: nil }
+        { lower: nil, upper: nil, equality: nil, exclusions: [], nil_required: nil, truthy: nil,
+          comparisons: {} }
       end
 
       def apply(state, operator, literal, truth)
+        if NUMERIC_OPERATORS.include?(operator)
+          key = [operator, literal[:type].to_s, literal[:value]]
+          opposite = state[:comparisons][key]
+          return "conflicting_numeric_bounds" if !opposite.nil? && opposite != truth
+
+          state[:comparisons][key] = truth
+        end
         case operator
         when "truthy" then truth ? require_truthy(state) : require_falsey(state)
         when "==" then truth ? require_equal(state, literal) : exclude(state, literal)
         when "!=" then truth ? exclude(state, literal) : require_equal(state, literal)
-        when "<" then truth ? upper(state, literal, false) : lower(state, literal, true)
-        when "<=" then truth ? upper(state, literal, true) : lower(state, literal, false)
-        when ">" then truth ? lower(state, literal, false) : upper(state, literal, true)
-        when ">=" then truth ? lower(state, literal, true) : upper(state, literal, false)
+        # A false inequality is not a closed numeric bound: Ruby values such as
+        # Float::NAN make both sides of a total-order partition false. Keep the
+        # exact same-predicate contradiction above, but otherwise leave false
+        # inequalities unknown unless another true inequality proves a clash.
+        when "<" then truth ? upper(state, literal, false) : nil
+        when "<=" then truth ? upper(state, literal, true) : nil
+        when ">" then truth ? lower(state, literal, false) : nil
+        when ">=" then truth ? lower(state, literal, true) : nil
         end
       end
 
@@ -75,7 +94,12 @@ module Branchproof
         # the reason code names the most specific contradiction.
         reason = equality_truthiness_conflict(state, type)
         return reason if reason
-        return "conflicting_equalities" if state[:equality] && !Constraints.same_literal?(state[:equality], literal)
+
+        if state[:equality] && !Constraints.same_literal?(state[:equality], literal)
+          return nil if Constraints.mixed_numeric_literals?(state[:equality], literal)
+
+          return "conflicting_equalities"
+        end
         return "conflicting_equalities" if state[:exclusions].any? { |item| Constraints.same_literal?(item, literal) }
 
         state[:equality] = literal
@@ -132,22 +156,24 @@ module Branchproof
 
       def lower(state, literal, inclusive)
         return nil unless Constraints.numeric?(literal)
+        return nil unless comparable_bound?(state, literal)
 
         current = state[:lower]
         value = literal[:value]
         if current.nil? || value > current[:value] || (value == current[:value] && !inclusive)
-          state[:lower] = { value: value, inclusive: inclusive }
+          state[:lower] = { type: literal[:type].to_s, value: value, inclusive: inclusive }
         end
         bounds_conflict(state)
       end
 
       def upper(state, literal, inclusive)
         return nil unless Constraints.numeric?(literal)
+        return nil unless comparable_bound?(state, literal)
 
         current = state[:upper]
         value = literal[:value]
         if current.nil? || value < current[:value] || (value == current[:value] && !inclusive)
-          state[:upper] = { value: value, inclusive: inclusive }
+          state[:upper] = { type: literal[:type].to_s, value: value, inclusive: inclusive }
         end
         bounds_conflict(state)
       end
@@ -155,7 +181,7 @@ module Branchproof
       def bounds_conflict(state)
         low = state[:lower]
         high = state[:upper]
-        if low && high
+        if low && high && (low[:type] == high[:type])
           return "conflicting_numeric_bounds" if low[:value] > high[:value]
           return "conflicting_numeric_bounds" if low[:value] == high[:value] && !(low[:inclusive] && high[:inclusive])
         end
@@ -168,10 +194,16 @@ module Branchproof
       def within_bounds?(state, value)
         low = state[:lower]
         high = state[:upper]
-        return false if low && (low[:inclusive] ? value < low[:value] : value <= low[:value])
-        return false if high && (high[:inclusive] ? value > high[:value] : value >= high[:value])
+        return false if low && low[:type] == state[:equality][:type] &&
+                        (low[:inclusive] ? value < low[:value] : value <= low[:value])
+        return false if high && high[:type] == state[:equality][:type] &&
+                        (high[:inclusive] ? value > high[:value] : value >= high[:value])
 
         true
+      end
+
+      def comparable_bound?(state, literal)
+        [state[:lower], state[:upper]].compact.all? { |bound| bound[:type] == literal[:type] }
       end
     end
 
@@ -254,7 +286,10 @@ module Branchproof
     def literal_for(node)
       case node
       when Prism::IntegerNode then { type: "integer", value: node.value }
-      when Prism::FloatNode then { type: "float", value: node.value }
+      when Prism::FloatNode
+        return nil unless node.value.finite?
+
+        { type: "float", value: node.value }
       when Prism::SymbolNode then { type: "symbol", value: node.unescaped.to_s }
       when Prism::NilNode then { type: "nil", value: nil }
       when Prism::TrueNode then { type: "true", value: true }
@@ -275,8 +310,21 @@ module Branchproof
       literal = symbolize(constraint[:literal])
       return false unless literal.is_a?(Hash) && LITERAL_TYPES.include?(literal[:type].to_s)
       return false if NUMERIC_OPERATORS.include?(operator) && !NUMERIC_TYPES.include?(literal[:type].to_s)
+      return false unless valid_literal_value?(literal)
 
       true
+    end
+
+    def valid_literal_value?(literal)
+      case literal[:type].to_s
+      when "integer" then literal[:value].is_a?(Integer)
+      when "float" then literal[:value].is_a?(Float) && literal[:value].finite?
+      when "symbol" then literal[:value].is_a?(String)
+      when "nil" then literal[:value].nil?
+      when "true" then literal[:value] == true
+      when "false" then literal[:value] == false
+      else false
+      end
     end
 
     def subject_key(subject)
@@ -287,7 +335,19 @@ module Branchproof
     def numeric?(literal) = NUMERIC_TYPES.include?(literal[:type].to_s)
 
     def same_literal?(left, right)
-      left[:type].to_s == right[:type].to_s && left[:value] == right[:value]
+      return left[:value] == right[:value] if left[:type].to_s == right[:type].to_s
+      return false unless mixed_numeric_literals?(left, right)
+
+      integer, float = if left[:type].to_s == "integer"
+                         [left[:value], right[:value]]
+                       else
+                         [right[:value], left[:value]]
+                       end
+      float.finite? && float.to_r == integer
+    end
+
+    def mixed_numeric_literals?(left, right)
+      numeric?(left) && numeric?(right) && left[:type].to_s != right[:type].to_s
     end
 
     def message(reason) = REASON_MESSAGES.fetch(reason.to_s, reason.to_s.tr("_", " "))

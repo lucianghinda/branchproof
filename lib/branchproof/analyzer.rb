@@ -8,10 +8,11 @@ module Branchproof
   class Analyzer
     CRITERION = "masking_occurrence_v1"
 
-    def initialize(inventory:, evidence:, limits:)
+    def initialize(inventory:, evidence:, limits:, reachability: true)
       @inventory = inventory || {}
       @evidence = evidence || {}
       @limits = limits || {}
+      @reachability = reachability
       @vectors = records(@evidence, :vectors)
       @vectors_by_decision = @vectors.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |vector, hash|
         hash[id(vector, :decision_id)] << vector
@@ -115,7 +116,8 @@ module Branchproof
         return {
           decision_id: decision_id, effective_masks_by_vector: {}, condition_results: [],
           conditions: [], unsupported: true, coverage: unsupported_coverage,
-          decision_table: DecisionTable.build(decision: decision, vectors: [], limits: @limits),
+          decision_table: DecisionTable.build(decision: decision, vectors: [], limits: @limits,
+                                              reachability: @reachability),
           completeness: { observation: true, attribution: true, analysis: true },
           diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
         }
@@ -161,7 +163,8 @@ module Branchproof
       decision_coverage = decision_coverage(vectors)
       condition_coverage_summary = condition_summary(results)
       mcdc = mcdc_coverage(results)
-      table = DecisionTable.build(decision: decision, vectors: vectors, limits: @limits)
+      table = DecisionTable.build(decision: decision, vectors: vectors, limits: @limits,
+                                  reachability: @reachability)
       {
         decision_id: decision_id,
         effective_masks_by_vector: masks,
@@ -353,17 +356,17 @@ module Branchproof
         decision[:coverage][:condition][:covered_conditions]
       end
       proven = boolean_supported.sum { |decision| decision[:coverage][:mcdc][:proven_conditions] }
-      percentage = ->(covered, required) { required.zero? ? nil : (covered.to_f / required * 100).round(2) }
       { decision: { covered_decisions: decision_covered, supported_decisions: boolean_supported.length,
-                    percentage: percentage.call(decision_covered, boolean_supported.length) },
+                    percentage: DecisionTable.percentage(decision_covered, boolean_supported.length) },
         condition: { covered_values: condition_values, required_values: condition_count * 2,
                      covered_conditions: covered_conditions, condition_count: condition_count,
-                     percentage: percentage.call(condition_values, condition_count * 2) },
+                     percentage: DecisionTable.percentage(condition_values, condition_count * 2) },
         condition_decision: { covered_decisions: condition_decision_covered,
                               supported_decisions: boolean_supported.length,
-                              percentage: percentage.call(condition_decision_covered, boolean_supported.length) },
+                              percentage: DecisionTable.percentage(condition_decision_covered,
+                                                                   boolean_supported.length) },
         mcdc: { proven_conditions: proven, supported_conditions: condition_count,
-                percentage: percentage.call(proven, condition_count) },
+                percentage: DecisionTable.percentage(proven, condition_count) },
         decision_table: decision_table_aggregate(boolean_supported),
         alternative: alternative_aggregate(decisions) }
     end
@@ -378,14 +381,11 @@ module Branchproof
       generated = analyzed.sum { |decision| decision.dig(:decision_table, :generated_rules).to_i }
       impossible = analyzed.sum { |decision| decision.dig(:decision_table, :impossible_rules).to_i }
       fully_covered = analyzed.count { |decision| decision.dig(:decision_table, :coverage_status) == "covered" }
-      percentage = lambda { |numerator, denominator|
-        denominator.zero? ? nil : (numerator.to_f / denominator * 100).round(2)
-      }
       { decisions_analyzed: analyzed.length, not_calculated_decisions: not_calculated,
         fully_covered_decisions: fully_covered, covered_rules: covered, required_rules: required,
         generated_rules: generated, impossible_rules: impossible,
-        percentage: percentage.call(covered, required),
-        decision_percentage: percentage.call(fully_covered, analyzed.length) }
+        percentage: DecisionTable.percentage(covered, required),
+        decision_percentage: DecisionTable.percentage(fully_covered, analyzed.length) }
     end
 
     def alternative_aggregate(decisions)
@@ -393,7 +393,7 @@ module Branchproof
       required = flow.sum { |decision| decision.dig(:coverage, :alternative, :required_alternatives).to_i }
       covered = flow.sum { |decision| decision.dig(:coverage, :alternative, :covered_alternatives).to_i }
       { covered_alternatives: covered, required_alternatives: required,
-        supported_decisions: flow.length, percentage: required.zero? ? nil : (covered.to_f / required * 100).round(2) }
+        supported_decisions: flow.length, percentage: DecisionTable.percentage(covered, required) }
     end
 
     def valid_vector(vector, decision)

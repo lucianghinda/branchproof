@@ -129,8 +129,8 @@ class TestDecisionTable < Minitest::Test
   end
 
   def test_statically_impossible_rules_carry_a_reason_and_leave_the_denominator
-    conditions = [{ id: "c0", index: 0, expression: "age > 10", constraint: numeric("age", ">", 10) },
-                  { id: "c1", index: 1, expression: "age < 5", constraint: numeric("age", "<", 5) }]
+    conditions = [{ id: "c0", index: 0, expression: "age > 10", constraint: numeric("age", ">", 10), constraint_safe: true },
+                  { id: "c1", index: 1, expression: "age < 5", constraint: numeric("age", "<", 5), constraint_safe: true }]
     result = table(and_node(atom(0), atom(1)), 2, conditions: conditions)
     impossible = result[:rules].last
 
@@ -161,8 +161,8 @@ class TestDecisionTable < Minitest::Test
   end
 
   def test_runtime_evidence_withdraws_a_static_impossibility_claim
-    conditions = [{ id: "c0", index: 0, expression: "n > 10", constraint: numeric("n", ">", 10) },
-                  { id: "c1", index: 1, expression: "n < 5", constraint: numeric("n", "<", 5) }]
+    conditions = [{ id: "c0", index: 0, expression: "n > 10", constraint: numeric("n", ">", 10), constraint_safe: true },
+                  { id: "c1", index: 1, expression: "n < 5", constraint: numeric("n", "<", 5), constraint_safe: true }]
     vectors = [{ id: "v", decision_id: "d", values: [true, true], outcome: true, test_ids: %w[t] }]
     result = table(and_node(atom(0), atom(1)), 2, conditions: conditions, vectors: vectors)
     rule = result[:rules].last
@@ -193,6 +193,37 @@ class TestDecisionTable < Minitest::Test
 
     assert_equal "not_calculated", result[:status]
     assert_equal "decision_table_rule_limit_exceeded", result[:reason]
+  end
+
+  def test_rule_budget_is_exact_for_single_atom
+    result = table(atom(0), 1, limits: { decision_table_rules_per_decision: 1 })
+
+    assert_equal "not_calculated", result[:status]
+    assert_equal "decision_table_rule_limit_exceeded", result[:reason]
+    assert_empty result[:rules]
+  end
+
+  def test_rule_budget_is_exact_for_two_rule_conjunction
+    result = table(and_node(atom(0), atom(1)), 2, limits: { decision_table_rules_per_decision: 2 })
+
+    assert_equal "not_calculated", result[:status]
+    assert_equal "decision_table_rule_limit_exceeded", result[:reason]
+    assert_empty result[:rules]
+  end
+
+  def test_reachability_can_be_disabled_without_exclusions
+    conditions = [{ id: "c0", index: 0, expression: "true", literal_truth: true },
+                  { id: "c1", index: 1, expression: "false", literal_truth: false }]
+    result = Branchproof::DecisionTable.build(
+      decision: decision(and_node(atom(0), atom(1)), 2, conditions: conditions),
+      vectors: [], limits: {}, reachability: false
+    )
+
+    assert_equal 0, result[:impossible_rules]
+    assert_equal 3, result[:required_rules]
+    reachability = result[:rules].map { |rule| rule[:reachability] }
+    assert_equal %w[unknown unknown unknown], reachability
+    refute result[:reachability_analyzed]
   end
 
   def test_unsupported_decisions_are_not_calculated
@@ -234,8 +265,8 @@ class TestDecisionTable < Minitest::Test
 
   def test_analyzer_reports_rule_coverage_separately_from_mcdc
     tree = and_node(atom(0), atom(1))
-    conditions = [{ id: "c0", index: 0, expression: "age > 10", constraint: numeric("age", ">", 10) },
-                  { id: "c1", index: 1, expression: "age < 5", constraint: numeric("age", "<", 5) }]
+    conditions = [{ id: "c0", index: 0, expression: "age > 10", constraint: numeric("age", ">", 10), constraint_safe: true },
+                  { id: "c1", index: 1, expression: "age < 5", constraint: numeric("age", "<", 5), constraint_safe: true }]
     vectors = [{ id: "v1", decision_id: "d", values: [false, nil], outcome: false, test_ids: %w[t] },
                { id: "v2", decision_id: "d", values: [true, false], outcome: false, test_ids: %w[t] }]
     analysis = Branchproof::Analyzer.new(inventory: { decisions: [decision(tree, 2, conditions: conditions)] },

@@ -7,7 +7,7 @@ require "json"
 module Branchproof
   # Renders the offline document returned by Comparison.
   class ComparisonReport
-    RULE_LABELS = { "true" => "T", "false" => "F", "dont_care" => "-" }.freeze
+    RULE_LABELS = Branchproof::DecisionTable::VALUE_LABELS.freeze
 
     def initialize(document:)
       raise ArgumentError, "comparison document must be a Hash" unless document.is_a?(Hash)

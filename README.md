@@ -187,9 +187,11 @@ Boolean structure and then overlays the runtime evidence of the same run. No
 application code is executed while the table is derived, and no extra test run
 is performed while it is overlaid.
 
-The table is reduced, not exhaustive: rules come from the short-circuit
-evaluation paths of the Ruby expression, so a condition the interpreter would
+Rules come directly from the short-circuit evaluation paths of the Ruby expression,
+so a condition the interpreter would
 skip appears as an explicit don't-care (`-`) rather than as two separate rules.
+Exhaustive Boolean expansion is deferred; it is not required to calculate coverage
+and is never performed on the reporting path.
 For `premium? && (admin? || owner?)`:
 
 ```text
@@ -229,6 +231,8 @@ Decision tables are derived for `if`, `unless`, `elsif`, ternary, `while`,
 Multi-way `case`/`when`, `case`/`in` alternatives, safe navigation, conditional
 assignment, and exception handling keep their alternative coverage model and
 produce no Boolean table.
+For `unless` and `until`, the outcome is the predicate value, not whether the
+body executes; the terminal report labels it accordingly.
 
 #### Reachability and impossible rules
 
@@ -238,30 +242,32 @@ reachability unknown. It never infers impossibility from a missing test, a
 missing observation, application conventions, Rails validations, database
 constraints, comments, or method names.
 
-Simple related conditions over the same local variable, instance variable,
-class variable, global variable, or constant are normalized into a small
-constraint model: numeric comparisons (`<`, `<=`, `>`, `>=`, `==`, `!=`)
-against integer and float literals, equality against `nil`, `true`, `false`,
-integers, floats, and symbols, `nil?` checks, and bare truthiness. Ruby
-truthiness is preserved: `if value` does not mean `value == true`, because only
-`false` and `nil` are falsey.
+Constraint analysis version 2 requires evidence that a constraint is safe before
+using it to exclude a rule. A variable name and a numeric literal do not prove
+that the receiver is a number, that its comparison methods use built-in semantics,
+or that its value stays unchanged. Numeric, equality, and nil-check expressions
+are still normalized for inspection, but unproven source constraints remain
+`unknown`. The standalone constraint solver describes its explicit model, not
+arbitrary Ruby objects.
 
-For `age > 10 && age < 5`, the rule that requires both conditions cannot hold:
+Literal truth values can establish impossibility without invoking application
+methods. For `age && false`, the rule requiring the literal `false` to be truthy
+cannot execute:
 
 ```text
 Decision Table: 2/2 rules covered (100.0%)
 Statically impossible rules excluded: 1
-  Rule  age > 10  age < 5  Result  Status
-  R1    F         -        F       COVERED
-  R2    T         F        F       COVERED
-  R3    T         T        T       EXCLUDED
+  Rule  age  false  Result  Status
+  R1    F    -      F       COVERED
+  R2    T    F      F       COVERED
+  R3    T    T      T       EXCLUDED
   R3 TT => T
   Status:
     EXCLUDED
   Reachability:
     STATICALLY IMPOSSIBLE
   Reason:
-    conflicting numeric bounds
+    conflicting Boolean literal requirements
 ```
 
 Impossible rules stay visible in the full report but leave the coverage
@@ -274,17 +280,25 @@ model called impossible, the rule becomes `observed`, the impossibility claim is
 withdrawn, the rule returns to the denominator, and a `constraint_model_conflict`
 diagnostic records the disagreement.
 
-Method-call subjects such as `user.age` stay outside the constraint model,
-because a repeated call may return a different value or have side effects. So
-do string equality, custom comparison methods, collection, date, regexp, and
-cross-subject relationships, external state, and mutation between condition
-evaluations. Those rules remain `unknown`, which is a valid and expected result
-and keeps the rule a coverage obligation.
+For example, `age > 10 && age < 5` stays unknown without a proven domain;
+custom comparison methods can make both comparisons true. Similarly,
+`x > 10 && (x = 0) && x < 5` can execute successfully. `Float::NAN` also prevents
+treating a false comparison as its ordered complement. Runtime evidence can cover
+these rules, but lack of evidence cannot exclude them. Ruby truthiness remains
+distinct from Boolean equality: only `false` and `nil` are falsey.
+
+Use `analyze --no-reachability` to disable all static exclusions, including literal
+proofs. Every generated rule then remains an obligation; reports show
+`Reachability: not analyzed`. The mode is persisted with the report and considered
+when comparing analysis contexts. Reading a saved report preserves its original
+analysis; it does not recalculate it under a different mode.
 
 #### Decision table views and limits
 
 `--view decision-tables` groups the terminal report by decision table, and
-`--missing-only` narrows it to uncovered, non-impossible rules:
+`--missing-only` narrows it to uncovered, non-impossible rules while retaining
+uncalculated decisions with their location and reason. `decision_tables` is an
+accepted compatibility spelling for the view:
 
 ```sh
 bundle exec branchproof analyze 'lib/**/*.rb' \
@@ -301,14 +315,16 @@ reason `decision_table_condition_limit_exceeded` or
 
 JSON stores the table under `analysis.decisions[].decision_table` with its
 `schema_version`, `constraint_analysis_version`, rules, rule identities, rule
-coverage, test attribution, reachability, and reachability reason:
+coverage, test attribution, reachability, and reachability reason. This abbreviated
+example omits counts and evidence bookkeeping fields; full reports also retain
+rule indexes, vector IDs, unattributed counts, and withdrawn-impossibility details:
 
 ```json
 {
   "decision_table": {
     "status": "calculated",
     "schema_version": 1,
-    "constraint_analysis_version": 1,
+    "constraint_analysis_version": 2,
     "rules": [
       {
         "id": "8f1c...",
@@ -483,7 +499,12 @@ patterns is valid comparison context, and seed differences are disclosed.
 
 `compare` exits 0 for a complete comparison, including one with coverage
 changes; `--fail-on-regression` exits 1 when a complete comparable run loses
-proof. Invalid input or an incomplete comparison exits 2, which takes
+MC/DC proof or decision-table rule coverage. The JSON `regression` flag includes
+either kind of loss; `regressions` retains the MC/DC count and
+`decision_table_regressions` supplies the separate rule-loss count. Changes to
+table schemas, constraint-analysis versions, or reachability modes are reported
+as analysis context changes rather than silently treated as unchanged analysis.
+Invalid input or an incomplete comparison exits 2, which takes
 precedence. Reports are explicit snapshots: comparison never creates history,
 promotes a baseline, or overwrites either input.
 

@@ -89,7 +89,7 @@ module Branchproof
 
   class Analyzer
     CRITERION: String
-    def initialize: (inventory: record, evidence: record, limits: limits) -> void
+    def initialize: (inventory: record, evidence: record, limits: limits, ?reachability: bool) -> void
     def call: () -> record
     def pair?: (decision_id: String, condition_index: Integer, left: record, right: record) -> bool
     def missing: (decision_id: String, condition_index: Integer) -> record?
@@ -107,6 +107,7 @@ module Branchproof
     class Solver
       def initialize: () -> void
       def add: (record? constraint, bool truth) -> String?
+      def add_prepared: (record constraint, bool truth) -> String?
     end
 
     def self.for_node: (untyped node) -> record?
@@ -121,6 +122,7 @@ module Branchproof
     FALSE_VALUE: String
     DONT_CARE: String
     CONDITION_VALUES: Array[String]
+    VALUE_LABELS: Hash[String, String]
     REACHABILITY_STATUSES: Array[String]
     COVERAGE_STATUSES: Array[String]
     TABLE_STATUSES: Array[String]
@@ -128,7 +130,7 @@ module Branchproof
     DEFAULT_MAX_CONDITIONS: Integer
     DEFAULT_MAX_RULES: Integer
 
-    def self.build: (decision: record, ?vectors: Array[record], ?limits: limits) -> record
+    def self.build: (decision: record, ?vectors: Array[record], ?limits: limits, ?reachability: bool) -> record
     def self.rule_id: (String decision_id, Array[String] values, bool outcome) -> String
     def self.coverage_entry: (record table) -> record
     def self.unsupported_coverage_entry: () -> record
@@ -148,10 +150,14 @@ module Branchproof
   class Report
     SCHEMA_VERSION: String
     CRITERION_VERSION: String
+    VIEWS: Array[Symbol]
     def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?) -> void
     def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool) -> Report
     def diagnostic_message: (Hash[Symbol | String, untyped] diagnostic) -> String
     def condition_explanation: (decision_id: String, condition_id: String) -> String
+    def decision_table_requirement: (untyped value) -> String?
+    def decision_table_reachability: (document rule) -> String
+    def decision_table_expected_heading: (document decision) -> String
     def write: (io: _WriteIO, format: Symbol | String) -> nil
     def exit_code: () -> Integer
   end

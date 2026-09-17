@@ -62,6 +62,9 @@ questions cannot turn into an impossibility claim.
 ### `message(reason)` <a id="method-c-message"></a> <a id="message-class_method"></a>
 Not documented.
 
+### `mixed_numeric_literals?(left, right)` <a id="method-c-mixed_numeric_literals-3F"></a> <a id="mixed_numeric_literals?-class_method"></a>
+- **@return** [Boolean]
+
 ### `nil_constraint(node)` <a id="method-c-nil_constraint"></a> <a id="nil_constraint-class_method"></a>
 Not documented.
 
@@ -89,4 +92,7 @@ Not documented.
 Not documented.
 
 ### `usable?(constraint)` <a id="method-c-usable-3F"></a> <a id="usable?-class_method"></a>
+- **@return** [Boolean]
+
+### `valid_literal_value?(literal)` <a id="method-c-valid_literal_value-3F"></a> <a id="valid_literal_value?-class_method"></a>
 - **@return** [Boolean]

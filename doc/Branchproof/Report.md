@@ -20,6 +20,9 @@ Not documented.
 ### `SCHEMA_VERSION` <a id="constant-SCHEMA_VERSION"></a> <a id="SCHEMA_VERSION-constant"></a>
 Not documented.
 
+### `VIEWS` <a id="constant-VIEWS"></a> <a id="VIEWS-constant"></a>
+Not documented.
+
 ## Public Class Methods
 ### `from_document(document:, level: = nil, view: = :decisions, missing_only: = false)` <a id="method-c-from_document"></a> <a id="from_document-class_method"></a>
 Not documented.
@@ -36,6 +39,15 @@ Shares the existing missing-case wording with focused terminal views.
 Render the shared ladder in every terminal view.
 
 ### `coverage_status_label(status)` <a id="method-i-coverage_status_label"></a> <a id="coverage_status_label-instance_method"></a>
+Not documented.
+
+### `decision_table_expected_heading(decision)` <a id="method-i-decision_table_expected_heading"></a> <a id="decision_table_expected_heading-instance_method"></a>
+Not documented.
+
+### `decision_table_reachability(rule)` <a id="method-i-decision_table_reachability"></a> <a id="decision_table_reachability-instance_method"></a>
+Not documented.
+
+### `decision_table_requirement(value)` <a id="method-i-decision_table_requirement"></a> <a id="decision_table_requirement-instance_method"></a>
 Not documented.
 
 ### `diagnostic_message(diagnostic)` <a id="method-i-diagnostic_message"></a> <a id="diagnostic_message-instance_method"></a>

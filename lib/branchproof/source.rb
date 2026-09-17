@@ -261,6 +261,7 @@ module Branchproof
       context ||= decision_context(node, bytes)
       leaves = []
       tree = tree_for(predicate, bytes, leaves)
+      decision_constraint_safe = constraint_safe_expression?(predicate)
       start_offset = predicate.location.start_offset
       length = predicate.location.length
       opaque_ranges = leaves.filter_map { |leaf| leaf.delete(:_opaque_range) }
@@ -269,10 +270,11 @@ module Branchproof
         location = leaf.delete(:_location)
         literal_truth = leaf.delete(:_literal_truth)
         constraint = leaf.delete(:_constraint)
+        constraint_safe = leaf.delete(:_constraint_safe)
         Records.build(id: nil, index: index, byte_start: location.start_offset, byte_length: location.length,
                       line: location.start_line, column: location.start_column,
                       expression: expression, literal_truth: literal_truth, coupling: "unknown",
-                      constraint: constraint)
+                      constraint: constraint, constraint_safe: decision_constraint_safe && constraint_safe == true)
       end
       decision_id = Records.decision_id(source_id: source_id, context: context, byte_start: start_offset,
                                         byte_length: length, tree: tree)
@@ -347,13 +349,35 @@ module Branchproof
       leaf = {
         _expression: bytes.byteslice(location.start_offset, location.length), _location: location,
         _literal_truth: literal_truth(node),
-        _constraint: Constraints.for_node(node),
+        _constraint: (constraint = Constraints.for_node(node)),
+        _constraint_safe: safe_constraint_node?(constraint),
         _opaque_range: if node.is_a?(Prism::CallNode) && node.name == :!
                          { start: location.start_offset, length: location.length }
                        end
       }
       leaves << leaf
       Records.build(type: :atom, index: leaves.length - 1)
+    end
+
+    # Source-derived comparisons are deliberately untrusted. Ruby permits
+    # mutation between leaves and user-defined operators, so only repeated
+    # truthiness reads of local variables in an entirely side-effect-free
+    # decision may be used by the table solver.
+    def constraint_safe_expression?(node)
+      node = unwrap_predicate(node)
+      case node
+      when Prism::AndNode, Prism::OrNode
+        constraint_safe_expression?(node.left) && constraint_safe_expression?(node.right)
+      when Prism::LocalVariableReadNode, Prism::TrueNode, Prism::FalseNode, Prism::NilNode,
+           Prism::IntegerNode, Prism::FloatNode, Prism::SymbolNode, Prism::StringNode
+        true
+      else
+        false
+      end
+    end
+
+    def safe_constraint_node?(constraint)
+      constraint && constraint[:operator] == "truthy" && constraint[:subject][:kind] == "local"
     end
 
     def unary_not?(node)

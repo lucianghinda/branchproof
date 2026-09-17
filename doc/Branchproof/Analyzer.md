@@ -16,7 +16,7 @@ Not documented.
 ### `call()` <a id="method-i-call"></a> <a id="call-instance_method"></a>
 Not documented.
 
-### `initialize(inventory:, evidence:, limits:)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(inventory:, evidence:, limits:, reachability: = true)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [Analyzer] a new instance of Analyzer
 
 ### `missing(decision_id:, condition_index:)` <a id="method-i-missing"></a> <a id="missing-instance_method"></a>

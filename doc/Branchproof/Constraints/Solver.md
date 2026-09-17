@@ -12,5 +12,10 @@ first proven contradiction. Subjects never interact with each other.
 ### `add(constraint, truth)` <a id="method-i-add"></a> <a id="add-instance_method"></a>
 Returns a reason code when the rule became unsatisfiable, otherwise nil.
 
+### `add_prepared(constraint, truth)` <a id="method-i-add_prepared"></a> <a id="add_prepared-instance_method"></a>
+Adds a constraint that has already been symbolized and validated by
+<code>usable?</code>. Source inventory can use this path after preparing each
+leaf once instead of repeating normalization for every solver state.
+
 ### `initialize()` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [Solver] a new instance of Solver

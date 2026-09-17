@@ -14,12 +14,12 @@ Returns the value of attribute alternatives.
 ### `conditions` [R] <a id="attribute-i-conditions"></a> <a id="conditions-instance_method"></a>
 Returns the value of attribute conditions.
 
-### `decision_tables` [R] <a id="attribute-i-decision_tables"></a> <a id="decision_tables-instance_method"></a>
-Returns the value of attribute decision_tables.
-
 ### `tests` [R] <a id="attribute-i-tests"></a> <a id="tests-instance_method"></a>
 Returns the value of attribute tests.
 
 ## Public Instance Methods
+### `decision_tables()` <a id="method-i-decision_tables"></a> <a id="decision_tables-instance_method"></a>
+Not documented.
+
 ### `initialize(document:)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [CoverageIndex] a new instance of CoverageIndex

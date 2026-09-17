@@ -2,6 +2,7 @@
 
 require_relative "records"
 require_relative "constraints"
+require_relative "limits"
 
 module Branchproof
   # Derives the executable logical rules of a supported Boolean decision and
@@ -20,6 +21,7 @@ module Branchproof
     TRUE_VALUE = "true"
     FALSE_VALUE = "false"
     DONT_CARE = "dont_care"
+    VALUE_LABELS = { TRUE_VALUE => "T", FALSE_VALUE => "F", DONT_CARE => "-" }.freeze
     CONDITION_VALUES = [TRUE_VALUE, FALSE_VALUE, DONT_CARE].freeze
     REACHABILITY_STATUSES = %w[observed unknown statically_impossible].freeze
     COVERAGE_STATUSES = %w[covered missing excluded].freeze
@@ -29,24 +31,35 @@ module Branchproof
       unsupported_decision decision_table_unavailable
       decision_table_condition_limit_exceeded decision_table_rule_limit_exceeded
     ].freeze
-    DEFAULT_MAX_CONDITIONS = 12
-    DEFAULT_MAX_RULES = 4096
+    DEFAULT_MAX_CONDITIONS = Limits::DEFAULTS[:max_conditions_for_decision_table]
+    DEFAULT_MAX_RULES = Limits::DEFAULTS[:decision_table_rules_per_decision]
 
     module_function
 
     # Builds the reduced, runtime-overlaid table for one Boolean decision.
-    def build(decision:, vectors: [], limits: {})
+    def build(decision:, vectors: [], limits: {}, reachability: true)
+      raise ArgumentError, "reachability must be a Boolean" unless [true, false].include?(reachability)
+
       decision_id = fetch(decision, :id).to_s
       reason = unavailable_reason(decision, limits)
       return not_calculated(decision_id, reason) if reason
 
       max_rules = limit(limits, :decision_table_rules_per_decision, DEFAULT_MAX_RULES)
       paths = enumerate(fetch(decision, :tree), false, max_rules + 1)
-      return not_calculated(decision_id, "decision_table_rule_limit_exceeded") if paths.nil?
+      return not_calculated(decision_id, "decision_table_rule_limit_exceeded") if paths.nil? || paths.length > max_rules
 
       conditions = Array(fetch(decision, :conditions))
-      rules = paths.each_with_index.map { |path, index| rule(decision_id, conditions, path, index) }
-      overlay(decision_id: decision_id, rules: rules, vectors: Array(vectors))
+      prepared_constraints = conditions.map do |condition|
+        raw = fetch(condition, :constraint)
+        raw = Constraints.symbolize(raw)
+        fetch(condition, :constraint_safe) == true && Constraints.usable?(raw) ? raw : nil
+      end
+      rules = paths.each_with_index.map do |path, index|
+        rule(decision_id, conditions, path, index, reachability: reachability,
+                                                   prepared_constraints: prepared_constraints)
+      end
+      overlay(decision_id: decision_id, rules: rules, vectors: Array(vectors), reachability: reachability,
+              indexed: unique_atom_indices?(fetch(decision, :tree)))
     end
 
     # Names why a decision carries no Boolean table, or nil when it carries one.
@@ -76,6 +89,22 @@ module Branchproof
       when "and", "or"
         representable?(fetch(node, :left), condition_count) &&
           representable?(fetch(node, :right), condition_count)
+      else false
+      end
+    end
+
+    def unique_atom_indices?(node, seen = {})
+      case fetch(node, :type).to_s
+      when "atom"
+        index = fetch(node, :index)
+        return false if seen.key?(index)
+
+        seen[index] = true
+        true
+      when "not"
+        unique_atom_indices?(fetch(node, :child), seen)
+      when "and", "or"
+        unique_atom_indices?(fetch(node, :left), seen) && unique_atom_indices?(fetch(node, :right), seen)
       else false
       end
     end
@@ -123,15 +152,20 @@ module Branchproof
       paths.length > budget ? nil : paths
     end
 
-    def rule(decision_id, conditions, path, index)
+    # rubocop:disable-next Metrics/ParameterLists
+    def rule(decision_id, conditions, path, index, reachability: true, prepared_constraints: nil)
       values = Array.new(conditions.length, DONT_CARE)
       path[:assignments].each do |condition_index, value|
         values[condition_index] = value ? TRUE_VALUE : FALSE_VALUE if condition_index < values.length
       end
       outcome = path[:value] ? true : false
-      reachability, reason = static_reachability(conditions, values)
+      reachability_state, reason = if reachability
+                                     static_reachability(conditions, values, prepared_constraints: prepared_constraints)
+                                   else
+                                     ["unknown", nil]
+                                   end
       { id: rule_id(decision_id, values, outcome), label: "R#{index + 1}", index: index,
-        conditions: values, outcome: outcome, reachability: reachability, reachability_reason: reason }
+        conditions: values, outcome: outcome, reachability: reachability_state, reachability_reason: reason }
     end
 
     # Rule identity depends only on the decision, the normalized condition
@@ -143,7 +177,7 @@ module Branchproof
     end
 
     # Conservative static reachability: prove impossibility, or answer unknown.
-    def static_reachability(conditions, values)
+    def static_reachability(conditions, values, prepared_constraints: nil)
       solver = Constraints::Solver.new
       values.each_with_index do |value, index|
         next if value == DONT_CARE
@@ -153,20 +187,90 @@ module Branchproof
         literal = fetch(condition, :literal_truth)
         return %w[statically_impossible boolean_literal_conflict] if !literal.nil? && literal != truth
 
-        reason = solver.add(fetch(condition, :constraint), truth)
+        next unless fetch(condition, :constraint_safe) == true
+
+        prepared = prepared_constraints && prepared_constraints[index]
+        reason = if prepared
+                   solver.add_prepared(prepared, truth)
+                 else
+                   solver.add(fetch(condition, :constraint), truth)
+                 end
         return ["statically_impossible", reason] if reason
       end
       ["unknown", nil]
     end
 
-    def overlay(decision_id:, rules:, vectors:)
+    def overlay(decision_id:, rules:, vectors:, reachability: true, indexed: false)
       diagnostics = []
-      overlaid = rules.map { |item| overlay_rule(decision_id, item, vectors, diagnostics) }
-      summary(decision_id: decision_id, rules: overlaid, diagnostics: diagnostics)
+      matches = indexed ? classify_vectors(rules, vectors) : generic_matches(rules, vectors)
+      overlaid = rules.each_with_index.map do |item, index|
+        overlay_rule_matches(decision_id, item, matches[index], diagnostics)
+      end
+      summary(decision_id: decision_id, rules: overlaid, diagnostics: diagnostics,
+              reachability_analyzed: reachability)
     end
 
+    # Generated traces have nil in every skipped condition position. Their
+    # normalized vector is therefore an exact table key and can be classified
+    # without scanning every rule. Malformed or hand-built observations retain
+    # the historical matcher as a bounded compatibility fallback.
+    def classify_vectors(rules, vectors)
+      condition_count = rules.first ? Array(rules.first[:conditions]).length : 0
+      by_signature = {}
+      rules.each_with_index do |item, position|
+        (by_signature[signature(item[:conditions], item[:outcome])] ||= []) << position
+      end
+      matches = Array.new(rules.length) { [] }
+      vectors.each do |vector|
+        positions = fast_match_positions(vector, by_signature, condition_count)
+        if positions&.length == 1
+          matches[positions.first] << vector
+        else
+          rules.each_with_index do |item, position|
+            matches[position] << vector if matches?(item, vector)
+          end
+        end
+      end
+      matches
+    end
+
+    def generic_matches(rules, vectors)
+      matches = Array.new(rules.length) { [] }
+      rules.each_with_index do |rule, position|
+        vectors.each { |vector| matches[position] << vector if matches?(rule, vector) }
+      end
+      matches
+    end
+
+    def signature(values, outcome)
+      [outcome ? true : false, Array(values).map { |value| value == DONT_CARE ? nil : value == TRUE_VALUE }]
+    end
+
+    def fast_match_positions(vector, by_signature, condition_count)
+      values = Array(fetch(vector, :values))
+      valid_values = values.all? { |value| value.nil? || value == true || value == false }
+      return nil unless values.length >= condition_count && valid_values
+
+      normalized = values.first(condition_count).map do |value|
+        if value.nil?
+          DONT_CARE
+        elsif value
+          TRUE_VALUE
+        else
+          FALSE_VALUE
+        end
+      end
+      by_signature[signature(normalized, fetch(vector, :outcome))]
+    end
+
+    # Public compatibility wrapper: callers historically passed all vectors,
+    # so retain matcher filtering for direct calls.
     def overlay_rule(decision_id, rule, vectors, diagnostics)
-      matched = vectors.select { |vector| matches?(rule, vector) }
+      matched = Array(vectors).select { |vector| matches?(rule, vector) }
+      overlay_rule_matches(decision_id, rule, matched, diagnostics)
+    end
+
+    def overlay_rule_matches(decision_id, rule, matched, diagnostics)
       observed = !matched.empty?
       impossible = rule[:reachability] == "statically_impossible"
       withdrawn = observed && impossible
@@ -210,7 +314,7 @@ module Branchproof
       end
     end
 
-    def summary(decision_id:, rules:, diagnostics:)
+    def summary(decision_id:, rules:, diagnostics:, reachability_analyzed: true)
       generated = rules.length
       impossible = rules.count { |rule| rule[:coverage] == "excluded" }
       required = generated - impossible
@@ -220,7 +324,7 @@ module Branchproof
         rules: rules, generated_rules: generated, impossible_rules: impossible,
         required_rules: required, covered_rules: covered, missing_rules: required - covered,
         coverage_status: coverage_status(covered, required, generated),
-        percentage: percentage(covered, required), reachability_analyzed: true,
+        percentage: percentage(covered, required), reachability_analyzed: reachability_analyzed,
         diagnostics: diagnostics }
     end
 

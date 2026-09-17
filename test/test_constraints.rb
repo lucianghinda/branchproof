@@ -120,6 +120,25 @@ class TestConstraints < Minitest::Test
     assert_nil solver.add({ subject: { kind: "method", name: "x" }, operator: "==", literal: nil }, true)
   end
 
+  def test_mixed_numeric_equality_does_not_coerce_integer_to_float
+    assert_equal "conflicting_equalities", solve(["x == 1", true], ["x == 1.0", false])
+    assert_equal "conflicting_equalities", solve(["x == 1.0", true], ["x != 1", true])
+    assert_equal "conflicting_equalities", solve(["x != 1.0", true], ["x == 1", true])
+    assert_nil solve(["x == 9_007_199_254_740_993", true], ["x == 9_007_199_254_740_993.0", true])
+  end
+
+  def test_false_inequality_bounds_remain_unknown_for_unordered_values
+    assert_nil solve(["x < 0", false], ["x >= 0", false])
+  end
+
+  def test_invalid_numeric_literal_payloads_are_not_usable
+    solver = Branchproof::Constraints::Solver.new
+    nan = { subject: { kind: "local", name: "x" }, operator: "==",
+            literal: { type: "float", value: Float::NAN } }
+
+    assert_nil solver.add(nan, true)
+  end
+
   def test_reason_codes_have_stable_human_messages
     Branchproof::Constraints::REASONS.each do |reason|
       refute_empty Branchproof::Constraints.message(reason)

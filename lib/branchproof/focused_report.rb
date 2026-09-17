@@ -11,7 +11,7 @@ module Branchproof
     def initialize(document:, view:, level:, missing_only: false, coordinator: nil)
       @document = document || {}
       @view = view.to_sym
-      unless %i[conditions tests decision_tables].include?(@view)
+      unless (Report::VIEWS - [:decisions]).include?(@view)
         raise ArgumentError, "view must be :conditions, :tests, or :decision_tables"
       end
 
@@ -139,7 +139,7 @@ module Branchproof
       rows.each do |row|
         impossible += row[:impossible_rules].to_i
         rules = @missing_only ? row[:rules].select { |rule| rule[:coverage].to_s == "missing" } : row[:rules]
-        next if @missing_only && rules.empty?
+        next if @missing_only && rules.empty? && row[:status].to_s == "calculated"
 
         rendered += 1
         lines << "Decision: #{row[:decision_expression]}"
@@ -153,6 +153,7 @@ module Branchproof
         end
         lines << "Decision Table: #{row[:covered_rules]}/#{row[:required_rules]} rules covered" \
                  "#{" (#{row[:percentage]}%)" unless row[:percentage].nil?}"
+        lines << "Reachability: not analyzed" unless row[:reachability_analyzed]
         rules.each { |rule| render_decision_table_rule(lines, row, rule) }
         lines << ""
       end
@@ -167,14 +168,12 @@ module Branchproof
       status = rule[:coverage].to_s.upcase
       lines << "  #{rule[:label]} #{signature} => #{rule[:outcome] ? "T" : "F"}  #{status}"
       row[:conditions].each_with_index do |expression, index|
-        requirement = case rule[:conditions][index].to_s
-                      when "true" then "truthy"
-                      when "false" then "falsey"
-                      else next
-                      end
+        requirement = @coordinator.decision_table_requirement(rule[:conditions][index])
+        next if requirement.nil?
+
         lines << "    #{expression} = #{requirement}"
       end
-      lines << "    Expected decision: #{rule[:outcome] ? "true" : "false"}"
+      lines << "    #{@coordinator.decision_table_expected_heading(row)} #{rule[:outcome] ? "true" : "false"}"
       if rule[:coverage].to_s == "covered"
         owners = Array(rule[:tests]).map { |id| test_label(id) }
         owners << "unattributed" if rule[:unattributed_count].to_i.positive?
@@ -182,14 +181,10 @@ module Branchproof
       else
         lines << "    Tests: NOT COVERED"
       end
-      lines << "    Reachability: #{reachability_label(rule)}"
+      lines << "    Reachability: #{@coordinator.decision_table_reachability(rule)}"
       return if rule[:reachability_reason].to_s.empty?
 
       lines << "    Reason: #{Constraints.message(rule[:reachability_reason])}"
-    end
-
-    def reachability_label(rule)
-      rule[:reachability].to_s == "statically_impossible" ? "STATICALLY IMPOSSIBLE" : rule[:reachability].to_s
     end
 
     def render_alternatives(lines)

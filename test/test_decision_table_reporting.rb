@@ -15,7 +15,7 @@ class TestDecisionTableReporting < Minitest::Test
     end
 
     def window?(age)
-      age > 10 && age < 5
+      age && false
     end
   RUBY
 
@@ -125,10 +125,10 @@ class TestDecisionTableReporting < Minitest::Test
 
     assert_includes output, "Decision Table: 2/2 rules covered (100.0%)"
     assert_includes output, "Statically impossible rules excluded: 1"
-    assert_includes output, "R3    T         T        T       EXCLUDED"
+    assert_match(/R3\s+T\s+T\s+T\s+EXCLUDED/, output)
     assert_includes output, "    Status:\n      EXCLUDED\n"
     assert_includes output, "    Reachability:\n      STATICALLY IMPOSSIBLE\n"
-    assert_includes output, "    Reason:\n      conflicting numeric bounds\n"
+    assert_includes output, "    Reason:\n      conflicting Boolean literal requirements\n"
   end
 
   def test_coverage_ladder_lists_decision_table_separately_from_mcdc
@@ -156,7 +156,7 @@ class TestDecisionTableReporting < Minitest::Test
     assert_includes output, "Tests: NOT COVERED"
     assert_includes output, "R3 TT => T  EXCLUDED"
     assert_includes output, "Reachability: STATICALLY IMPOSSIBLE"
-    assert_includes output, "Reason: conflicting numeric bounds"
+    assert_includes output, "Reason: conflicting Boolean literal requirements"
     assert_includes output, "1 statically impossible rule excluded"
   end
 
@@ -176,7 +176,7 @@ class TestDecisionTableReporting < Minitest::Test
 
     assert_equal "calculated", table.fetch("status")
     assert_equal 1, table.fetch("schema_version")
-    assert_equal 1, table.fetch("constraint_analysis_version")
+    assert_equal Branchproof::Constraints::VERSION, table.fetch("constraint_analysis_version")
     assert_equal %w[false dont_care dont_care], table.fetch("rules").first.fetch("conditions")
     assert_equal "covered", table.fetch("rules").first.fetch("coverage")
     assert_equal "observed", table.fetch("rules").first.fetch("reachability")
@@ -195,7 +195,7 @@ class TestDecisionTableReporting < Minitest::Test
     excluded = table.fetch("rules").find { |rule| rule.fetch("coverage") == "excluded" }
 
     assert_equal "statically_impossible", excluded.fetch("reachability")
-    assert_equal "conflicting_numeric_bounds", excluded.fetch("reachability_reason")
+    assert_equal "boolean_literal_conflict", excluded.fetch("reachability_reason")
     assert_equal 1, table.fetch("impossible_rules")
     assert_equal 2, table.fetch("required_rules")
   end

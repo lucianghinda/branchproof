@@ -23,6 +23,9 @@ from an exhaustive `2^n` expansion. A condition Ruby would skip becomes an
 explicit `dont_care`, so `a && b` yields three rules, not four, and never
 invents an evaluation Ruby would not perform.
 
+Review resolution (2026-09-17): an exhaustive truth-table API is deferred until
+there is a concrete consumer. It is not an intermediate step on the coverage path.
+
 Path order is deterministic and structural: a conjunction lists its
 short-circuiting false path first, a disjunction its true path first, and a
 negation inverts the preference it inherits. Generation depends on the source
@@ -60,6 +63,14 @@ Boolean equality: `if value` never becomes `value == true`. Method-call
 subjects stay outside the model because a repeated call may return a different
 value or have side effects. No SMT solver is required.
 
+Review resolution (2026-09-17): the normalization model is not proof of Ruby
+receiver types or value stability. Constraint analysis version 2 requires an
+explicit safety fact from source analysis before applying a normalized constraint
+to an exclusion. Arbitrary comparison receivers and mutation remain unknown;
+literal truth values still prove impossibility. `--no-reachability` disables even
+these exclusions and persists the mode. This narrower proof policy supersedes
+the assumption that a matching variable name alone makes comparisons safe.
+
 Impossible rules leave the coverage denominator but stay visible in the full
 report. Runtime evidence is authoritative: an observation matching a rule the
 model called impossible makes it `observed`, withdraws the claim, returns the
@@ -80,6 +91,12 @@ enums, the rule-to-decision shape, evidence references, and the counters.
 Comparison distinguishes rule coverage gained and lost from rule reachability
 changed, and treats a changed rule set as changed decision-table context rather
 than guessing a correspondence between old and new rules.
+
+Review resolution (2026-09-17): version/mode changes must be disclosed, rule IDs
+and evidence must validate, and the overall JSON regression Boolean must agree
+with CLI failure for either MC/DC or decision-table loss. Uncalculated decisions
+remain visible in missing-only output. Existing saved fields and CLI aliases are
+retained for compatibility rather than removed as unused internal code.
 
 ## Limits
 
