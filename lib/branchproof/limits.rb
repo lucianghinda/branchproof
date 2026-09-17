@@ -6,6 +6,7 @@ module Branchproof
     KEYS = %i[
       conditions_per_decision vectors_per_decision owner_associations_per_run
       tests_per_run exact_candidates exact_search_nodes constraint_search_states
+      max_conditions_for_decision_table decision_table_rules_per_decision
     ].freeze
     DEFAULTS = {
       conditions_per_decision: 64,
@@ -14,7 +15,9 @@ module Branchproof
       tests_per_run: 50_000,
       exact_candidates: 32,
       exact_search_nodes: 100_000,
-      constraint_search_states: 10_000
+      constraint_search_states: 10_000,
+      max_conditions_for_decision_table: 12,
+      decision_table_rules_per_decision: 4096
     }.freeze
 
     module_function

@@ -1,5 +1,38 @@
 ## [Unreleased]
 
+- Derive a reduced decision table for every supported Boolean decision from its
+  `AND`/`OR`/`NOT`/atom structure, preserving Ruby short-circuit semantics with
+  an explicit `dont_care` value instead of exhaustive Cartesian expansion.
+- Give every rule a stable identity derived from the decision, its normalized
+  condition vector, the expected outcome, and the table schema version, so
+  saved reports compare across runs, test order, and Minitest seeds.
+- Overlay the existing run's observations onto the rules, attribute covered
+  rules to their Minitest tests, and describe uncovered rules as condition-value
+  requirements. No additional test execution is performed.
+- Report Decision Table Coverage as its own criterion in the coverage ladder,
+  per decision and in aggregate, independently from MC/DC in both directions.
+- Add conservative reachability: `observed`, `unknown`, and
+  `statically_impossible` with stable reason codes. Constraint analysis version 2
+  requires safe source constraints before excluding rules, keeping arbitrary
+  comparison receivers, mutation, and unordered numeric cases unknown.
+- Exclude statically impossible rules from coverage denominators while keeping
+  them visible, and let runtime evidence withdraw an impossibility claim with a
+  `constraint_model_conflict` diagnostic.
+- Add `--view decision-tables`, which honours `--missing-only` and never lists
+  an impossible rule as a missing obligation.
+- Bound table derivation with the new `max_conditions_for_decision_table` and
+  `decision_table_rules_per_decision` limits.
+- Persist the table, rule identities, coverage, attribution, and reachability in
+  schema `1.3` reports, and distinguish rule-coverage changes from reachability
+  changes in offline comparison.
+- Enforce exact rule-limit boundaries and index runtime rule matching rather
+  than scanning all observations per rule.
+- Add `--no-reachability` to keep all generated rules as coverage obligations.
+- Align the JSON regression flag with decision-table CLI failures, report
+  analysis-version changes, and validate saved rule identities and evidence.
+- Keep uncalculated decision locations and reasons in missing-only reports;
+  label `unless` and `until` outcomes as predicate values.
+
 ## [0.7.0] - 2026-09-10
 
 - Discover Boolean loop predicates, subjectless case candidates, standalone

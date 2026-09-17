@@ -31,6 +31,10 @@ module Branchproof
       @tests = build_tests.freeze
     end
 
+    def decision_tables
+      @decision_tables ||= build_decision_tables.freeze
+    end
+
     private
 
     def build_conditions
@@ -118,6 +122,31 @@ module Branchproof
           }
         end
       end
+    end
+
+    def build_decision_tables
+      rows = records(@inventory, :decisions).filter_map do |decision|
+        next unless boolean_decision?(decision)
+
+        table = analysis_for(decision)[:decision_table] || {}
+        next if table.empty?
+
+        source = @source_units_by_id[decision[:source_id].to_s] || {}
+        {
+          decision_id: decision[:id], decision_expression: decision[:expression],
+          context: decision[:context], kind: decision_kind(decision),
+          relative_path: relative_path(source[:relative_path]), line: decision[:line],
+          conditions: Array(decision[:conditions]).map { |condition| condition[:expression].to_s },
+          status: table[:status], reason: table[:reason],
+          schema_version: table[:schema_version], constraint_analysis_version: table[:constraint_analysis_version],
+          rules: Array(table[:rules]),
+          generated_rules: table[:generated_rules].to_i, impossible_rules: table[:impossible_rules].to_i,
+          required_rules: table[:required_rules].to_i, covered_rules: table[:covered_rules].to_i,
+          missing_rules: table[:missing_rules].to_i, percentage: table[:percentage],
+          coverage_status: table[:coverage_status], reachability_analyzed: table[:reachability_analyzed]
+        }
+      end
+      rows.sort_by { |row| [row[:relative_path].to_s, row[:line].to_i, row[:decision_id].to_s] }
     end
 
     def build_tests
@@ -233,7 +262,7 @@ module Branchproof
 
     def test_ids(vectors) = vectors.flat_map { |vector| Array(vector[:test_ids]) }.map(&:to_s).uniq.sort
     def vector_values(vector) = Array(vector[:values])
-    def records(hash, key) = Array(hash[key] || hash[key.to_s]).map { |item| symbolize(item) }
+    def records(hash, key) = Array(hash[key] || hash[key.to_s])
 
     def display_name(test)
       return "#{test[:class_name]}##{test[:method_name]}" if test[:class_name] && test[:method_name]

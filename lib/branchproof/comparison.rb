@@ -7,13 +7,14 @@ module Branchproof
   # Compares two complete report documents without loading or executing the project.
   class Comparison
     SCHEMA_VERSION = "1.0"
-    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1 1.2].freeze
+    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1 1.2 1.3].freeze
     CRITERION_VERSION = "masking_occurrence_v1"
 
     def initialize(before:, after:)
       @before = before
       @after = after
       @contexts = {}.compare_by_identity
+      @decision_table_indexes = {}.compare_by_identity
     end
 
     def call
@@ -32,8 +33,12 @@ module Branchproof
                               after_sources)
       end
       changes = matched_ids.filter_map { |id| condition_change(id, before_conditions[id], after_conditions[id]) }
+      comparable_decisions = comparable_decision_ids(changed_paths, before_sources, after_sources)
+      table_changes = decision_table_changes(comparable_decisions)
+      table_context = decision_table_context_changes(comparable_decisions, changed_paths)
       reasons = comparability_reasons(changed_paths)
       reasons.concat(metadata_requirements)
+      reasons.concat(decision_table_comparability_reasons(comparable_decisions))
       reasons << "legacy report is missing comparison context" if [@before, @after].any? do |document|
         value(document, :schema_version).to_s == "1.0" && value(document, :run_metadata).nil?
       end
@@ -75,8 +80,13 @@ module Branchproof
         "changes" => changes.sort_by do |change|
           [change["relative_path"].to_s, change["line"].to_i, change["condition_id"]]
         end,
+        "decision_table_changes" => table_changes,
+        "decision_table_context_changes" => table_context,
+        "decision_table_matching" => decision_table_matching(comparable_decisions, table_changes),
+        "decision_table_regressions" => table_changes.count { |change| change["change"] == "rule coverage lost" },
         "regressions" => lost,
-        "regression" => lost.positive? && status == "complete"
+        "regression" => (lost.positive? || table_changes.any? { |change| change["change"] == "rule coverage lost" }) &&
+          status == "complete"
       }
     end
 
@@ -104,7 +114,9 @@ module Branchproof
         "matching" => { "before_conditions" => 0, "after_conditions" => 0,
                         "matched_conditions" => 0, "denominator" => 0 },
         "changed_sources" => [], "newly_in_report" => [], "no_longer_in_report" => [],
-        "changes" => [], "regressions" => 0, "regression" => false }
+        "changes" => [], "decision_table_changes" => [], "decision_table_context_changes" => [],
+        "decision_table_matching" => { "matched_rules" => 0, "compared_decisions" => 0 },
+        "decision_table_regressions" => 0, "regressions" => 0, "regression" => false }
     end
 
     def sources(document)
@@ -177,6 +189,180 @@ module Branchproof
       row
     end
 
+    # Decision identity already covers context, byte range, and Boolean tree, so
+    # a structurally changed decision never matches an old one. Comparison is
+    # additionally restricted to sources whose digest did not move.
+    def comparable_decision_ids(changed_paths, before_sources, after_sources)
+      before = context(@before)[:decisions]
+      after = context(@after)[:decisions]
+      (before.keys & after.keys).select do |id|
+        path = source_path(@before, before[id])
+        next false if path.nil? || changed_paths.include?(path)
+        next false unless path == source_path(@after, after[id])
+
+        digest(before_sources[path]) && digest(before_sources[path]) == digest(after_sources[path])
+      end.sort
+    end
+
+    def decision_tables(document, decision_ids)
+      @decision_table_indexes[document] ||= begin
+        results = context(document)[:results_by_decision]
+        results.each_with_object({}) do |(id, decision), index|
+          table = value(decision, :decision_table)
+          next unless table && value(table, :status).to_s == "calculated"
+
+          index[id] = Array(value(table, :rules)).to_h { |rule| [value(rule, :id).to_s, rule] }
+        end
+      end.slice(*decision_ids)
+    end
+
+    # Coverage movement and analysis movement are reported as distinct kinds:
+    # a rule that became statically impossible is not a coverage gain.
+    def decision_table_changes(decision_ids)
+      before = decision_tables(@before, decision_ids)
+      after = decision_tables(@after, decision_ids)
+      decision_table_comparable_ids(decision_ids, before, after).flat_map do |decision_id|
+        (before[decision_id].keys & after[decision_id].keys).sort.filter_map do |rule_id|
+          decision_table_change(decision_id, before[decision_id][rule_id], after[decision_id][rule_id])
+        end
+      end
+    end
+
+    def decision_table_comparable_ids(decision_ids, before, after)
+      decision_ids.select do |id|
+        before.key?(id) && after.key?(id) &&
+          supported_decision_table_schema?(before_document_table(id)) &&
+          supported_decision_table_schema?(after_document_table(id))
+      end
+    end
+
+    def before_document_table(decision_id)
+      value(context(@before)[:results_by_decision][decision_id], :decision_table)
+    end
+
+    def after_document_table(decision_id)
+      value(context(@after)[:results_by_decision][decision_id], :decision_table)
+    end
+
+    def decision_table_schema(table)
+      value(table, :schema_version)
+    end
+
+    def supported_decision_table_schema?(table)
+      decision_table_schema(table) == Branchproof::DecisionTable::SCHEMA_VERSION
+    end
+
+    def decision_table_comparability_reasons(decision_ids)
+      decision_ids.filter_map do |id|
+        before = before_document_table(id)
+        after = after_document_table(id)
+        next if !before || !after ||
+                (supported_decision_table_schema?(before) && supported_decision_table_schema?(after))
+
+        "decision-table schema is incompatible for decision #{id}"
+      end
+    end
+
+    def decision_table_metadata_changes(decision_id)
+      before = before_document_table(decision_id)
+      after = after_document_table(decision_id)
+      return [] unless before && after
+
+      changes = []
+      if value(before, :schema_version) != value(after, :schema_version)
+        changes << "decision-table schema version changed"
+      end
+      unless [before, after].all? { |table| supported_decision_table_schema?(table) }
+        changes << "decision-table schema version unsupported"
+      end
+      if value(before, :constraint_analysis_version) != value(after, :constraint_analysis_version)
+        changes << "constraint analysis version changed"
+      end
+      before_mode = value(before, :reachability_analyzed)
+      after_mode = value(after, :reachability_analyzed)
+      if !before_mode.nil? && !after_mode.nil? && before_mode != after_mode
+        changes << "reachability analysis mode changed"
+      end
+      changes
+    end
+
+    def decision_table_change(decision_id, before, after)
+      previous = { "coverage" => value(before, :coverage).to_s, "reachability" => value(before, :reachability).to_s,
+                   "reachability_reason" => value(before, :reachability_reason) }
+      current = { "coverage" => value(after, :coverage).to_s, "reachability" => value(after, :reachability).to_s,
+                  "reachability_reason" => value(after, :reachability_reason) }
+      kind = if previous["coverage"] == "covered" && current["coverage"] != "covered"
+               "rule coverage lost"
+             elsif previous["coverage"] != "covered" && current["coverage"] == "covered"
+               "rule coverage gained"
+             elsif previous["reachability"] != current["reachability"]
+               "rule reachability changed"
+             else
+               "unchanged"
+             end
+      decision = context(@after)[:decisions][decision_id]
+      { "decision_id" => decision_id, "rule_id" => value(after, :id).to_s, "label" => value(after, :label).to_s,
+        "change" => kind, "previous" => previous, "current" => current,
+        "conditions" => Array(value(after, :conditions)), "outcome" => value(after, :outcome),
+        "relative_path" => source_path(@after, decision), "line" => value(decision, :line),
+        "expression" => value(decision, :expression) }
+    end
+
+    def decision_table_context_changes(decision_ids, changed_paths)
+      before = decision_tables(@before, decision_ids)
+      after = decision_tables(@after, decision_ids)
+      changes = decision_ids.each_with_object([]) do |id, result|
+        next unless before.key?(id) || after.key?(id)
+
+        decision = context(@after)[:decisions][id] || context(@before)[:decisions][id]
+        location = { "decision_id" => id, "relative_path" => source_path(@after, decision),
+                     "line" => value(decision, :line), "expression" => value(decision, :expression) }
+        decision_table_metadata_changes(id).each { |reason| result << location.merge("reason" => reason) }
+        if before.key?(id) != after.key?(id) ||
+           (before.key?(id) && after.key?(id) && before[id].keys.sort != after[id].keys.sort)
+          result << location.merge("reason" => "decision-table rule set changed")
+        end
+        next unless before.key?(id) && after.key?(id) && decision_table_comparable_ids([id], before, after).include?(id)
+
+        before[id].each do |rule_id, previous|
+          current = after[id][rule_id]
+          next unless current
+          next unless value(previous, :coverage).to_s != value(current, :coverage).to_s &&
+                      value(previous, :reachability).to_s != value(current, :reachability).to_s
+
+          previous_reachability = value(previous, :reachability).to_s
+          current_reachability = value(current, :reachability).to_s
+          previous_coverage = value(previous, :coverage).to_s
+          current_coverage = value(current, :coverage).to_s
+          analysis_change = [previous_reachability, current_reachability].include?("statically_impossible") ||
+                            [previous_coverage, current_coverage].include?("excluded")
+          next unless analysis_change
+
+          result << location.merge("reason" => "rule reachability changed alongside coverage",
+                                   "rule_id" => rule_id)
+        end
+      end
+      changed_paths.sort.each do |path|
+        changes << { "decision_id" => nil, "reason" => "source changed / decision-table comparison unavailable",
+                     "relative_path" => path, "line" => nil, "expression" => nil }
+      end
+      if !metadata(@before, :reachability).nil? && !metadata(@after, :reachability).nil? &&
+         metadata(@before, :reachability) != metadata(@after, :reachability)
+        changes << { "decision_id" => nil, "reason" => "reachability analysis mode changed",
+                     "relative_path" => nil, "line" => nil, "expression" => nil }
+      end
+      changes
+    end
+
+    def decision_table_matching(decision_ids, table_changes)
+      before = decision_tables(@before, decision_ids)
+      after = decision_tables(@after, decision_ids)
+      { "compared_decisions" => decision_table_comparable_ids(decision_ids, before, after).length,
+        "matched_rules" => table_changes.length,
+        "before_covered_rules" => table_changes.count { |change| change["previous"]["coverage"] == "covered" },
+        "after_covered_rules" => table_changes.count { |change| change["current"]["coverage"] == "covered" } }
+    end
+
     def context(document)
       @contexts[document] ||= begin
         index = CoverageIndex.new(document: document)
@@ -198,7 +384,10 @@ module Branchproof
           decisions: Array(value(value(document, :source_inventory), :decisions)).to_h do |decision|
             [value(decision, :id).to_s, decision]
           end,
-          results: results.to_h { |result| [value(result, :condition_id).to_s, result] } }
+          results: results.to_h { |result| [value(result, :condition_id).to_s, result] },
+          results_by_decision: Array(value(value(document, :analysis), :decisions)).to_h do |decision|
+            [value(decision, :decision_id).to_s, decision]
+          end }
       end
     end
 

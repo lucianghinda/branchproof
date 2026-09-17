@@ -18,5 +18,8 @@ Returns the value of attribute conditions.
 Returns the value of attribute tests.
 
 ## Public Instance Methods
+### `decision_tables()` <a id="method-i-decision_tables"></a> <a id="decision_tables-instance_method"></a>
+Not documented.
+
 ### `initialize(document:)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [CoverageIndex] a new instance of CoverageIndex

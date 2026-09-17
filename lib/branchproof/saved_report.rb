@@ -7,11 +7,17 @@
 require "json"
 # rubocop:disable-next Lint/RedundantRequireStatement -- supports standalone core entry
 require "set"
+require_relative "decision_table"
 
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
   class SavedReport
-    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2].freeze
+    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3].freeze
+    STRICT_FLOW_SCHEMAS = %w[1.2 1.3].freeze
+    DECISION_TABLE_STATUSES = %w[calculated not_calculated].freeze
+    RULE_CONDITION_VALUES = DecisionTable::CONDITION_VALUES
+    RULE_COVERAGE_STATUSES = DecisionTable::COVERAGE_STATUSES
+    RULE_REACHABILITY_STATUSES = DecisionTable::REACHABILITY_STATUSES
     DECISION_KINDS = %w[boolean implicit multiway pattern exception].freeze
     NONBOOLEAN_KINDS = (DECISION_KINDS - ["boolean"]).freeze
     CRITERION_VERSION = "masking_occurrence_v1"
@@ -211,6 +217,9 @@ module Branchproof
         if nonboolean_kind?(decision_kind(inventory_decision))
           fail_with("nonboolean condition results must be empty") unless results.empty?
           validate_nonboolean_analysis(decision, inventory_decision)
+        elsif decision.key?("decision_table")
+          fail_with("decision tables are unsupported in legacy report schemas") unless @schema_version == "1.3"
+          validate_decision_table(decision["decision_table"], inventory_decision)
         end
         seen_conditions = {}
         results.each do |result|
@@ -230,6 +239,176 @@ module Branchproof
           fail_with("canonical pair must reference vectors") unless valid_pair
         end
       end
+    end
+
+    # The persisted decision table must describe the same decision it was
+    # derived from, so a saved report can be reported on and compared offline.
+    def validate_decision_table(table, decision)
+      fail_with("decision_table must be an object") unless hash_with_string_keys?(table)
+      fail_with("decision_table status is invalid") unless DECISION_TABLE_STATUSES.include?(table["status"])
+      fail_with("decision_table decision id mismatch") unless table["decision_id"] == decision["id"]
+      %w[schema_version constraint_analysis_version].each do |field|
+        fail_with("decision_table #{field} must be an integer") unless table[field].is_a?(Integer)
+      end
+      unless table["schema_version"] == DecisionTable::SCHEMA_VERSION
+        fail_with("unsupported decision_table schema version")
+      end
+      solver_version = table["constraint_analysis_version"]
+      supported_solver = [1, DecisionTable::CONSTRAINT_ANALYSIS_VERSION].include?(solver_version) &&
+                         solver_version <= DecisionTable::CONSTRAINT_ANALYSIS_VERSION
+      fail_with("unsupported decision_table constraint analysis version") unless supported_solver
+      validate_string_field(table, "reason", nullable: true)
+      unless DecisionTable::COVERAGE_SUMMARY_STATUSES.include?(table["coverage_status"])
+        fail_with("invalid decision_table coverage status")
+      end
+      %w[generated_rules impossible_rules required_rules covered_rules missing_rules].each do |field|
+        unless table[field].is_a?(Integer) && table[field] >= 0
+          fail_with("decision_table #{field} must be a nonnegative integer")
+        end
+      end
+      rules = table["rules"]
+      fail_with("decision_table rules must be an array") unless rules.is_a?(Array)
+      unique_ids(rules, "id", "decision table rule")
+      indexes = rules.map { |rule| rule["index"] }
+      fail_with("decision table rule indexes must be consecutive") unless indexes.sort == (0...rules.length).to_a
+      condition_count = decision["conditions"].length
+      rules.each { |rule| validate_decision_table_rule(rule, decision, condition_count) }
+      validate_decision_table_counts(table, rules)
+      validate_decision_table_summary(table, rules)
+    end
+
+    def validate_decision_table_rule(rule, decision, condition_count)
+      fail_with("invalid decision table rule") unless hash_with_string_keys?(rule)
+      validate_string_field(rule, "label")
+      validate_integer_field(rule, "index")
+      unless rule["index"].is_a?(Integer) && rule["index"] >= 0
+        fail_with("decision table rule index must be nonnegative")
+      end
+      fail_with("decision table rule label does not match its index") unless rule["label"] == "R#{rule["index"] + 1}"
+      conditions = rule["conditions"]
+      valid = conditions.is_a?(Array) && conditions.length == condition_count &&
+              conditions.all? { |value| RULE_CONDITION_VALUES.include?(value) }
+      fail_with("decision table rule conditions do not match the decision") unless valid
+      fail_with("decision table rule outcome must be boolean") unless [true, false].include?(rule["outcome"])
+      expected_id = DecisionTable.rule_id(decision["id"], conditions, rule["outcome"])
+      unless rule["id"] == expected_id
+        fail_with("decision table rule id does not match its decision, conditions, and outcome")
+      end
+      fail_with("invalid decision table rule coverage") unless RULE_COVERAGE_STATUSES.include?(rule["coverage"])
+      unless RULE_REACHABILITY_STATUSES.include?(rule["reachability"])
+        fail_with("invalid decision table rule reachability")
+      end
+      validate_string_field(rule, "reachability_reason", nullable: true)
+      if rule["reachability"] == "statically_impossible" && !rule["reachability_reason"].is_a?(String)
+        fail_with("statically impossible rule requires a reason code")
+      end
+      if %w[observed unknown].include?(rule["reachability"]) && !rule["reachability_reason"].nil?
+        fail_with("observed or unknown rule must not have a reachability reason")
+      end
+      fail_with("decision table rule tests must be strings") unless strings?(rule["tests"])
+      fail_with("unknown decision table rule test") unless rule["tests"].all? { |id| @test_id_set.include?(id) }
+      fail_with("decision table rule vector_ids must be strings") unless strings?(rule["vector_ids"])
+      unless rule["vector_ids"].uniq.length == rule["vector_ids"].length
+        fail_with("duplicate decision table rule vector")
+      end
+      fail_with("unknown decision table rule vector") unless rule["vector_ids"].all? do |id|
+        @vector_decision_by_id[id] == decision["id"]
+      end
+      validate_decision_table_evidence(rule, decision)
+      validate_integer_field(rule, "unattributed_count")
+      unless rule["unattributed_count"].is_a?(Integer) && rule["unattributed_count"] >= 0
+        fail_with("decision table rule unattributed count must be nonnegative")
+      end
+      return unless rule["coverage"] == "covered" && rule["vector_ids"].empty?
+
+      fail_with("covered decision table rule requires evidence")
+    end
+
+    def validate_decision_table_counts(table, rules)
+      if table["status"] == "not_calculated"
+        fail_with("not_calculated decision table must not contain rules") unless rules.empty?
+        %w[generated_rules impossible_rules required_rules covered_rules missing_rules].each do |field|
+          fail_with("not_calculated decision table #{field} must be zero") unless table[field].zero?
+        end
+        return
+      end
+
+      fail_with("decision_table generated_rules mismatch") unless table["generated_rules"] == rules.length
+      impossible = rules.count { |rule| rule["coverage"] == "excluded" }
+      covered = rules.count { |rule| rule["coverage"] == "covered" }
+      fail_with("decision_table impossible_rules mismatch") unless table["impossible_rules"] == impossible
+      fail_with("decision_table required_rules mismatch") unless table["required_rules"] == rules.length - impossible
+      fail_with("decision_table covered_rules mismatch") unless table["covered_rules"] == covered
+      return if table["missing_rules"] == table["required_rules"] - table["covered_rules"]
+
+      fail_with("decision_table missing_rules mismatch")
+    end
+
+    def validate_decision_table_summary(table, rules)
+      if table["status"] == "not_calculated"
+        allowed_reason = DecisionTable::NOT_CALCULATED_REASONS.include?(table["reason"])
+        fail_with("not_calculated decision table requires a supported reason") unless allowed_reason
+        expected_status = table["reason"] == "unsupported_decision" ? "unsupported" : "not_calculated"
+        unless table["coverage_status"] == expected_status
+          fail_with("not_calculated decision table coverage status mismatch")
+        end
+        fail_with("not_calculated decision table percentage must be null") unless table["percentage"].nil?
+        unless table["reachability_analyzed"] == false
+          fail_with("not_calculated decision table reachability must be false")
+        end
+        return
+      end
+
+      fail_with("calculated decision table reason must be null") unless table["reason"].nil?
+      reachability_analyzed = table["reachability_analyzed"]
+      unless [true, false].include?(reachability_analyzed)
+        fail_with("decision_table reachability_analyzed must be boolean")
+      end
+      required = table["required_rules"]
+      covered = table["covered_rules"]
+      generated = table["generated_rules"]
+      expected_status = DecisionTable.coverage_status(covered, required, generated)
+      fail_with("decision_table coverage status mismatch") unless table["coverage_status"] == expected_status
+      expected_percentage = DecisionTable.percentage(covered, required)
+      fail_with("decision_table percentage mismatch") unless table["percentage"] == expected_percentage
+      return unless table["reachability_analyzed"] == false
+
+      fail_with("un-analyzed reachability cannot exclude rules") if rules.any? do |rule|
+        rule["coverage"] == "excluded"
+      end
+      fail_with("un-analyzed reachability contains impossible rule") if rules.any? do |rule|
+        rule["reachability"] == "statically_impossible"
+      end
+    end
+
+    def validate_decision_table_evidence(rule, _decision)
+      rule["vector_ids"].each do |vector_id|
+        vector = @vectors_by_id.fetch(vector_id)
+        matches = vector["outcome"] == rule["outcome"] && rule["conditions"].each_with_index.all? do |required, index|
+          required == DecisionTable::DONT_CARE || vector["values"][index] == (required == DecisionTable::TRUE_VALUE)
+        end
+        fail_with("decision table rule evidence does not match its conditions and outcome") unless matches
+      end
+      expected_tests = rule["vector_ids"].flat_map { |id| @vectors_by_id.fetch(id)["test_ids"] }.uniq.sort
+      fail_with("decision table rule tests do not match its evidence") unless rule["tests"].sort == expected_tests
+      expected_unattributed = rule["vector_ids"].sum { |id| @vectors_by_id.fetch(id).fetch("unattributed_count", 0) }
+      unless rule["unattributed_count"] == expected_unattributed
+        fail_with("decision table rule unattributed count does not match its evidence")
+      end
+      if rule["coverage"] == "covered" && rule["reachability"] != "observed"
+        fail_with("covered decision table rule requires observed reachability")
+      end
+      if rule["coverage"] == "excluded" && rule["reachability"] != "statically_impossible"
+        fail_with("excluded decision table rule requires static impossibility")
+      end
+      if rule["coverage"] == "missing" && rule["reachability"] != "unknown"
+        fail_with("missing decision table rule requires unknown reachability")
+      end
+      return unless %w[missing excluded].include?(rule["coverage"])
+
+      fail_with("noncovered decision table rule must not contain evidence") unless rule["vector_ids"].empty? &&
+                                                                                   rule["tests"].empty? &&
+                                                                                   rule["unattributed_count"].zero?
     end
 
     def decision_kind(decision)
@@ -419,7 +598,7 @@ module Branchproof
     end
 
     def strict_flow_decision?(decision)
-      @schema_version == "1.2" &&
+      STRICT_FLOW_SCHEMAS.include?(@schema_version) &&
         nonboolean_kind?(decision_kind(decision)) &&
         decision["support_status"].to_s.upcase != "UNSUPPORTED"
     end

@@ -16,6 +16,8 @@ module Branchproof
   autoload :MinitestAdapter, "branchproof/minitest_adapter"
   autoload :Evidence, "branchproof/evidence"
   autoload :Analyzer, "branchproof/analyzer"
+  autoload :Constraints, "branchproof/constraints"
+  autoload :DecisionTable, "branchproof/decision_table"
   autoload :Minimizer, "branchproof/minimizer"
   autoload :Report, "branchproof/report"
   autoload :CoverageIndex, "branchproof/coverage_index"

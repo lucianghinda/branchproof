@@ -7,6 +7,10 @@
 
 Renders the offline document returned by Comparison.
 
+## Constants
+### `RULE_LABELS` <a id="constant-RULE_LABELS"></a> <a id="RULE_LABELS-constant"></a>
+Not documented.
+
 ## Public Instance Methods
 ### `exit_code(fail_on_regression: = false)` <a id="method-i-exit_code"></a> <a id="exit_code-instance_method"></a>
 Not documented.

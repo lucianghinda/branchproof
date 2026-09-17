@@ -2,7 +2,7 @@
 
 |  |  |
 | --- | --- |
-| **Defined in** | lib/branchproof.rb, lib/branchproof/cli.rb, lib/branchproof/limits.rb, lib/branchproof/loader.rb, lib/branchproof/report.rb, lib/branchproof/source.rb, lib/branchproof/worker.rb, lib/branchproof/project.rb, lib/branchproof/records.rb, lib/branchproof/runtime.rb, lib/branchproof/version.rb, lib/branchproof/analyzer.rb, lib/branchproof/evidence.rb, lib/branchproof/minimizer.rb, lib/branchproof/comparison.rb, lib/branchproof/instrumenter.rb, lib/branchproof/runtime_flow.rb, lib/branchproof/saved_report.rb, lib/branchproof/rails_support.rb, lib/branchproof/coverage_index.rb, lib/branchproof/focused_report.rb, lib/branchproof/decision_syntax.rb, lib/branchproof/minitest_adapter.rb, lib/branchproof/comparison_report.rb, lib/branchproof/flow_instrumentation.rb |
+| **Defined in** | lib/branchproof.rb, lib/branchproof/cli.rb, lib/branchproof/limits.rb, lib/branchproof/loader.rb, lib/branchproof/report.rb, lib/branchproof/source.rb, lib/branchproof/worker.rb, lib/branchproof/project.rb, lib/branchproof/records.rb, lib/branchproof/runtime.rb, lib/branchproof/version.rb, lib/branchproof/analyzer.rb, lib/branchproof/evidence.rb, lib/branchproof/minimizer.rb, lib/branchproof/comparison.rb, lib/branchproof/constraints.rb, lib/branchproof/instrumenter.rb, lib/branchproof/runtime_flow.rb, lib/branchproof/saved_report.rb, lib/branchproof/rails_support.rb, lib/branchproof/coverage_index.rb, lib/branchproof/decision_table.rb, lib/branchproof/focused_report.rb, lib/branchproof/decision_syntax.rb, lib/branchproof/minitest_adapter.rb, lib/branchproof/comparison_report.rb, lib/branchproof/flow_instrumentation.rb |
 
 Keep each bounded source rewrite together so its evaluation order can be
 audited. rubocop:disable Metrics/AbcSize, Metrics/MethodLength
@@ -17,8 +17,11 @@ Not documented.
 - [Branchproof/CLI.md](Branchproof/CLI.md)
 - [Branchproof/Comparison.md](Branchproof/Comparison.md)
 - [Branchproof/ComparisonReport.md](Branchproof/ComparisonReport.md)
+- [Branchproof/Constraints/Solver.md](Branchproof/Constraints/Solver.md)
+- [Branchproof/Constraints.md](Branchproof/Constraints.md)
 - [Branchproof/CoverageIndex.md](Branchproof/CoverageIndex.md)
 - [Branchproof/DecisionSyntax.md](Branchproof/DecisionSyntax.md)
+- [Branchproof/DecisionTable.md](Branchproof/DecisionTable.md)
 - [Branchproof/Error.md](Branchproof/Error.md)
 - [Branchproof/Evidence.md](Branchproof/Evidence.md)
 - [Branchproof/FlowInstrumentation.md](Branchproof/FlowInstrumentation.md)

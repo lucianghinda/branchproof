@@ -8,10 +8,11 @@ module Branchproof
   class Analyzer
     CRITERION = "masking_occurrence_v1"
 
-    def initialize(inventory:, evidence:, limits:)
+    def initialize(inventory:, evidence:, limits:, reachability: true)
       @inventory = inventory || {}
       @evidence = evidence || {}
       @limits = limits || {}
+      @reachability = reachability
       @vectors = records(@evidence, :vectors)
       @vectors_by_decision = @vectors.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |vector, hash|
         hash[id(vector, :decision_id)] << vector
@@ -115,6 +116,8 @@ module Branchproof
         return {
           decision_id: decision_id, effective_masks_by_vector: {}, condition_results: [],
           conditions: [], unsupported: true, coverage: unsupported_coverage,
+          decision_table: DecisionTable.build(decision: decision, vectors: [], limits: @limits,
+                                              reachability: @reachability),
           completeness: { observation: true, attribution: true, analysis: true },
           diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
         }
@@ -160,6 +163,8 @@ module Branchproof
       decision_coverage = decision_coverage(vectors)
       condition_coverage_summary = condition_summary(results)
       mcdc = mcdc_coverage(results)
+      table = DecisionTable.build(decision: decision, vectors: vectors, limits: @limits,
+                                  reachability: @reachability)
       {
         decision_id: decision_id,
         effective_masks_by_vector: masks,
@@ -168,9 +173,10 @@ module Branchproof
         conditions: conditions(decision),
         coverage: { decision: decision_coverage, condition: condition_coverage_summary,
                     condition_decision: conjunction_coverage(decision_coverage, condition_coverage_summary),
-                    mcdc: mcdc },
+                    mcdc: mcdc, decision_table: DecisionTable.coverage_entry(table) },
+        decision_table: table,
         completeness: { observation: true, attribution: true, analysis: !@analysis_invalid },
-        diagnostics: []
+        diagnostics: table[:diagnostics]
       }
     end
 
@@ -247,7 +253,8 @@ module Branchproof
         condition: { status: "unsupported", covered_values: 0, required_values: 0,
                      covered_conditions: 0, condition_count: 0 },
         condition_decision: { status: "unsupported" },
-        mcdc: { status: "unsupported", proven_conditions: 0, condition_count: 0 } }
+        mcdc: { status: "unsupported", proven_conditions: 0, condition_count: 0 },
+        decision_table: DecisionTable.unsupported_coverage_entry }
     end
 
     def provenance(vector)
@@ -349,18 +356,36 @@ module Branchproof
         decision[:coverage][:condition][:covered_conditions]
       end
       proven = boolean_supported.sum { |decision| decision[:coverage][:mcdc][:proven_conditions] }
-      percentage = ->(covered, required) { required.zero? ? nil : (covered.to_f / required * 100).round(2) }
       { decision: { covered_decisions: decision_covered, supported_decisions: boolean_supported.length,
-                    percentage: percentage.call(decision_covered, boolean_supported.length) },
+                    percentage: DecisionTable.percentage(decision_covered, boolean_supported.length) },
         condition: { covered_values: condition_values, required_values: condition_count * 2,
                      covered_conditions: covered_conditions, condition_count: condition_count,
-                     percentage: percentage.call(condition_values, condition_count * 2) },
+                     percentage: DecisionTable.percentage(condition_values, condition_count * 2) },
         condition_decision: { covered_decisions: condition_decision_covered,
                               supported_decisions: boolean_supported.length,
-                              percentage: percentage.call(condition_decision_covered, boolean_supported.length) },
+                              percentage: DecisionTable.percentage(condition_decision_covered,
+                                                                   boolean_supported.length) },
         mcdc: { proven_conditions: proven, supported_conditions: condition_count,
-                percentage: percentage.call(proven, condition_count) },
+                percentage: DecisionTable.percentage(proven, condition_count) },
+        decision_table: decision_table_aggregate(boolean_supported),
         alternative: alternative_aggregate(decisions) }
+    end
+
+    # Rule coverage and fully covered decisions stay separate metrics: a
+    # decision can hold most of its rules and still fail the criterion.
+    def decision_table_aggregate(boolean_supported)
+      analyzed = boolean_supported.select { |decision| decision.dig(:decision_table, :status) == "calculated" }
+      not_calculated = boolean_supported.length - analyzed.length
+      covered = analyzed.sum { |decision| decision.dig(:decision_table, :covered_rules).to_i }
+      required = analyzed.sum { |decision| decision.dig(:decision_table, :required_rules).to_i }
+      generated = analyzed.sum { |decision| decision.dig(:decision_table, :generated_rules).to_i }
+      impossible = analyzed.sum { |decision| decision.dig(:decision_table, :impossible_rules).to_i }
+      fully_covered = analyzed.count { |decision| decision.dig(:decision_table, :coverage_status) == "covered" }
+      { decisions_analyzed: analyzed.length, not_calculated_decisions: not_calculated,
+        fully_covered_decisions: fully_covered, covered_rules: covered, required_rules: required,
+        generated_rules: generated, impossible_rules: impossible,
+        percentage: DecisionTable.percentage(covered, required),
+        decision_percentage: DecisionTable.percentage(fully_covered, analyzed.length) }
     end
 
     def alternative_aggregate(decisions)
@@ -368,7 +393,7 @@ module Branchproof
       required = flow.sum { |decision| decision.dig(:coverage, :alternative, :required_alternatives).to_i }
       covered = flow.sum { |decision| decision.dig(:coverage, :alternative, :covered_alternatives).to_i }
       { covered_alternatives: covered, required_alternatives: required,
-        supported_decisions: flow.length, percentage: required.zero? ? nil : (covered.to_f / required * 100).round(2) }
+        supported_decisions: flow.length, percentage: DecisionTable.percentage(covered, required) }
     end
 
     def valid_vector(vector, decision)

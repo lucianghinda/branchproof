@@ -15,6 +15,9 @@ require "time"
 module Branchproof
   # Coordinates source inventory, isolated test execution, and report output.
   class CLI
+    VIEWS = Report::VIEWS.to_h { |view| [view.to_s.tr("_", "-"), view] }
+                         .merge("decision_tables" => :decision_tables).freeze
+
     def initialize(stdout:, stderr:)
       @stdout = stdout
       @stderr = stderr
@@ -51,7 +54,8 @@ module Branchproof
       end
       snapshot = evidence.snapshot
       if value(baseline, :status).to_s == "PASSED"
-        analysis = Analyzer.new(inventory: inventory, evidence: snapshot, limits: options[:limits]).call
+        analysis = Analyzer.new(inventory: inventory, evidence: snapshot, limits: options[:limits],
+                                reachability: options[:reachability]).call
         baseline[:analysis] = analysis
         if options[:level] >= 2
           ids = Array(value(inventory, :decisions)).map { |decision| value(decision, :id) }
@@ -90,21 +94,24 @@ module Branchproof
       @stdout.write(<<~HELP)
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails]
-            [--view decisions|conditions|tests] [--level 1|2|3] [--missing-only]
-            [--format terminal|json] [--output PATH] [--limits PATH] [-- RUNNER_ARGS]
-          branchproof report SNAPSHOT [--view decisions|conditions|tests] [--level 1|2|3]
-            [--missing-only] [--format terminal|json] [--output PATH]
+            [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only]
+            [--format terminal|json] [--output PATH] [--limits PATH] [--no-reachability] [-- RUNNER_ARGS]
+          branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
+            [--level 1|2|3] [--missing-only] [--format terminal|json] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
         JSON always contains full evidence; --view requires terminal output.
+        decision_tables is also accepted as an alias for the decision-tables view.
+        --no-reachability keeps every generated decision-table rule as a coverage obligation.
       HELP
       0
     end
 
     def parse_view(view)
-      raise ArgumentError, "view must be decisions, conditions, or tests" unless %w[decisions conditions tests].include?(view)
+      resolved = VIEWS[view.to_s]
+      raise ArgumentError, "view must be decisions, conditions, tests, or decision-tables" unless resolved
 
-      view.to_sym
+      resolved
     end
 
     def validate_view!(options)
@@ -202,7 +209,8 @@ module Branchproof
         project_root: root, source_patterns: options[:source_patterns].map { |path| relative_path(path, root) },
         test_patterns: options[:test_patterns].map { |path| relative_path(path, root) },
         test_files: options[:tests].map { |path| relative_path(path, root) }, runner_args: options[:runner_args],
-        seed: value(baseline, :seed), limits: options[:limits], test_locations: locations }
+        seed: value(baseline, :seed), limits: options[:limits], test_locations: locations,
+        reachability: options[:reachability] }
     end
 
     def relative_path(path, root)
@@ -219,7 +227,8 @@ module Branchproof
       runner_args = delimiter ? args[(delimiter + 1)..] : []
       args = args[0...delimiter] if delimiter
       options = { level: 3, format: :terminal, output: nil, tests: [], source_paths: [], limits: Limits.default,
-                  runner_args: runner_args, project: nil, missing_only: false, view: :decisions }
+                  runner_args: runner_args, project: nil, missing_only: false, view: :decisions,
+                  reachability: true }
       until args.empty?
         token = args.shift
         case token
@@ -228,6 +237,8 @@ module Branchproof
           options[:explicit_view] = true
         when "--missing-only"
           options[:missing_only] = true
+        when "--no-reachability"
+          options[:reachability] = false
         when "--level"
           level = Integer(args.shift.to_s, 10)
           raise ArgumentError, "level must be 1, 2, or 3" unless (1..3).cover?(level)

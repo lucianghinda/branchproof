@@ -11,7 +11,16 @@ Renders versioned terminal and JSON analysis reports.
 ### `CRITERION_VERSION` <a id="constant-CRITERION_VERSION"></a> <a id="CRITERION_VERSION-constant"></a>
 Not documented.
 
+### `DECISION_TABLE_LABELS` <a id="constant-DECISION_TABLE_LABELS"></a> <a id="DECISION_TABLE_LABELS-constant"></a>
+Not documented.
+
+### `DECISION_TABLE_STATUS_LABELS` <a id="constant-DECISION_TABLE_STATUS_LABELS"></a> <a id="DECISION_TABLE_STATUS_LABELS-constant"></a>
+Not documented.
+
 ### `SCHEMA_VERSION` <a id="constant-SCHEMA_VERSION"></a> <a id="SCHEMA_VERSION-constant"></a>
+Not documented.
+
+### `VIEWS` <a id="constant-VIEWS"></a> <a id="VIEWS-constant"></a>
 Not documented.
 
 ## Public Class Methods
@@ -30,6 +39,15 @@ Shares the existing missing-case wording with focused terminal views.
 Render the shared ladder in every terminal view.
 
 ### `coverage_status_label(status)` <a id="method-i-coverage_status_label"></a> <a id="coverage_status_label-instance_method"></a>
+Not documented.
+
+### `decision_table_expected_heading(decision)` <a id="method-i-decision_table_expected_heading"></a> <a id="decision_table_expected_heading-instance_method"></a>
+Not documented.
+
+### `decision_table_reachability(rule)` <a id="method-i-decision_table_reachability"></a> <a id="decision_table_reachability-instance_method"></a>
+Not documented.
+
+### `decision_table_requirement(value)` <a id="method-i-decision_table_requirement"></a> <a id="decision_table_requirement-instance_method"></a>
 Not documented.
 
 ### `diagnostic_message(diagnostic)` <a id="method-i-diagnostic_message"></a> <a id="diagnostic_message-instance_method"></a>

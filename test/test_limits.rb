@@ -5,7 +5,7 @@ require "test_helper"
 class TestLimits < Minitest::Test
   def test_defaults_are_positive_and_frozen
     limits = Branchproof::Limits.default
-    assert_equal %i[conditions_per_decision vectors_per_decision owner_associations_per_run tests_per_run exact_candidates exact_search_nodes constraint_search_states].sort,
+    assert_equal %i[conditions_per_decision vectors_per_decision owner_associations_per_run tests_per_run exact_candidates exact_search_nodes constraint_search_states max_conditions_for_decision_table decision_table_rules_per_decision].sort,
                  limits.keys.sort
     assert(limits.values.all? { |value| value.is_a?(Integer) && value.positive? })
     assert_predicate limits, :frozen?
