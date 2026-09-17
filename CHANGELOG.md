@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-17
+
 - Derive a reduced decision table for every supported Boolean decision from its
   `AND`/`OR`/`NOT`/atom structure, preserving Ruby short-circuit semantics with
   an explicit `dont_care` value instead of exhaustive Cartesian expansion.

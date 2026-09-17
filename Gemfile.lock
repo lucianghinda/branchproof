@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    branchproof (0.7.0)
+    branchproof (0.8.0)
       minitest (>= 5.25.5, < 6)
       prism (>= 1.0, < 2)
 
@@ -86,7 +86,7 @@ DEPENDENCIES
 
 CHECKSUMS
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
-  branchproof (0.7.0)
+  branchproof (0.8.0)
   bundler (4.0.19) sha256=b48056e4c77fb3853cc47775b5447ede44aaa4f53c32f168014ab4fe86587d47
   csv (3.3.6) sha256=aba61e7e507a66f03d45cb1f3c4b6359861c3504038b422962875dce099e4456
   erb (6.0.7) sha256=c5ca6dc25b0ef974a44dc8f59fe847577122483b1968a38dec305c60bf91ee92
