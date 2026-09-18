@@ -94,6 +94,12 @@ class TestInstrumenter < Minitest::Test
             def self.condition(_, _, value) = value
             def self.finish(_, value) = value
             def self.leave(*) = nil
+            def self.flow_iteration_begin(_, value, *) = value
+            def self.flow_iteration_finish(_, value, *) = value
+            def self.flow_iteration_leave(*) = nil
+            def self.flow_iteration_callback(*) = nil
+            def self.set_alternative_count(*) = nil
+            def self.value_path(_, value, *) = value
           end
         end
         load ARGV.fetch(0)
@@ -125,9 +131,9 @@ class TestInstrumenter < Minitest::Test
       inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
       reasons = inventory[:decisions].flat_map { |decision| decision[:support_reasons] }
 
-      assert_includes reasons, "unsupported_implicit_regexp"
-      assert_includes reasons, "unsupported_flip_flop"
       assert_includes reasons, "unsupported_heredoc"
+      refute_includes reasons, "unsupported_implicit_regexp"
+      refute_includes reasons, "unsupported_flip_flop"
       inventory[:decisions].each do |decision|
         result = Branchproof::Instrumenter.new.rewrite(
           unit: {
@@ -135,7 +141,11 @@ class TestInstrumenter < Minitest::Test
             support_status: decision[:support_status], support_reasons: decision[:support_reasons]
           }
         )
-        refute result[:changed]
+        if decision[:support_status] == "SUPPORTED"
+          assert result[:changed], decision[:context]
+        else
+          refute result[:changed], decision[:context]
+        end
       end
     end
   end
@@ -171,6 +181,12 @@ class TestInstrumenter < Minitest::Test
             def self.condition(_, _, value) = value
             def self.finish(_, value) = value
             def self.leave(*) = nil
+            def self.flow_iteration_begin(_, value, *) = value
+            def self.flow_iteration_finish(_, value, *) = value
+            def self.flow_iteration_leave(*) = nil
+            def self.flow_iteration_callback(*) = nil
+            def self.set_alternative_count(*) = nil
+            def self.value_path(_, value, *) = value
           end
         end
         load ARGV.fetch(0)
@@ -200,6 +216,12 @@ class TestInstrumenter < Minitest::Test
           def self.condition(_, _, value) = value
           def self.finish(_, value) = value
           def self.leave(*) = nil
+          def self.flow_iteration_begin(_, value, *) = value
+          def self.flow_iteration_finish(_, value, *) = value
+          def self.flow_iteration_leave(*) = nil
+          def self.flow_iteration_callback(*) = nil
+          def self.set_alternative_count(*) = nil
+          def self.value_path(_, value, *) = value
         end
       end
       def capture(source)
@@ -228,7 +250,7 @@ class TestInstrumenter < Minitest::Test
       example(true, [1, -1, 2])
       p evidence.records.map { |record| [record[:status], record[:observations]] }
     RUBY
-    assert_equal "[[\"aborted\", [[0, false]]], [\"completed\", [[0, true]]], [\"completed\", [[0, false]]], [\"aborted\", [[0, true]]]]",
+    assert_equal "[[\"aborted\", [[0, false]]], [\"completed\", [[0, true]]], [\"completed\", [[0, false]]], [\"aborted\", [[0, true]]], [\"completed\", [[0, false], [1, true]]]]",
                  run_fixture(runtime_harness, path, rewritten[:bytes])
   end
 
@@ -279,6 +301,12 @@ class TestInstrumenter < Minitest::Test
               def condition(id, index, value) = (@events << [:condition, id, index]; value)
               def finish(id, value) = (@events << [:finish, id]; value)
               def leave(id) = @events << [:leave, id]
+              def flow_iteration_begin(_, value, *) = value
+              def flow_iteration_finish(_, value, *) = value
+              def flow_iteration_leave(*) = nil
+              def flow_iteration_callback(*) = nil
+              def set_alternative_count(*) = nil
+              def value_path(_, value, *) = value
             end
           end
         end
@@ -321,6 +349,12 @@ class TestInstrumenter < Minitest::Test
               def condition(id, index, value) = (@events << [:condition, id, index]; value)
               def finish(id, value) = (@events << [:finish, id]; value)
               def leave(id) = @events << [:leave, id]
+              def flow_iteration_begin(_, value, *) = value
+              def flow_iteration_finish(_, value, *) = value
+              def flow_iteration_leave(*) = nil
+              def flow_iteration_callback(*) = nil
+              def set_alternative_count(*) = nil
+              def value_path(_, value, *) = value
             end
           end
         end
@@ -371,6 +405,12 @@ class TestInstrumenter < Minitest::Test
             def self.condition(_, _, value) = value
             def self.finish(_, value) = value
             def self.leave(*) = nil
+            def self.flow_iteration_begin(_, value, *) = value
+            def self.flow_iteration_finish(_, value, *) = value
+            def self.flow_iteration_leave(*) = nil
+            def self.flow_iteration_callback(*) = nil
+            def self.set_alternative_count(*) = nil
+            def self.value_path(_, value, *) = value
           end
         end
         load ARGV.fetch(0)
@@ -418,6 +458,12 @@ class TestInstrumenter < Minitest::Test
             def self.condition(_, _, value) = value
             def self.finish(_, value) = value
             def self.leave(*) = nil
+            def self.flow_iteration_begin(_, value, *) = value
+            def self.flow_iteration_finish(_, value, *) = value
+            def self.flow_iteration_leave(*) = nil
+            def self.flow_iteration_callback(*) = nil
+            def self.set_alternative_count(*) = nil
+            def self.value_path(_, value, *) = value
           end
         end
         load ARGV.fetch(0)
@@ -485,7 +531,7 @@ class TestInstrumenter < Minitest::Test
         p evidence.records.map { |record| record[:status] }
       RUBY
       output = run_fixture(harness, path, rewritten[:bytes])
-      assert_equal "[\"aborted\", \"aborted\", \"aborted\", \"completed\", \"completed\"]", output
+      assert_equal "[\"aborted\", \"aborted\", \"aborted\", \"completed\", \"completed\", \"completed\"]", output
     end
   end
 
@@ -513,6 +559,12 @@ class TestInstrumenter < Minitest::Test
             def self.condition(_, _, value) = value
             def self.finish(_, value) = value
             def self.leave(*) = nil
+            def self.flow_iteration_begin(_, value, *) = value
+            def self.flow_iteration_finish(_, value, *) = value
+            def self.flow_iteration_leave(*) = nil
+            def self.flow_iteration_callback(*) = nil
+            def self.set_alternative_count(*) = nil
+            def self.value_path(_, value, *) = value
           end
         end
         load ARGV.fetch(0)

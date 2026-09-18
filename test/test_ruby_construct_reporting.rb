@@ -110,11 +110,11 @@ class TestRubyConstructReporting < Minitest::Test
     identical.each do |id|
       document = saved_document(document_for(id))
       result = Branchproof::Comparison.new(before: document, after: document).call
-      expected_status = id == "LOG-01" ? "complete" : "comparison incomplete"
+      expected_status = %w[LOG-01 FLIP-01].include?(id) ? "complete" : "comparison incomplete"
       assert_equal expected_status, result.fetch("status"), id
       assert_equal 0, result.fetch("regressions"), id
       assert_empty result.fetch("changes").reject { |change| change.fetch("change") == "unchanged" }, id
-      assert_includes result.fetch("reasons"), "no comparable conditions", id unless id == "LOG-01"
+      assert_includes result.fetch("reasons"), "no comparable conditions", id unless %w[LOG-01 FLIP-01].include?(id)
     end
 
     before = saved_document(document_for("LOG-01"))
@@ -126,7 +126,7 @@ class TestRubyConstructReporting < Minitest::Test
     changes = result.fetch("changes").map { |change| change.fetch("change") }
     assert_equal ["lost proof", "lost proof"], changes
 
-    %w[NIL-01 FLIP-01 ARG-01].each do |id|
+    %w[NIL-01 ARG-01].each do |id|
       document = saved_document(document_for(id))
       reduced = saved_document(document_for(id, cases: RubyConstructs.entry(id).fetch("cases").first(1)))
       result = Branchproof::Comparison.new(before: document, after: reduced).call

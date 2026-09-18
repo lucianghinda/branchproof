@@ -3,10 +3,12 @@
 require "test_helper"
 require "prism"
 require "branchproof/decision_syntax"
+require "branchproof/exception_syntax"
 
 class TestFlowSource < Minitest::Test
   class Harness
     include Branchproof::DecisionSyntax
+    include Branchproof::ExceptionSyntax
 
     def walk(node, &block)
       yield node
@@ -58,7 +60,7 @@ class TestFlowSource < Minitest::Test
     assert_equal [], decision[:conditions]
   end
 
-  def test_records_pattern_case_guard_as_unsupported_with_native_ranges
+  def test_records_pattern_case_guard_as_supported_with_native_ranges
     source = <<~RUBY
       case value
       in {name: pattern} if guard
@@ -71,7 +73,8 @@ class TestFlowSource < Minitest::Test
     decision = decisions(source).fetch(0)
 
     assert_equal "pattern", decision[:kind]
-    assert_includes decision[:support_reasons], "unsupported_pattern_guard"
+    assert_equal "SUPPORTED", decision[:support_status]
+    refute_includes decision[:support_reasons], "unsupported_pattern_guard"
     candidate = decision[:instrumentation][:candidates].fetch(0)
     assert_equal "{name: pattern}", candidate[:expression]
     assert_equal source.index("{name: pattern}"), candidate[:byte_start]
@@ -79,10 +82,10 @@ class TestFlowSource < Minitest::Test
     assert_equal source.index(":other"), decision[:instrumentation][:else][:insert_at]
   end
 
-  def test_unless_pattern_guard_remains_explicitly_unsupported
+  def test_unless_pattern_guard_is_supported
     decision = decisions("case value; in Integer unless excluded; :yes; else :no; end").first
-    assert_equal "UNSUPPORTED", decision[:support_status]
-    assert_includes decision[:support_reasons], "unsupported_pattern_guard"
+    assert_equal "SUPPORTED", decision[:support_status]
+    refute_includes decision[:support_reasons], "unsupported_pattern_guard"
     assert_equal "Integer", decision[:alternatives].first[:expression]
   end
 
@@ -114,23 +117,24 @@ class TestFlowSource < Minitest::Test
     assert_equal 1, records[1][:instrumentation][:rhs_path]
     assert_equal 1, records[2][:instrumentation][:rhs_path]
     assert_equal "SUPPORTED", records.first[:support_status]
-    assert_includes records.last[:support_reasons], "unsupported_assignment_target"
+    assert_equal "SUPPORTED", records.last[:support_status]
   end
 
-  def test_marks_rescue_control_flow_unsupported
+  def test_records_rescue_control_flow_as_supported
     source = "begin\n  work\nrescue StandardError\n  recover\nend\n"
     decision = decisions(source).fetch(0)
 
     assert_equal "exception", decision[:kind]
-    assert_equal "UNSUPPORTED", decision[:support_status]
-    assert_includes decision[:support_reasons], "unsupported_rescue_control_flow"
+    assert_equal "SUPPORTED", decision[:support_status]
+    refute_includes decision[:support_reasons], "unsupported_rescue_control_flow"
   end
 
-  def test_marks_splat_case_candidate_unsupported
+  def test_records_splat_case_candidate_for_instrumentation
     source = "case value\nwhen *candidates\n  :matched\nend\n"
     decision = decisions(source).fetch(0)
 
-    assert_includes decision[:support_reasons], "unsupported_case_splat"
+    assert_equal "SUPPORTED", decision[:support_status]
+    refute_includes decision[:support_reasons], "unsupported_case_splat"
     assert_equal "*candidates", decision[:alternatives].fetch(0)[:expression]
   end
 end

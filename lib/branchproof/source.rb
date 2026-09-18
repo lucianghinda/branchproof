@@ -4,12 +4,23 @@ require "digest"
 require "pathname"
 require "prism"
 require_relative "decision_syntax"
+require_relative "iteration_syntax"
+require_relative "exception_syntax"
+require_relative "default_syntax"
+require_relative "value_syntax"
 require_relative "constraints"
 
 module Branchproof
   # Inventories supported condition and decision occurrences from Ruby files.
   class Source
     include DecisionSyntax
+    # Contextual syntax modules are layered after the baseline classifier so
+    # each can extend discovery without coupling this walker to every syntax
+    # family. Additional modules can follow the same seam.
+    include IterationSyntax
+    include ExceptionSyntax
+    prepend DefaultSyntax
+    prepend ValueSyntax
 
     attr_reader :root, :limits
 
@@ -115,7 +126,7 @@ module Branchproof
       phase_two_nodes = []
       flow_nodes = []
 
-      walk(program) do |node|
+      walk_skipping_defined_operands(program) do |node|
         if node.is_a?(Prism::DefinedNode)
           defined_ranges << node.location
         elsif node.is_a?(Prism::InNode)
@@ -123,7 +134,8 @@ module Branchproof
           guard_patterns[pattern] = true if pattern.is_a?(Prism::IfNode) || pattern.is_a?(Prism::UnlessNode)
         end
         phase_one_nodes << node if decision_node?(node) || subjectless_case?(node)
-        phase_two_nodes << node if boolean_node?(node) || node.is_a?(Prism::MatchPredicateNode)
+        phase_two_nodes << node if boolean_node?(node) || node.is_a?(Prism::MatchPredicateNode) ||
+                                   node.is_a?(Prism::DefinedNode)
         flow_nodes << node if flow_decision_node?(node)
       end
 
@@ -162,15 +174,17 @@ module Branchproof
       # argument) are separate decisions when tree_for did not decompose them.
       collected[:phase_two_nodes].each do |node|
         next if inventoried_boolean_nodes[node]
+        next if within_defined_expression?(node, defined_ranges) && !node.is_a?(Prism::DefinedNode)
 
-        additional_reasons = if within_defined_expression?(node, defined_ranges)
-                               ["unsupported_defined_expression"]
-                             else
-                               []
-                             end
-        context = node.is_a?(Prism::MatchPredicateNode) ? "pattern_in" : "short_circuit"
+        context = if node.is_a?(Prism::MatchPredicateNode)
+                    "pattern_in"
+                  elsif node.is_a?(Prism::DefinedNode)
+                    "defined"
+                  else
+                    "short_circuit"
+                  end
         specs << { node: nil, predicate: node, context: context,
-                   additional_reasons: additional_reasons }
+                   additional_reasons: [] }
         mark_semantic_boolean_nodes(node, inventoried_boolean_nodes)
       end
 
@@ -196,14 +210,9 @@ module Branchproof
                            defined_ranges: nil, nodes: nil)
       defined_ranges ||= collect_defined_ranges(program)
 
-      super(program, bytes, source_id, file_reasons, encoding, nodes: nodes).map do |decision|
-        next decision unless range_within_defined_expression?(decision, defined_ranges)
-
-        decision.merge(
-          support_status: "UNSUPPORTED",
-          support_reasons: (Array(decision[:support_reasons]) + ["unsupported_defined_expression"]).uniq
-        )
-      end
+      nodes ||= collect_flow_decision_nodes(program)
+      nodes = nodes.reject { |node| within_defined_expression?(node, defined_ranges) }
+      super(program, bytes, source_id, file_reasons, encoding, nodes: nodes)
     end
 
     def collect_defined_ranges(program)
@@ -271,10 +280,14 @@ module Branchproof
         literal_truth = leaf.delete(:_literal_truth)
         constraint = leaf.delete(:_constraint)
         constraint_safe = leaf.delete(:_constraint_safe)
-        Records.build(id: nil, index: index, byte_start: location.start_offset, byte_length: location.length,
-                      line: location.start_line, column: location.start_column,
-                      expression: expression, literal_truth: literal_truth, coupling: "unknown",
-                      constraint: constraint, constraint_safe: decision_constraint_safe && constraint_safe == true)
+        contextual = leaf.delete(:_contextual)
+        condition = Records.build(id: nil, index: index, byte_start: location.start_offset,
+                                  byte_length: location.length,
+                                  line: location.start_line, column: location.start_column,
+                                  expression: expression, literal_truth: literal_truth, coupling: "unknown",
+                                  constraint: constraint,
+                                  constraint_safe: decision_constraint_safe && constraint_safe == true)
+        contextual ? condition.merge(contextual: contextual) : condition
       end
       decision_id = Records.decision_id(source_id: source_id, context: context, byte_start: start_offset,
                                         byte_length: length, tree: tree)
@@ -319,7 +332,7 @@ module Branchproof
         inventoried_boolean_nodes[node] = true
         mark_semantic_boolean_nodes(node.left, inventoried_boolean_nodes)
         mark_semantic_boolean_nodes(node.right, inventoried_boolean_nodes)
-      when Prism::MatchPredicateNode
+      when Prism::DefinedNode, Prism::MatchPredicateNode
         inventoried_boolean_nodes[node] = true
       when Prism::CallNode
         mark_semantic_boolean_nodes(node.receiver, inventoried_boolean_nodes) if unary_not?(node)
@@ -355,6 +368,9 @@ module Branchproof
                          { start: location.start_offset, length: location.length }
                        end
       }
+      leaf[:_contextual] = "implicit_regexp" if node.is_a?(Prism::MatchLastLineNode) ||
+                                                node.is_a?(Prism::InterpolatedMatchLastLineNode)
+      leaf[:_contextual] = "flip_flop" if node.is_a?(Prism::FlipFlopNode)
       leaves << leaf
       Records.build(type: :atom, index: leaves.length - 1)
     end
@@ -393,17 +409,19 @@ module Branchproof
 
     def unsupported_reasons(predicate, bytes)
       reasons = []
-      walk(predicate) do |node|
-        if node.is_a?(Prism::MatchLastLineNode) || node.is_a?(Prism::InterpolatedMatchLastLineNode)
-          reasons << "unsupported_implicit_regexp"
-        end
-        reasons << "unsupported_flip_flop" if node.is_a?(Prism::FlipFlopNode)
-        reasons << "unsupported_defined_expression" if node.is_a?(Prism::DefinedNode)
+      walk_skipping_defined_operands(predicate) do |node|
         reasons << "unsupported_heredoc" if node.respond_to?(:opening_loc) && node.opening_loc &&
                                             bytes.byteslice(node.opening_loc.start_offset,
                                                             node.opening_loc.length).start_with?("<<")
       end
       reasons
+    end
+
+    def walk_skipping_defined_operands(node, &block)
+      yield node
+      return if node.is_a?(Prism::DefinedNode)
+
+      node.child_nodes.each { |child| walk_skipping_defined_operands(child, &block) if child }
     end
 
     def unwrap_predicate(node)

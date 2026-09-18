@@ -45,6 +45,10 @@ class TestRubyConstructSource < Minitest::Test
           decision.fetch(:conditions).map { |condition| condition.fetch(:expression) }, id
         )
         assert_equal expectation.fetch("reasons"), decision.fetch(:support_reasons), id
+        assert_equal expectation.fetch("alternatives"),
+                     JSON.parse(JSON.generate(Array(decision[:alternatives]).map do |alternative|
+                       alternative.slice(:expression, :byte_start, :byte_length)
+                     end)), id
         LOCATION_KEYS.each do |key|
           assert_equal expectation.fetch(key.to_s), decision.fetch(key), id
         end
@@ -73,6 +77,20 @@ class TestRubyConstructSource < Minitest::Test
     end
   end
 
+  def test_every_construct_has_supported_measurable_coverage
+    @manifests.each do |manifest|
+      id = manifest.fetch("id")
+      inventory = inventory_for(canonical_filename(id))
+      refute_empty inventory[:decisions], id
+      assert_empty inventory[:diagnostics], id
+      assert inventory[:decisions].all? { |decision| decision[:support_status] == "SUPPORTED" }, id
+      inventory[:decisions].each do |decision|
+        dimensions = decision[:kind] == "boolean" ? decision[:conditions] : decision[:alternatives]
+        refute_empty dimensions, "#{id}: #{decision[:context]}"
+      end
+    end
+  end
+
   def test_reviewed_anchors_preserve_operand_locations_and_guard_classification
     log09 = inventory_for("log_09.rb")
     repeated = log09.fetch(:decisions).fetch(0)
@@ -85,8 +103,8 @@ class TestRubyConstructSource < Minitest::Test
     guarded = inventory_for("pat_24.rb").fetch(:decisions)
     outer = guarded.find { |decision| decision.fetch(:context) == "case_in" }
     guard = guarded.find { |decision| decision.fetch(:context) == "pattern_guard" }
-    assert_equal %w[pattern case_in UNSUPPORTED], outer.values_at(:kind, :context, :support_status)
-    assert_equal ["unsupported_pattern_guard"], outer.fetch(:support_reasons)
+    assert_equal %w[pattern case_in SUPPORTED], outer.values_at(:kind, :context, :support_status)
+    assert_empty outer.fetch(:support_reasons)
     assert_equal %w[boolean pattern_guard SUPPORTED], guard.values_at(:kind, :context, :support_status)
     assert_equal(["years >= 18", "(trace << \"permission\"; permitted)"],
                  guard.fetch(:conditions).map { |condition| condition.fetch(:expression) })

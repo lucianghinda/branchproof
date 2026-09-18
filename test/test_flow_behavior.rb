@@ -243,11 +243,17 @@ class TestFlowBehavior < Minitest::Test
       path = File.join(directory, "fixture.rb")
       File.write(path, source)
       inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
-      decision = inventory[:decisions].find { |entry| entry[:context] == "or_assignment" }
-      assert_equal "UNSUPPORTED", decision[:support_status]
-      assert_includes decision[:support_reasons], "unsupported_defined_expression"
+      decision = inventory[:decisions].find { |entry| entry[:context] == "defined" }
+      assert_equal "boolean", decision[:kind]
+      assert_equal "SUPPORTED", decision[:support_status]
+      refute_includes decision[:support_reasons], "unsupported_defined_expression"
       rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
-      assert_equal source, rewritten[:bytes]
+      assert rewritten[:changed]
+      original = Module.new
+      original.module_eval(source, path)
+      instrumented = Module.new
+      instrumented.module_eval(rewritten[:bytes], path)
+      assert_equal original.exercise(:value), instrumented.exercise(:value)
     end
   end
 
@@ -271,7 +277,7 @@ class TestFlowBehavior < Minitest::Test
     assert_includes values, [false, false, true]
   end
 
-  def test_safe_navigation_compound_assignment_is_left_unsupported
+  def test_safe_navigation_compound_assignment_preserves_native_behavior
     source = <<~APP
       def self.exercise(value)
         value&.item ||= :built
@@ -282,12 +288,12 @@ class TestFlowBehavior < Minitest::Test
       File.write(path, source)
       inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
       decision = inventory[:decisions].find { |entry| entry[:context] == "or_assignment" }
-      assert_equal "implicit", decision[:kind]
-      assert_equal "UNSUPPORTED", decision[:support_status]
-      assert_includes decision[:support_reasons], "unsupported_assignment_target"
+      assert_equal "multiway", decision[:kind]
+      assert_equal "SUPPORTED", decision[:support_status]
+      refute_includes decision[:support_reasons], "unsupported_assignment_target"
       rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
-      refute rewritten[:changed]
-      assert_equal source, rewritten[:bytes]
+      assert rewritten[:changed]
+      refute_equal source, rewritten[:bytes]
     end
   end
 

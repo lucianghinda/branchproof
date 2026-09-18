@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Keep each bounded source rewrite together so its evaluation order can be audited.
-# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+# rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ModuleLength
 
 module Branchproof
   # Source-location edits around Ruby's native matching and assignment operations.
@@ -19,11 +19,27 @@ module Branchproof
         flow_fragments(bytes, decision, nested, replacements, encloses)
       when "assignment"
         rhs = metadata.fetch(:rhs)
-        replacements = [flow_replacement(bytes, rhs, nested, encloses) do |expression|
-          "(begin; #{self.class::RUNTIME}.flow_path(#{decision[:id].inspect}, 1); (#{expression}); end)"
-        end]
+        identifier = decision[:id].inspect
+        replacements = []
+        if metadata[:receiver]
+          receiver = metadata.fetch(:receiver)
+          replacements << flow_replacement(bytes, receiver, nested, encloses) do |expression|
+            "#{self.class::RUNTIME}.flow_assignment_receiver(#{identifier}, (#{expression}))"
+          end
+          replacements << flow_replacement(bytes, rhs, nested, encloses) do |expression|
+            "(begin; #{self.class::RUNTIME}.flow_assignment_path(#{identifier}, 2); (#{expression}); end)"
+          end
+        else
+          replacements << flow_replacement(bytes, rhs, nested, encloses) do |expression|
+            "(begin; #{self.class::RUNTIME}.flow_path(#{identifier}, 1); (#{expression}); end)"
+          end
+        end
         expression = flow_fragments(bytes, decision, nested, replacements, encloses)
-        flow_frame(decision[:id], expression, default_path: 0)
+        if metadata[:receiver]
+          flow_assignment_frame(decision[:id], expression, default_path: 1)
+        else
+          flow_frame(decision[:id], expression, default_path: 0)
+        end
       when "case"
         render_case_flow(bytes, decision, nested, metadata, encloses)
       when "case_match"
@@ -38,7 +54,12 @@ module Branchproof
       runtime = self.class::RUNTIME
       replacements = metadata.fetch(:candidates).map do |candidate|
         flow_replacement(bytes, candidate, nested, encloses) do |expression|
-          "(begin; #{runtime}.flow_candidate(#{identifier}, #{candidate[:index]}); (#{expression}); end)"
+          if candidate[:splat]
+            splat_expression = expression.sub(/\A\*/, "")
+            "*(begin; #{runtime}.flow_candidate(#{identifier}, #{candidate[:index]}); (#{splat_expression}); end)"
+          else
+            "(begin; #{runtime}.flow_candidate(#{identifier}, #{candidate[:index]}); (#{expression}); end)"
+          end
         end
       end
       metadata.fetch(:branches).each do |branch|
@@ -101,7 +122,15 @@ module Branchproof
         "#{runtime}.flow_finish(#{decision_id.inspect}, (#{expression}), #{default_path.inspect}); ensure; " \
         "#{runtime}.leave(#{decision_id.inspect}); end; end)"
     end
+
+    def flow_assignment_frame(decision_id, expression, default_path: nil)
+      runtime = self.class::RUNTIME
+      "(begin; #{runtime}.enter(#{decision_id.inspect}); begin; " \
+        "#{runtime}.flow_assignment_finish(#{decision_id.inspect}, (#{expression}), " \
+        "#{default_path.inspect}); ensure; " \
+        "#{runtime}.leave(#{decision_id.inspect}); end; end)"
+    end
   end
 end
 
-# rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+# rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/ModuleLength

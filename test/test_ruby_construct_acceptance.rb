@@ -25,9 +25,13 @@ class TestRubyConstructAcceptance < Minitest::Test
     "PAT-01" => { context: "case_in", kind: "pattern" },
     "PAT-05" => { context: "pattern_guard", kind: "boolean" },
     "PAT-03" => { context: "pattern_in", kind: "boolean" },
+    "PAT-24" => { context: "case_in", kind: "pattern" },
     "ASGN-01" => { context: "or_assignment", kind: "implicit" },
     "ASGN-02" => { context: "and_assignment", kind: "implicit" },
-    "NIL-01" => { context: "safe_navigation", kind: "implicit" }
+    "NIL-01" => { context: "safe_navigation", kind: "implicit" },
+    "FLIP-01" => { context: "if", kind: "boolean" },
+    "ARG-01" => { context: "default_argument", kind: "implicit" },
+    "EXC-01" => { context: "rescue", kind: "exception" }
   }.freeze
 
   def test_serial_cli_attributes_representative_construct_corpus
@@ -56,8 +60,11 @@ class TestRubyConstructAcceptance < Minitest::Test
       end
       if id == "PAT-05"
         outer = decisions.find { |item| item.fetch("context") == "case_in" }
-        assert_equal "UNSUPPORTED", outer.fetch("support_status")
-        assert_equal ["unsupported_pattern_guard"], outer.fetch("support_reasons")
+        assert_equal "SUPPORTED", outer.fetch("support_status")
+        outer_row = report.fetch("analysis").fetch("decisions").find do |item|
+          item.fetch("decision_id") == outer.fetch("id")
+        end
+        assert_equal "covered", outer_row.dig("coverage", "alternative", "status")
       end
 
       tests = report.dig("observations", "tests")
@@ -145,20 +152,24 @@ class TestRubyConstructAcceptance < Minitest::Test
     assert_equal 0, incomplete.dig(:json, "baseline", "executed_tests")
   end
 
-  def test_no_decision_fixture_has_a_passed_baseline_and_analysis_exit_two
+  def test_default_argument_fixture_has_an_implicit_decision
     result = run_fixture("ARG-01")
-    assert_equal 2, result[:status].exitstatus, result[:stderr]
+    assert_equal 0, result[:status].exitstatus, result[:stderr]
     assert_equal "PASSED", result.dig(:json, "baseline", "status")
-    assert_equal 0, result.dig(:json, "metrics", "discovered")
-    assert_empty result.dig(:json, "analysis", "decisions")
+    assert_operator result.dig(:json, "metrics", "discovered"), :>, 0
+    decisions = result.fetch(:json).fetch("source_inventory").fetch("decisions").map do |decision|
+      [decision.fetch("context"), decision.fetch("kind")]
+    end
+    assert_includes decisions, %w[default_argument implicit]
   end
 
-  def test_unsupported_flip_flop_is_excluded_from_supported_analysis
+  def test_flip_flop_is_supported_by_boolean_analysis
     result = run_fixture("FLIP-01")
-    assert_equal 2, result[:status].exitstatus, result[:stderr]
+    assert_equal 0, result[:status].exitstatus, result[:stderr]
     assert_equal "PASSED", result.dig(:json, "baseline", "status")
-    assert_operator result.dig(:json, "metrics", "unsupported"), :>, 0
-    assert_equal 0, result.dig(:json, "analysis", "coverage", "decision", "supported_decisions")
+    assert_equal 1, result.dig(:json, "analysis", "coverage", "decision", "supported_decisions")
+    assert_equal 1, result.dig(:json, "analysis", "coverage", "decision", "covered_decisions")
+    assert_equal 100.0, result.dig(:json, "analysis", "coverage", "decision", "percentage")
   end
 
   def test_process_exit_is_a_failed_minitest_test

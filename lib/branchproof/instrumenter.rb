@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "flow_instrumentation"
+require_relative "iteration_instrumentation"
+require_relative "exception_instrumentation"
+require_relative "default_instrumentation"
+require_relative "value_instrumentation"
 
 module Branchproof
   # Applies the smallest possible source edits around inventoried expressions.
@@ -8,6 +12,10 @@ module Branchproof
   # never evaluates application code or introduces a Ruby scope.
   class Instrumenter
     include FlowInstrumentation
+    include IterationInstrumentation
+    include ExceptionInstrumentation
+    prepend DefaultInstrumentation
+    prepend ValueInstrumentation
 
     RUNTIME = "::Branchproof::Runtime"
 
@@ -89,7 +97,7 @@ module Branchproof
 
         chunks << bytes.byteslice(cursor, cstart - cursor)
         original = render_children(bytes, cstart, clen, nested, encloses)
-        chunks << condition_wrapper(decision[:id], condition[:index], original)
+        chunks << condition_wrapper(decision, condition, original)
         cursor = cstart + clen
       end
       chunks << render_children(bytes, cursor, length - (cursor - start), nested, encloses)
@@ -131,10 +139,20 @@ module Branchproof
       end
     end
 
-    def condition_wrapper(decision_id, index, expression)
+    def condition_wrapper(decision, condition, expression)
       return "(begin; #{expression}; end)" if nonlocal_transfer?(expression)
 
-      "#{RUNTIME}.condition(#{decision_id.inspect}, #{index}, (#{expression}))"
+      identifier = decision[:id].inspect
+      index = condition[:index]
+      case condition[:contextual]
+      when "implicit_regexp", "flip_flop"
+        # These operations require Ruby's conditional context: a bare regexp
+        # implicitly matches $_ and a flip-flop retains its state across calls.
+        "(if (#{expression}) then #{RUNTIME}.condition(#{identifier}, #{index}, true) " \
+        "else #{RUNTIME}.condition(#{identifier}, #{index}, false) end)"
+      else
+        "#{RUNTIME}.condition(#{identifier}, #{index}, (#{expression}))"
+      end
     end
 
     def nonlocal_transfer?(expression)

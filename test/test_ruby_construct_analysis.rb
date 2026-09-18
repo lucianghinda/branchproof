@@ -78,9 +78,8 @@ class TestRubyConstructAnalysis < Minitest::Test
       end
       expected_analyzed = boolean_decisions.count { |decision| supported?(decision) }
       assert_equal expected_analyzed, aggregate.dig(:decision_table, :decisions_analyzed), id
-      # Native supported Boolean constructs are all within the table limits;
-      # unsupported Booleans are excluded from this aggregate entirely.
-      assert_equal 0, aggregate.dig(:decision_table, :not_calculated_decisions), id
+      expected_not_calculated = boolean_decisions.count { |decision| !supported?(decision) }
+      assert_equal expected_not_calculated, aggregate.dig(:decision_table, :not_calculated_decisions), id
     end
   end
 
@@ -185,6 +184,10 @@ class TestRubyConstructAnalysis < Minitest::Test
     }
     anchors.each do |id, expected|
       vectors = RubyConstructs.document(id).fetch(:evidence).fetch(:vectors)
+      if id == "PAT-24"
+        guard = RubyConstructs.inventory(id).fetch(:decisions).find { |decision| decision[:context] == "pattern_guard" }
+        vectors = vectors.select { |vector| vector[:decision_id] == guard.fetch(:id) }
+      end
       actual = vectors.map { |vector| [vector.fetch(:values), vector.fetch(:outcome)] }
       assert_equal expected.sort_by(&:to_s), actual.sort_by(&:to_s), id
     end

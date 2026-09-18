@@ -4,9 +4,10 @@ Each `.rb` file is a complete, independent Ruby example for one catalog ID.
 `IF-01` maps to `if_01.rb`, `PAT-03` to `pat_03.rb`, and so on. All 142 IDs
 have a source file and named test cases in one of the four JSON manifests.
 
-The examples demonstrate ordinary Ruby semantics. Their presence does not
-claim that Branchproof can instrument the construct. Cases exercise
-representative paths, not every edge case in the language catalog.
+The examples demonstrate ordinary Ruby semantics. As of 0.9.0, every fixture
+has supported measurable coverage, with Boolean predicates and other choices
+reported separately. Cases exercise representative paths, not every edge case
+in the language catalog or every internal branch of a called library method.
 
 ## Use the Ruby directly
 
@@ -98,7 +99,7 @@ The corpus is exercised through these test layers:
 
 | Test file | Contract |
 | --- | --- |
-| `test_ruby_construct_source.rb` | Reviewed inventory for every ID: decision kind, context, conditions, exclusions, or no decision |
+| `test_ruby_construct_source.rb` | Reviewed inventory for every ID: decision kind, context, conditions, alternatives, and exact source locations |
 | `test_ruby_construct_behavior.rb` | Every named case preserves its result, exception, trace, or process exit after rewriting |
 | `test_ruby_construct_analysis.rb` | Applicable Boolean criteria, alternative coverage, partial observations, attribution, and reachability |
 | `test_ruby_construct_reporting.rb` | Levels 1–3, report views, saved documents, and comparison |
@@ -106,15 +107,17 @@ The corpus is exercised through these test layers:
 
 Levels 1–3 select displayed detail from the same evidence. Boolean decisions
 receive decision, condition, condition/decision, masking MC/DC, and decision-table
-coverage. Multiway, pattern, and implicit decisions receive alternative coverage
-and stay outside Boolean denominators. Excluded syntax remains visible; ordinary
-method calls and argument defaults do not automatically create decisions.
+coverage. Multiway, pattern, implicit, and exception decisions receive alternative
+coverage and stay outside Boolean denominators. Optional argument binding,
+recognized returned predicates, value categories, rescue paths, required patterns,
+and iterator callbacks now have explicit observation contracts. Arbitrary method
+entry is not counted as a decision.
 
 The shared helper in `test/support/ruby_constructs.rb` isolates fixture execution
 in child processes and reuses captured observations across assertions. The full
 corpus checks Ruby semantics independently of adapters; representative Rails
 loading checks remain behind `BRANCHPROOF_RAILS_INTEGRATION=1`. This suite does not
-add RSpec, parallel runners, or new syntax support.
+add RSpec or parallel runners.
 
 Run the corpus suites with the project's installed bundle:
 

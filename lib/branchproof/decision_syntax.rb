@@ -117,7 +117,8 @@ module Branchproof
                                    encoding),
             range: byte_range(candidate.location, splat_node?(candidate) ? "splat" : nil),
             byte_start: candidate.location.start_offset,
-            byte_length: candidate.location.length
+            byte_length: candidate.location.length,
+            splat: splat_node?(candidate)
           }
         end
         branches << {
@@ -142,9 +143,6 @@ module Branchproof
                           empty: statements_empty?(else_clause.statements) }
                       end
       reasons = unsupported_reasons(node, bytes)
-      reasons << "unsupported_case_splat" if candidates.any? do |candidate|
-        candidate[:range] && candidate[:range][:kind] == "splat"
-      end
       instrumentation = {
         type: "case",
         range: byte_range(node.location),
@@ -171,7 +169,6 @@ module Branchproof
         guarded = pattern.is_a?(Prism::IfNode) || pattern.is_a?(Prism::UnlessNode)
         guard = guarded ? pattern.predicate : nil
         pattern_node = guarded ? pattern.statements&.body&.first : pattern
-        reasons << "unsupported_pattern_guard" if guard
         candidate_node = pattern_node || pattern
         candidates << {
           expression: text_value(bytes.byteslice(candidate_node.location.start_offset, candidate_node.location.length),
@@ -233,16 +230,28 @@ module Branchproof
       rhs = node.value
       operator = bytes.byteslice(node.operator_loc.start_offset, node.operator_loc.length)
       assignment_context = operator == "||=" ? "or_assignment" : "and_assignment"
-      reasons = safe_navigation_assignment?(node) ? ["unsupported_assignment_target"] : []
+      safe_navigation = safe_navigation_assignment?(node)
+      reasons = []
       instrumentation = {
         type: "assignment",
         range: byte_range(node.location),
         rhs: byte_range(rhs.location),
         operator: operator,
         rhs_path: 1,
-        skipped_path: 0
+        skipped_path: 0,
+        receiver: safe_navigation && byte_range(node.receiver.location),
+        alternative_count: safe_navigation ? 3 : 2
       }
-      alternatives = if operator == "||="
+      alternatives = if safe_navigation
+                       skipped = operator == "||=" ? "LHS truthy; RHS skipped" : "LHS falsey; RHS skipped"
+                       executed = operator == "||=" ? "LHS falsey; RHS executed" : "LHS truthy; RHS executed"
+                       [{ expression: "receiver nil", byte_start: node.receiver.location.start_offset,
+                          byte_length: node.receiver.location.length },
+                        { expression: skipped, byte_start: node.location.start_offset,
+                          byte_length: node.location.length },
+                        { expression: executed, byte_start: node.location.start_offset,
+                          byte_length: node.location.length }]
+                     elsif operator == "||="
                        [{ expression: "LHS truthy; RHS skipped", byte_start: node.location.start_offset,
                           byte_length: node.location.length },
                         { expression: "LHS falsey; RHS executed", byte_start: node.location.start_offset,
@@ -253,7 +262,8 @@ module Branchproof
                         { expression: "LHS truthy; RHS executed", byte_start: node.location.start_offset,
                           byte_length: node.location.length }]
                      end
-      ["implicit", assignment_context, alternatives, instrumentation, unsupported_reasons(node, bytes) + reasons]
+      [safe_navigation ? "multiway" : "implicit", assignment_context, alternatives,
+       instrumentation, unsupported_reasons(node, bytes) + reasons]
     end
 
     def rescue_details(node, bytes, encoding)
