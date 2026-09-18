@@ -4,7 +4,10 @@ require "test_helper"
 require "rubygems"
 require "rubygems/package"
 require "rubygems/installer"
+require "open3"
+require "shellwords"
 require "tmpdir"
+require "yaml"
 
 class TestPackaging < Minitest::Test
   ROOT = File.expand_path("..", __dir__).freeze
@@ -79,12 +82,28 @@ class TestPackaging < Minitest::Test
   def test_rbs_and_ci_cover_the_candidate_runtime_matrix
     rbs = File.read(File.join(ROOT, "sig/branchproof.rbs"))
     workflow = File.read(File.join(ROOT, ".github/workflows/main.yml"))
+    workflow_document = YAML.safe_load(workflow, aliases: true)
+    runtime_matrix = workflow_document.fetch("jobs").fetch("test").fetch("strategy").fetch("matrix").fetch("ruby")
 
     assert_includes rbs, "class Source"
     assert_includes rbs, "class Report"
-    assert_includes workflow, 'ruby: ["3.3", "3.4"]'
+    %w[3.3 3.4 4.0].each { |version| assert_includes runtime_matrix, version }
     assert_includes workflow, "bundle exec rake"
     assert_includes workflow, "BRANCHPROOF_RAILS_INTEGRATION: \"1\""
     assert_includes workflow, "Rails 8.1"
+  end
+
+  def test_rspec_core_workflow_command_is_shell_safe_and_checks_the_resolved_version
+    workflow = YAML.safe_load_file(File.join(ROOT, ".github/workflows/main.yml"), aliases: true)
+    step = workflow.fetch("jobs").fetch("rspec-compatibility").fetch("steps").find do |candidate|
+      candidate["name"] == "Verify resolved RSpec Core version"
+    end
+    argv = Shellwords.split(step.fetch("run"))
+    expected = Gem.loaded_specs.fetch("rspec-core").version.to_s
+    _stdout, stderr, status = Open3.capture3({ "EXPECTED_RSPEC_CORE_VERSION" => expected }, *argv, chdir: ROOT)
+    assert status.success?, stderr
+    _stdout, stderr, status = Open3.capture3({ "EXPECTED_RSPEC_CORE_VERSION" => "0.0.0" }, *argv, chdir: ROOT)
+    refute status.success?
+    assert_includes stderr, "unexpected RSpec core #{expected}"
   end
 end
