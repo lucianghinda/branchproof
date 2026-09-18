@@ -1,7 +1,7 @@
 # Branchproof
 
 Branchproof measures decision, condition, modified condition/decision (MC/DC),
-and decision-table coverage from one serial Minitest run. It discovers Ruby
+and decision-table coverage from one serial Minitest or RSpec run. It discovers Ruby
 decisions through Prism, records their runtime paths, and attributes evidence
 to tests. Boolean decisions receive the coverage ladder; `case`, pattern
 alternatives, safe navigation, and conditional assignments receive alternative
@@ -22,10 +22,13 @@ Or add it to a bundle:
 bundle add branchproof
 ```
 
-Branchproof targets CRuby 3.3 and 3.4, Minitest 5.x, and Prism 1.x. The
-published core runtime matrix is the CI matrix. Rails support is optional and
-has been locally checked against Rails 8.1.3.1 on CRuby 3.4.5; Rails is
-supplied by the application and is not a runtime dependency of this gem.
+Branchproof targets CRuby 3.3 and 3.4, Minitest 5.x, RSpec 3.13, and Prism 1.x. The
+published core runtime matrix is the CI matrix. Rails/RSpec execution is limited
+to Rails 8.1.x, rspec-rails 8.x, RSpec 3.13.x, and CRuby 3.4.x; passing core
+tests on Ruby 4.0 does not imply Rails/RSpec support. Integration has been checked
+with Rails 8.1.3.1, rspec-rails 8.0.4, RSpec Core 3.13.6, and CRuby 3.4.7.
+Rails and RSpec are optional dependencies supplied by the application.
+Minitest 5.x remains a runtime dependency of this gem.
 Unsupported syntax and incomplete observations remain visible in the report
 instead of being counted as coverage.
 
@@ -33,7 +36,7 @@ instead of being counted as coverage.
 
 Run `branchproof analyze` with the source files or globs to inspect, followed by
 options. A second `--` separates Branchproof options from arguments passed to
-Minitest unchanged:
+the selected test framework:
 
 ```sh
 branchproof analyze 'lib/**/*.rb' --test 'test/**/*_test.rb' \
@@ -58,22 +61,60 @@ the application's bundle and Rails version remain in effect:
 bundle exec branchproof analyze 'app/**/*.rb' --project rails --test 'test/**/*_test.rb'
 ```
 
+Choose the test framework independently from project kind:
+
+```sh
+bundle exec branchproof analyze 'app/**/*.rb' --project rails --framework rspec
+```
+
+`--framework auto|minitest|rspec` is explicit about the adapter. Auto mode
+selects RSpec when `.rspec` or `spec/**/*_spec.rb` markers exist and Minitest
+when `test/**/*_test.rb` or `test/**/test_*.rb` markers exist. If both are
+present, specify the framework. RSpec discovery uses `spec/**/*_spec.rb`; an
+explicit `--test` selection remains authoritative. Project roots are resolved
+explicitly, and report paths are relative to that root so reports from
+different checkouts can be compared.
+
+Install `rspec` in the application's test bundle; Rails applications also need
+`rspec-rails`. RSpec reads its usual option files and `SPEC_OPTS`, including
+helper requires, filters, ordering, and file or example-ID selectors. Selectors
+from RSpec configuration replace default discovery. Combining those selectors
+with an explicit Branchproof `--test` is rejected as ambiguous; ordinary filters
+such as `--tag` and `--example` can accompany `--test`.
+
+RSpec before hooks, eager `let!`, and around-hook prefixes own setup evidence.
+The example body and helpers evaluated there own body evidence; after hooks,
+mock cleanup, and around-hook suffixes own teardown evidence. Suite and context
+hooks remain unattributed. Pending and skipped examples do not invent execution;
+an unexpectedly passing pending example remains a failure.
+
+RSpec support is serial: dry-run, bisect, DRb, custom runners, nested runs, and
+repeated example attempts are rejected. Rails/RSpec supports Rails 8.1.x with
+rspec-rails 8.x on CRuby 3.4.x. Feature and system specs use the in-process
+Capybara `rack_test` driver; browser drivers require execution-context support
+outside this release. Capybara is optional for apps that do not use those specs.
+
 For a project rooted at the current directory, `--project auto` is the
 default. It selects Rails only when both `config/application.rb` and
 `config/environment.rb` exist; otherwise it selects a plain Ruby project.
 Use `--project ruby` or `--project rails` to override detection. An explicit
 Rails project without both boot files is a usage error.
 
-Project defaults discover the sorted, de-duplicated union of
+Minitest defaults discover the sorted, de-duplicated union of
 `test/**/*_test.rb` and `test/**/test_*.rb`. Helper, support, and fixture files
 are excluded from that default set. `--test` remains authoritative when test
 files are selected explicitly. The worker prepends the project's `lib` and
-`test` directories to its child load path, so application `require` calls
+`test` directories (`lib` and `spec` for RSpec) to its child load path, so application `require` calls
 resolve without changing the parent process.
 
-Rails analysis boots `config/environment.rb` and `rails/test_help` inside the
-isolated worker after Branchproof's loader and Minitest hooks are installed. The
-child receives `RAILS_ENV=test`, `RACK_ENV=test`, `PARALLEL_WORKERS=1`,
+Rails analysis boots the application inside the isolated worker after
+Branchproof's loader and the selected framework hooks are installed. The
+application's `rails_helper` owns requiring and configuring `rspec/rails` after
+the loader; the helper must not require `branchproof` again. Selected specs
+may require only `spec_helper` and run without booting Rails,
+even when project detection selects Rails. Once Rails is loaded, Branchproof
+requires an initialized application and enforces the Rails/RSpec support limits.
+The child receives `RAILS_ENV=test`, `RACK_ENV=test`, `PARALLEL_WORKERS=1`,
 `DISABLE_BOOTSNAP=1`, and `DISABLE_SPRING=1`; the invoking process environment
 is unchanged. The Rails metadata in the report identifies the selected
 project and Rails version.
@@ -92,6 +133,17 @@ metadata is unavailable, the owner falls back to its short ID. Level 3 adds
 the witness pair or missing counterpart constraints beside each condition;
 Level 2 and Level 3 also list named supporting tests. Repeated supporting-set
 rows are collapsed in terminal output only.
+
+RSpec owners use the example's `full_description` and positional `example_id`.
+Terminal views include quoted rerun commands, including selectors for shared
+examples. These selectors apply to the recorded spec revision. Comparisons
+require matching spec and declaration digests before matching example owners;
+changed specs and older reports without digests are treated conservatively.
+Runner output streams to stderr while JSON reports remain on stdout.
+Pending, skipped, fixed-pending, and failed examples map to the corresponding
+baseline statuses; suite and context lifecycle events remain visible, and
+observations without a test owner are counted as unattributed. The same levels
+and terminal views are available for both adapters.
 
 For example, running the contents of the small `decision.rb` /
 `test_decision_test.rb` fixture from a project `lib/` and `test/` directory
@@ -654,12 +706,14 @@ the serial Minitest runner. This is useful for seeds and name filters:
 branchproof analyze 'lib/**/*.rb' --level 1 -- --seed 9001 -n /checkout/
 ```
 
-The 0.2 release supports serial Minitest execution in plain Ruby projects and
-Rails applications. Rails lazy and eager loading are supported when the
-application does not enable reloading for the test run. RSpec, parallel or
-forked runners, mutation execution, Rails system/browser tests, custom Rails
-test commands, generated tests, and reloading configurations are outside this
-release and produce diagnostics rather than a passing analysis.
+The first release supports serial Minitest and RSpec execution in plain Ruby
+projects and Rails applications. Rails lazy and eager loading are supported
+when the application does not enable reloading for the test run. Transactions
+and in-process specs are supported within the serial process policy. Parallel
+or forked runners, remote or threaded browser drivers, mutation execution,
+Rails system/browser tests, custom Rails test commands, generated tests, and
+reloading configurations are explicitly unsupported and produce diagnostics
+rather than a passing analysis.
 
 ## Library entry points
 
@@ -672,7 +726,8 @@ Branchproof::Records.id(name: "stable identity")
 
 `require "mcdc"` and `MCDC` are compatibility aliases for the same public
 namespace. The CLI is the supported way to run a complete analysis;
-`Branchproof::Project` exposes project selection and child-environment policy,
+`Branchproof::Project` exposes project and framework selection and
+child-environment policy,
 and `Branchproof::RailsSupport` is the optional Rails boot boundary. The library
 classes expose the source, runtime, evidence, analysis, and report contracts
 for adapters and integrations.
@@ -704,6 +759,10 @@ analysis.
 Run the commands with the Ruby executable you intend to validate. The checked
 release environments are CRuby 3.3.6 and 3.4.5. Each runtime
 must provide the declared Minitest 5.x and Prism 1.x dependencies.
+
+The repeatable native-versus-instrumented adapter benchmark and its captured
+Ruby 3.4.7 result are in
+[`docs/benchmarks/rspec-adapter.md`](docs/benchmarks/rspec-adapter.md).
 
 ## License
 

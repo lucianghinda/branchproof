@@ -120,6 +120,10 @@ module Branchproof
       nil
     end
 
+    def test_phase_counts
+      @tests.transform_values { |test| test[:phase_counts].dup.freeze }.freeze
+    end
+
     def snapshot
       deep_freeze(deep_dup({ schema_version: SCHEMA_VERSION, tool_version: TOOL_VERSION,
                              criterion_version: CRITERION_VERSION,

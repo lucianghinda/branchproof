@@ -164,4 +164,66 @@ class TestCLI < Minitest::Test
     assert_equal 2, status
     assert_includes stderr.string, "project must be auto, ruby, or rails"
   end
+
+  def test_framework_and_project_options_are_resolved_after_all_arguments
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "spec"))
+      FileUtils.touch(File.join(root, "spec/example_spec.rb"))
+      Dir.chdir(root) do
+        cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+        options = cli.send(:parse, ["analyze", "--framework", "rspec", "--project", "ruby"])
+
+        assert_equal "ruby", options[:project][:kind]
+        assert_equal "rspec", options[:project][:framework]
+        assert_equal [File.realpath(File.join(root, "spec", "example_spec.rb"))], options[:tests]
+      end
+    end
+  end
+
+  def test_repeated_project_and_framework_options_use_the_last_values
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    options = cli.send(:parse, ["analyze", "--project", "ruby", "--framework", "minitest",
+                                "--project", "auto", "--framework", "rspec"])
+
+    assert_equal "auto", options[:project_mode]
+    assert_equal "rspec", options[:framework]
+    assert_equal "rspec", options[:project][:framework]
+  end
+
+  def test_run_metadata_prefers_selected_files_from_string_keyed_baseline
+    Dir.mktmpdir do |root|
+      cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+      options = cli.send(:parse, ["analyze", "--framework", "rspec"])
+      options[:project] = options[:project].merge(root: root)
+      baseline = { "project" => { "framework" => "rspec", "framework_version" => "3.13.0" },
+                   "selected_test_files" => [File.join(root, "spec", "selected_spec.rb")],
+                   "selected_example_ids" => ["spec/example_spec.rb[1]"], "tests" => [] }
+
+      metadata = cli.send(:run_metadata, options, baseline)
+
+      assert_equal ["spec/selected_spec.rb"], metadata[:test_files]
+      assert_equal ["spec/example_spec.rb[1]"], metadata[:selected_example_ids]
+      assert_equal "rspec", metadata[:framework]
+      assert_equal "3.13.0", metadata[:framework_version]
+    end
+  end
+
+  def test_rspec_empty_discovery_still_runs_worker
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    options = { tests: [], project: { framework: "rspec" } }
+
+    assert cli.send(:run_worker?, options)
+    refute cli.send(:run_worker?, options.merge(project: { framework: "minitest" }))
+  end
+
+  def test_worker_payload_carries_explicit_selection_flag
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    evidence = Struct.new(:run_id).new("run-id")
+    options = { limits: {}, tests: [], runner_args: [], project: {}, explicit_tests: true }
+    payload = cli.send(:worker_payload, options, {}, evidence, "/tmp/branchproof-test")
+
+    assert_equal true, payload[:test_selection_explicit]
+    options[:explicit_tests] = false
+    assert_equal false, cli.send(:worker_payload, options, {}, evidence, "/tmp/branchproof-test")[:test_selection_explicit]
+  end
 end

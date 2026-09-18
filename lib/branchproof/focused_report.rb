@@ -238,6 +238,8 @@ module Branchproof
       lines << "Test: #{row[:name]}"
       lines << "Location: #{location(row[:relative_path], row[:line], unavailable: "location unavailable")}"
       lines << "Status: #{row[:status] || "unknown"}"
+      command = @coordinator.rerun_command(row[:id])
+      lines << "Rerun: #{command}" if command
       lines << "Phases: #{row[:phases].join(", ")}" unless row[:phases].empty?
       render_test_observations(lines, observations)
       lines << ""
@@ -341,6 +343,9 @@ module Branchproof
       return id.to_s unless test
 
       label = "#{test[:name]} (#{location(test[:relative_path], test[:line])})"
+      command = @coordinator.rerun_command(id)
+      return "#{label} (rerun: #{command})" if command
+
       duplicates = @test_name_counts[[test[:name], test[:relative_path], test[:line]]]
       duplicates > 1 ? "#{label} [#{id}]" : label
     end
