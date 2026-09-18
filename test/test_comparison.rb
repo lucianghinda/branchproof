@@ -199,6 +199,67 @@ class TestComparison < Minitest::Test
     assert_equal "not observed in current run", owner.fetch("observation_status")
   end
 
+  def test_rspec_examples_match_by_relative_path_and_scoped_id
+    tests = [
+      { id: "t1", adapter: "rspec", name: "does the thing", example_id: "./spec/policy_spec.rb[1:1]",
+        source: { relative_path: "spec/policy_spec.rb", line: 8 } },
+      { id: "t2", adapter: "rspec", name: "does the thing", example_id: "./spec/policy_spec.rb[1:2]",
+        source: { relative_path: "spec/policy_spec.rb", line: 12 } }
+    ]
+    before = document(status: "PROVEN", tests: tests)
+    after = document(status: "NOT_PROVEN", tests: tests.map { |test| test.merge(id: "new-#{test[:id]}") })
+    after[:observations][:vectors].each_with_index { |vector, index| vector[:test_ids] = ["new-t#{index + 1}"] }
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_equal 1, result.fetch("regressions")
+    assert_equal "complete", result.fetch("status")
+  end
+
+  def test_rspec_duplicate_scoped_ids_are_ambiguous_instead_of_matching
+    tests = 2.times.map do |index|
+      { id: "t#{index + 1}", adapter: "rspec", name: "same description",
+        example_id: "./spec/policy_spec.rb[1:1]", source: { relative_path: "spec/policy_spec.rb", line: 8 + index } }
+    end
+    before = document(status: "PROVEN", tests: tests)
+    after = document(status: "NOT_PROVEN", tests: tests)
+
+    owner = Branchproof::Comparison.new(before: before, after: after).call.fetch("changes").first
+                                   .fetch("owner_context").find { |item| item.fetch("label").include?("same description") }
+    assert_includes owner.fetch("test_status"), "no unique test match"
+  end
+
+  def test_framework_changes_are_context_reasons_before_regression_is_considered
+    before = document(status: "PROVEN", run_metadata: { framework: "rspec", framework_version: "3.13" })
+    after = document(status: "NOT_PROVEN", run_metadata: { framework: "minitest", framework_version: "5.20" })
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_includes result.fetch("reasons"), "framework differs"
+    refute result.fetch("regression")
+  end
+
+  def test_rspec_example_ids_normalize_checkout_roots
+    tests_before = [{ id: "old", adapter: "rspec", name: "same", example_id: "/old/spec/policy_spec.rb[1:1]",
+                      source: { path: "/old/spec/policy_spec.rb", line: 8 } }]
+    tests_after = [{ id: "new", adapter: "rspec", name: "same", example_id: "/new/spec/policy_spec.rb[1:1]",
+                     source: { path: "/new/spec/policy_spec.rb", line: 8 } }]
+    before = document(status: "PROVEN", tests: tests_before).tap do |item|
+      item[:source_inventory][:root] = "/old"
+      item[:run_metadata][:project_root] = "/old"
+    end
+    after = document(status: "NOT_PROVEN", tests: tests_after).tap do |item|
+      item[:source_inventory][:root] = "/new"
+      item[:run_metadata][:project_root] = "/new"
+      item[:observations][:vectors].each { |vector| vector[:test_ids] = ["new"] }
+    end
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_equal "complete", result.fetch("status")
+    assert_equal 1, result.fetch("regressions")
+  end
+
   def test_owner_observation_requires_matching_values_and_outcome
     before = document(status: "PROVEN")
     altered_vectors = [

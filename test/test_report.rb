@@ -60,6 +60,16 @@ class TestReport < Minitest::Test
     assert_nil document.fetch("metrics").fetch("percentage")
   end
 
+  def test_rspec_baseline_uses_example_counts_in_terminal_header
+    report = base_report(run_metadata: { framework: "rspec" },
+                         baseline: { status: "PASSED", executed_tests: 3,
+                                     failed_tests: 1, skipped_tests: 2 })
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+
+    assert_includes output.string, "Tests: PASSED (3 examples, 1 failed, 2 skipped)"
+  end
+
   def test_failed_baseline_returns_test_failure_exit
     report = base_report(baseline: { status: "FAILED" })
     assert_equal 1, report.exit_code

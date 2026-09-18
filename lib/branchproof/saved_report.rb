@@ -638,7 +638,9 @@ module Branchproof
     end
 
     def validate_test(test)
-      %w[name class_name method_name source_path].each { |field| validate_string_field(test, field, nullable: true) }
+      %w[adapter name class_name method_name source_path example_id].each do |field|
+        validate_string_field(test, field, nullable: true)
+      end
       validate_integer_field(test, "line", nullable: true)
       phase_counts = test["phase_counts"]
       if phase_counts
@@ -726,7 +728,12 @@ module Branchproof
       string_fields.each do |field|
         fail_with("run_metadata #{field} must be a string") if metadata.key?(field) && !metadata[field].is_a?(String)
       end
-      array_fields = %w[source_patterns test_patterns test_files runner_args]
+      nullable_string_fields = %w[framework framework_version rspec_rails_version rails_version]
+      nullable_string_fields.each do |field|
+        fail_with("run_metadata #{field} must be a string") if metadata.key?(field) &&
+                                                               !metadata[field].nil? && !metadata[field].is_a?(String)
+      end
+      array_fields = %w[source_patterns test_patterns test_files runner_args selected_test_files selected_example_ids]
       array_fields.each do |field|
         if metadata.key?(field) && !strings?(metadata[field])
           fail_with("run_metadata #{field} must be an array of strings")

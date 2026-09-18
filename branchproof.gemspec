@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ["lucianghinda@users.noreply.github.com"]
 
   spec.summary = "Modified condition and decision coverage for Ruby tests"
-  spec.description = "Inventory Ruby decisions and report masking MC/DC evidence from Minitest runs."
+  spec.description = "Inventory Ruby decisions and report masking MC/DC evidence from Minitest or RSpec runs."
   spec.homepage = "https://github.com/lucianghinda/branchproof"
   spec.license = "Apache-2.0"
   spec.required_ruby_version = ">= 3.3.0"

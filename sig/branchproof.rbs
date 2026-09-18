@@ -34,13 +34,15 @@ module Branchproof
 
   class Project
     MODES: Array[String]
+    FRAMEWORKS: Array[String]
     RAILS_ENVIRONMENT: record
-    def initialize: (root: String, ?mode: String) -> void
+    def initialize: (root: String, ?mode: String, ?framework: String) -> void
     def to_h: () -> record
   end
 
   module RailsSupport
     def self.boot: (project: record) -> record
+    def self.validate_rspec!: (project: record) -> record?
   end
 
   class Instrumenter
@@ -162,6 +164,23 @@ module Branchproof
     def initialize: (runtime: untyped) -> void
     def capabilities: () -> record
     def run: (test_files: Array[String], runner_args: Array[String], on_complete: ^(record) -> untyped, ?before_load: ^() -> untyped?) -> nil
+  end
+
+  class RSpecAdapter
+    FORBIDDEN_OPTIONS: Hash[Symbol, String]
+    attr_reader tests: Hash[String, record]
+    def self.active_adapter: () -> RSpecAdapter?
+    def self.active_adapter=: (RSpecAdapter?) -> RSpecAdapter?
+    def self.runner_adapter: () -> RSpecAdapter?
+    def self.runner_adapter=: (RSpecAdapter?) -> RSpecAdapter?
+    attr_reader late_execution_error: ArgumentError?
+    def initialize: (runtime: untyped) -> void
+    def reject_execution!: (String message) -> bot
+    def enter_runner!: (untyped runner) -> bool
+    def example_started: (untyped notification) -> untyped
+    def example_finished: (untyped notification) -> untyped
+    def run: (test_files: Array[String], runner_args: Array[String], on_complete: ^(record) -> untyped, ?before_load: ^() -> untyped?, ?after_load: ^() -> untyped?, ?test_selection_explicit: bool) -> untyped
+    def validate_runner!: () -> nil
   end
 
   class Report
