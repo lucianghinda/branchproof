@@ -9,7 +9,7 @@ class TestRubyConstructExamples < Minitest::Test
   ROOT = File.expand_path("fixtures/ruby_constructs", __dir__)
   COUNTS = { "VAL" => 7, "IF" => 9, "LOG" => 10, "CASE" => 8, "PAT" => 24,
              "NIL" => 7, "ASGN" => 8, "ARG" => 5, "LOOP" => 10, "FLIP" => 2,
-             "EXC" => 14, "FLOW" => 12, "PRED" => 17, "API" => 10 }.freeze
+             "EXC" => 15, "FLOW" => 12, "PRED" => 17, "API" => 10 }.freeze
   ENTRIES = Dir[File.join(ROOT, "*.json")].flat_map { |file| JSON.parse(File.read(file)) }.freeze
   RUNNER = <<~RUBY
     require "json"

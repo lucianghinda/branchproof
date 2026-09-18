@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/ModuleLength
 
 require "prism"
 
@@ -52,10 +52,12 @@ module Branchproof
       instrumentation = {
         type: "exception",
         range: byte_range(node.location),
-        normal_insert_at: node.else_clause && exception_else_insert_at(node),
+        normal_insert_at: exception_normal_insert_at(node),
         normal_body: node.statements && byte_range(node.statements.location),
+        normal_transfer: exception_transfer_metadata(node.statements),
         implicit: node.begin_keyword_loc.nil?,
-        entry_insert_at: node.begin_keyword_loc.nil? && node.statements&.location&.start_offset,
+        normal_empty: node.begin_keyword_loc.nil? && exception_body_empty?(node),
+        entry_insert_at: node.begin_keyword_loc.nil? && exception_entry_insert_at(node),
         exit_insert_at: node.begin_keyword_loc.nil? && node.end_keyword_loc&.start_offset,
         clauses: clauses.each_with_index.map do |clause_node, index|
           { index: index + 1, insert_at: exception_clause_insert_at(clause_node, node) }
@@ -113,7 +115,43 @@ module Branchproof
 
       node.ensure_clause&.ensure_keyword_loc&.start_offset || node.end_keyword_loc.start_offset
     end
+
+    def exception_transfer_metadata(statements)
+      transfer = statements && Array(statements.body).last
+      return nil unless transfer_node?(transfer)
+
+      arguments = transfer.respond_to?(:arguments) ? transfer.arguments : nil
+      argument_nodes = arguments && Array(arguments.arguments)
+      scalar_argument = argument_nodes&.length == 1 && !argument_nodes.first.is_a?(Prism::SplatNode)
+      argument_mode = if scalar_argument
+                        :scalar
+                      elsif argument_nodes&.any?
+                        :array
+                      end
+      { insert_at: transfer.location.start_offset,
+        arguments: argument_mode ? byte_range(arguments.location) : nil,
+        argument_mode: argument_mode }
+    end
+
+    def transfer_node?(node)
+      [Prism::ReturnNode, Prism::BreakNode, Prism::NextNode, Prism::RedoNode].any? { |klass| node.is_a?(klass) }
+    end
+
+    def exception_body_empty?(node)
+      node.statements.nil? || statements_empty?(node.statements)
+    end
+
+    def exception_normal_insert_at(node)
+      return exception_else_insert_at(node) if node.else_clause
+      return nil unless exception_body_empty?(node)
+
+      node.rescue_clause&.keyword_loc&.start_offset || node.ensure_clause&.ensure_keyword_loc&.start_offset
+    end
+
+    def exception_entry_insert_at(node)
+      node.statements&.location&.start_offset || exception_normal_insert_at(node) || node.end_keyword_loc.start_offset
+    end
   end
 end
 
-# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/ModuleLength

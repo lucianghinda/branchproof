@@ -953,5 +953,40 @@
         "stderr": ""
       }
     ]
+  },
+  {
+    "id": "EXC-15",
+    "cases": [
+      {
+        "name": "return",
+        "args": [
+          "return"
+        ],
+        "result": "returned"
+      },
+      {
+        "name": "break",
+        "args": [
+          "break"
+        ],
+        "result": "broken"
+      },
+      {
+        "name": "next",
+        "args": [
+          "next"
+        ],
+        "result": [
+          1
+        ]
+      },
+      {
+        "name": "redo",
+        "args": [
+          "redo"
+        ],
+        "result": 2
+      }
+    ]
   }
 ]

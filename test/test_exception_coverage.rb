@@ -160,6 +160,202 @@ class TestExceptionCoverage < Minitest::Test
     Thread.current[Branchproof::Runtime::FRAME_STATE_KEY] = nil
   end
 
+  def test_transfer_terminated_protected_bodies_rewrite_and_preserve_native_results
+    source = <<~RUBY
+      def return_value(mode)
+        begin
+          return (raise "argument") if mode == :raise
+          return 6
+        rescue StandardError
+          :rescued
+        end
+      end
+
+      def break_value
+        [1].each do
+          begin
+            break :broken
+          rescue StandardError
+            :rescued
+          end
+        end
+      end
+
+      def next_value
+        seen = []
+        [1].each do |item|
+          begin
+            seen << item
+            next
+          rescue StandardError
+            :rescued
+          end
+        end
+        seen
+      end
+
+      def redo_source
+        attempts = 0
+        loop do
+          begin
+            attempts += 1
+            break if attempts > 1
+            redo
+          rescue StandardError
+            :rescued
+          end
+        end
+        attempts
+      end
+
+      def multiple_return
+        begin
+          return 1, 2
+        rescue StandardError
+          :rescued
+        end
+      end
+
+      def splat_next(items)
+        seen = []
+        items.each do |item|
+          begin
+            seen << item
+            next *items
+          rescue StandardError
+            :rescued
+          end
+        end
+        seen
+      end
+
+      def else_return(flag)
+        begin
+          raise "body" if flag
+          :normal
+        rescue StandardError
+          :rescued
+        else
+          return :else
+        end
+      end
+
+      def handler_return
+        begin
+          raise "body"
+        rescue StandardError
+          return :handler
+        end
+      end
+    RUBY
+    _inventory, rewritten = instrumented(source)
+
+    assert rewritten[:changed], rewritten.inspect
+    assert_empty rewritten[:diagnostics]
+    assert_instance_of RubyVM::InstructionSequence, rewritten[:iseq]
+
+    eval(source, TOPLEVEL_BINDING)
+    native = [return_value(:ok), return_value(:raise), break_value, next_value, redo_source,
+              multiple_return, splat_next([1]), else_return(false), else_return(true), handler_return]
+    eval(rewritten[:bytes], TOPLEVEL_BINDING)
+    instrumented = [return_value(:ok), return_value(:raise), break_value, next_value, redo_source,
+                    multiple_return, splat_next([1]), else_return(false), else_return(true), handler_return]
+    assert_equal native, instrumented
+  end
+
+  def test_return_argument_that_raises_does_not_record_normal_path
+    source = <<~RUBY
+      def exercise
+        begin
+          return (raise "argument")
+        rescue StandardError
+          :rescued
+        end
+      end
+
+      def multiple_exercise
+        begin
+          return 1, (raise "second")
+        rescue StandardError
+          :rescued
+        end
+      end
+
+      def splat_exercise
+        begin
+          return *[1, (raise "splat")]
+        rescue StandardError
+          :rescued
+        end
+      end
+    RUBY
+    inventory, rewritten = instrumented(source)
+    assert rewritten[:changed], rewritten.inspect
+    assert_empty rewritten[:diagnostics]
+
+    evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
+                                         run_id: "exception-transfer-argument")
+    Branchproof::Runtime.boot(evidence: evidence)
+    eval(rewritten[:bytes], TOPLEVEL_BINDING)
+    assert_equal :rescued, exercise
+    assert_equal :rescued, multiple_exercise
+    assert_equal :rescued, splat_exercise
+    vectors = Branchproof::Runtime.snapshot[:vectors]
+    inventory[:decisions].select { |entry| entry[:kind] == "exception" }.each do |entry|
+      vector = vectors.find { |candidate| candidate[:decision_id] == entry[:id] }
+      assert_equal [false, true, nil], vector[:values]
+    end
+  ensure
+    Branchproof::Runtime.context(test_id: nil, phase: "unattributed")
+    Thread.current[Branchproof::Runtime::FRAME_STATE_KEY] = nil
+  end
+
+  def test_exc_15_fixture_executes_bounded_redo_and_transfer_cases
+    path = File.expand_path("fixtures/ruby_constructs/exc_15.rb", __dir__)
+    inventory = Branchproof::Source.new(root: File.dirname(path), limits: Branchproof::Limits.default)
+                                   .inventory(paths: [path])
+    rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
+    assert rewritten[:changed], rewritten.inspect
+    assert_empty rewritten[:diagnostics]
+    eval(File.binread(path), TOPLEVEL_BINDING)
+    native = %w[return break next redo].map { |mode| example(mode) }
+    eval(rewritten[:bytes], TOPLEVEL_BINDING)
+    instrumented = %w[return break next redo].map { |mode| example(mode) }
+    assert_equal native, instrumented
+    assert_equal [:returned, :broken, [1], 2], native
+  end
+
+  def test_empty_protected_regions_record_normal_and_preserve_results
+    source = <<~RUBY
+      def explicit_empty
+        begin
+        rescue StandardError
+          :rescued
+        end
+      end
+
+      def implicit_empty
+      rescue StandardError
+        :rescued
+      end
+
+      def ensure_empty
+        begin
+        ensure
+          :cleanup
+        end
+      end
+    RUBY
+    _inventory, rewritten = instrumented(source)
+    assert rewritten[:changed], rewritten.inspect
+    assert_empty rewritten[:diagnostics]
+    eval(source, TOPLEVEL_BINDING)
+    native = [explicit_empty, implicit_empty, ensure_empty]
+    eval(rewritten[:bytes], TOPLEVEL_BINDING)
+    assert_equal native, [explicit_empty, implicit_empty, ensure_empty]
+    assert_equal [nil, nil, nil], native
+  end
+
   private
 
   def decisions(source)
