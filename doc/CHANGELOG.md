@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-18
+
+- Measure contextual predicates, guarded pattern selection, dynamic case splat
+  groups, required pattern matching, and safe-navigation compound assignment.
+- Add coverage for rescue paths, optional argument binding, standalone
+  predicates, value alternatives, iteration, and source-visible callbacks.
+- Preserve Boolean criteria for Boolean decisions and report other choices as
+  alternative coverage, including their source locations and supporting tests.
+- Exercise 144 Ruby construct fixtures and 406 native cases across source inventory, native behavior,
+  runtime evidence, analysis, reports, saved reports, and CLI integration.
+- Preserve nonlocal control transfers on the right side of logical expressions.
+- Harden default-argument, exception, and iteration instrumentation around
+  implicit parameters, nonlocal transfers, nested frames, and deferred callbacks.
+- Remove unreachable integer bitwise alternatives and keep their exclusions out
+  of coverage denominators.
+- Cache repeated value evidence while preserving vector counts, test/phase
+  attribution, and saved-report coverage semantics.
+
 ## [0.8.0] - 2026-09-17
 
 - Derive a reduced decision table for every supported Boolean decision from its

@@ -3,7 +3,7 @@
 |  |  |
 | --- | --- |
 | **Inherits** | Object |
-| **Includes** | [Branchproof::FlowInstrumentation](FlowInstrumentation.md) |
+| **Includes** | [Branchproof::DefaultInstrumentation](DefaultInstrumentation.md), [Branchproof::ExceptionInstrumentation](ExceptionInstrumentation.md), [Branchproof::FlowInstrumentation](FlowInstrumentation.md), [Branchproof::IterationInstrumentation](IterationInstrumentation.md), [Branchproof::ValueInstrumentation](ValueInstrumentation.md) |
 | **Defined in** | lib/branchproof/instrumenter.rb |
 
 Applies the smallest possible source edits around inventoried expressions. The
