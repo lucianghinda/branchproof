@@ -125,6 +125,7 @@ module Branchproof
       phase_one_nodes = []
       phase_two_nodes = []
       flow_nodes = []
+      value_nodes = []
 
       walk_skipping_defined_operands(program) do |node|
         if node.is_a?(Prism::DefinedNode)
@@ -137,10 +138,11 @@ module Branchproof
         phase_two_nodes << node if boolean_node?(node) || node.is_a?(Prism::MatchPredicateNode) ||
                                    node.is_a?(Prism::DefinedNode)
         flow_nodes << node if flow_decision_node?(node)
+        value_nodes << node if respond_to?(:value_candidate_node?, true) && value_candidate_node?(node)
       end
 
       { defined_ranges: defined_ranges, guard_patterns: guard_patterns, phase_one_nodes: phase_one_nodes,
-        phase_two_nodes: phase_two_nodes, flow_nodes: flow_nodes }
+        phase_two_nodes: phase_two_nodes, flow_nodes: flow_nodes, value_nodes: value_nodes }
     end
 
     def decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
@@ -202,8 +204,15 @@ module Branchproof
                        predicate: predicate, context: spec[:context],
                        additional_reasons: spec[:additional_reasons] || [])
       end
-      boolean_decisions + flow_decisions_for(program, bytes, source_id, file_reasons, encoding,
-                                             defined_ranges: defined_ranges, nodes: collected[:flow_nodes])
+      decisions = boolean_decisions + flow_decisions_for(program, bytes, source_id, file_reasons, encoding,
+                                                         defined_ranges: defined_ranges,
+                                                         nodes: collected[:flow_nodes])
+      decisions + additional_decisions_for(program, bytes, source_id, file_reasons, encoding,
+                                           collected: collected, decisions: decisions)
+    end
+
+    def additional_decisions_for(_program, _bytes, _source_id, _file_reasons, _encoding, **_options)
+      []
     end
 
     def flow_decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8",

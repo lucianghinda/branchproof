@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Security/Eval, Style/DocumentDynamicEvalDefinition
-
 require "test_helper"
 require "prism"
 require "branchproof/decision_syntax"
@@ -92,17 +90,18 @@ class TestExceptionCoverage < Minitest::Test
     assert_equal "SUPPORTED", decision[:support_status]
     assert_empty rewritten[:diagnostics]
 
-    original = eval("#{source}\nexercise(:normal)\n", TOPLEVEL_BINDING, __FILE__, __LINE__)
-    values = %i[normal handled].map { |mode| eval("exercise(#{mode.inspect})", TOPLEVEL_BINDING, __FILE__, __LINE__) }
+    native = evaluate(source)
+    original = native.exercise(:normal)
+    values = %i[normal handled].map { |mode| native.exercise(mode) }
     assert_equal %i[normal handled], values
     assert_equal :normal, original
 
     evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
                                          run_id: "exception-test")
     Branchproof::Runtime.boot(evidence: evidence)
-    eval(rewritten[:bytes], TOPLEVEL_BINDING)
-    %i[normal handled].each { |mode| exercise(mode) }
-    error = assert_raises(IOError) { exercise(:unhandled) }
+    instrumented = evaluate(rewritten[:bytes])
+    %i[normal handled].each { |mode| instrumented.exercise(mode) }
+    error = assert_raises(IOError) { instrumented.exercise(:unhandled) }
     assert_equal "IOError", error.class.name
     vectors = Branchproof::Runtime.snapshot.fetch(:vectors)
     vector = vectors.select { |entry| entry[:decision_id] == decision[:id] }
@@ -147,9 +146,9 @@ class TestExceptionCoverage < Minitest::Test
     evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
                                          run_id: "exception-transfer-test")
     Branchproof::Runtime.boot(evidence: evidence)
-    eval(rewritten[:bytes], TOPLEVEL_BINDING)
-    assert_equal :returned, exercise(:return)
-    assert_equal [:outer, "IOError"], exercise(:raise)
+    instrumented = evaluate(rewritten[:bytes])
+    assert_equal :returned, instrumented.exercise(:return)
+    assert_equal [:outer, "IOError"], instrumented.exercise(:raise)
 
     snapshot = Branchproof::Runtime.snapshot
     refute(snapshot[:vectors].any? { |vector| vector[:decision_id] == inner[:id] && vector[:values].last == true })
@@ -254,12 +253,17 @@ class TestExceptionCoverage < Minitest::Test
     assert_empty rewritten[:diagnostics]
     assert_instance_of RubyVM::InstructionSequence, rewritten[:iseq]
 
-    eval(source, TOPLEVEL_BINDING)
-    native = [return_value(:ok), return_value(:raise), break_value, next_value, redo_source,
-              multiple_return, splat_next([1]), else_return(false), else_return(true), handler_return]
-    eval(rewritten[:bytes], TOPLEVEL_BINDING)
-    instrumented = [return_value(:ok), return_value(:raise), break_value, next_value, redo_source,
-                    multiple_return, splat_next([1]), else_return(false), else_return(true), handler_return]
+    native_object = evaluate(source)
+    native = [native_object.return_value(:ok), native_object.return_value(:raise), native_object.break_value,
+              native_object.next_value, native_object.redo_source, native_object.multiple_return,
+              native_object.splat_next([1]), native_object.else_return(false), native_object.else_return(true),
+              native_object.handler_return]
+    instrumented_object = evaluate(rewritten[:bytes])
+    instrumented = [instrumented_object.return_value(:ok), instrumented_object.return_value(:raise),
+                    instrumented_object.break_value, instrumented_object.next_value, instrumented_object.redo_source,
+                    instrumented_object.multiple_return, instrumented_object.splat_next([1]),
+                    instrumented_object.else_return(false), instrumented_object.else_return(true),
+                    instrumented_object.handler_return]
     assert_equal native, instrumented
   end
 
@@ -296,10 +300,10 @@ class TestExceptionCoverage < Minitest::Test
     evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
                                          run_id: "exception-transfer-argument")
     Branchproof::Runtime.boot(evidence: evidence)
-    eval(rewritten[:bytes], TOPLEVEL_BINDING)
-    assert_equal :rescued, exercise
-    assert_equal :rescued, multiple_exercise
-    assert_equal :rescued, splat_exercise
+    instrumented = evaluate(rewritten[:bytes])
+    assert_equal :rescued, instrumented.exercise
+    assert_equal :rescued, instrumented.multiple_exercise
+    assert_equal :rescued, instrumented.splat_exercise
     vectors = Branchproof::Runtime.snapshot[:vectors]
     inventory[:decisions].select { |entry| entry[:kind] == "exception" }.each do |entry|
       vector = vectors.find { |candidate| candidate[:decision_id] == entry[:id] }
@@ -317,10 +321,8 @@ class TestExceptionCoverage < Minitest::Test
     rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
     assert rewritten[:changed], rewritten.inspect
     assert_empty rewritten[:diagnostics]
-    eval(File.binread(path), TOPLEVEL_BINDING)
-    native = %w[return break next redo].map { |mode| example(mode) }
-    eval(rewritten[:bytes], TOPLEVEL_BINDING)
-    instrumented = %w[return break next redo].map { |mode| example(mode) }
+    native = %w[return break next redo].map { |mode| evaluate(File.binread(path)).example(mode) }
+    instrumented = %w[return break next redo].map { |mode| evaluate(rewritten[:bytes]).example(mode) }
     assert_equal native, instrumented
     assert_equal [:returned, :broken, [1], 2], native
   end
@@ -349,14 +351,21 @@ class TestExceptionCoverage < Minitest::Test
     _inventory, rewritten = instrumented(source)
     assert rewritten[:changed], rewritten.inspect
     assert_empty rewritten[:diagnostics]
-    eval(source, TOPLEVEL_BINDING)
-    native = [explicit_empty, implicit_empty, ensure_empty]
-    eval(rewritten[:bytes], TOPLEVEL_BINDING)
-    assert_equal native, [explicit_empty, implicit_empty, ensure_empty]
+    native_object = evaluate(source)
+    native = [native_object.explicit_empty, native_object.implicit_empty, native_object.ensure_empty]
+    instrumented_object = evaluate(rewritten[:bytes])
+    assert_equal native, [instrumented_object.explicit_empty, instrumented_object.implicit_empty,
+                          instrumented_object.ensure_empty]
     assert_equal [nil, nil, nil], native
   end
 
   private
+
+  def evaluate(source)
+    mod = Module.new
+    mod.module_eval(source, __FILE__, __LINE__)
+    Object.new.extend(mod)
+  end
 
   def decisions(source)
     parsed = Prism.parse(source)
@@ -372,5 +381,3 @@ class TestExceptionCoverage < Minitest::Test
     [inventory, ExceptionInstrumenter.new.rewrite(unit: inventory[:source_units].first)]
   end
 end
-
-# rubocop:enable Security/Eval, Style/DocumentDynamicEvalDefinition

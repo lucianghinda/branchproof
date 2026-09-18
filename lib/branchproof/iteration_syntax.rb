@@ -42,7 +42,7 @@ module Branchproof
                  (fallback ? ["value present", "fallback entered"] : %w[empty entered])
                end
       metadata = { type: "iteration", range: byte_range(node.location), lazy: lazy,
-                   insert_at: body&.location&.start_offset || closing.start_offset,
+                   insert_at: iteration_insert_at(body, closing),
                    empty: body.nil? }
       metadata[:receiver] = byte_range(node.receiver.location) if node.is_a?(Prism::CallNode) && node.receiver
       [lazy ? "multiway" : "implicit", context, labels.map { |label| iteration_alternative(node, label) },
@@ -53,6 +53,19 @@ module Branchproof
 
     def lazy_receiver?(node)
       node.is_a?(Prism::CallNode) && (node.name == :lazy || lazy_receiver?(node.receiver))
+    end
+
+    # Prism gives a block-level rescue/ensure BeginNode a location beginning at
+    # the `do` keyword. Inserting there would produce `call; callback; do`, so
+    # anchor the callback after the block parameters and before its statements.
+    def iteration_insert_at(body, closing)
+      return closing.start_offset unless body
+
+      if body.is_a?(Prism::BeginNode)
+        statements = body.statements
+        return statements.location.start_offset if statements&.location
+      end
+      body.location.start_offset
     end
 
     def iteration_alternative(node, label)

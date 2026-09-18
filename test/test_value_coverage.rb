@@ -47,9 +47,9 @@ class TestValueCoverage < Minitest::Test
     RUBY
     program = Prism.parse(source).value
     decisions = SyntaxProbe.new.value_decisions_for(program, source, "source")
-    assert_equal %w[comparison dispatch lookup predicate bitwise].sort,
+    assert_equal %w[comparison dispatch lookup predicate].sort,
                  decisions.map { |decision| decision.fetch(:context) }.sort
-    assert_equal %w[multiway multiway implicit implicit implicit].sort,
+    assert_equal %w[multiway multiway implicit implicit].sort,
                  decisions.map { |decision| decision.fetch(:kind) }.sort
   end
 

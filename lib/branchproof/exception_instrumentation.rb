@@ -53,6 +53,7 @@ module Branchproof
       if metadata[:implicit]
         entry = "begin; #{runtime}.exception_enter(#{identifier}, #{metadata.fetch(:unhandled_index)}); begin; "
         entry += "#{runtime}.exception_path(#{identifier}, 0); " if metadata[:normal_empty]
+        entry += metadata[:iteration_callback].fetch(:text) if metadata[:iteration_callback]
         exit = "; end; rescue ::Exception; #{runtime}.exception_unhandled(#{identifier}); raise; ensure; " \
                "#{runtime}.exception_leave(#{identifier}); end; "
         replacements << { start: metadata.fetch(:entry_insert_at), length: 0, text: entry }

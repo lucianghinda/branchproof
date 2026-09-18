@@ -35,9 +35,7 @@ module Branchproof
     end
 
     def exception_leave(decision_id)
-      # Runtime's ordinary `leave` is a singleton method defined on the
-      # module itself, so it is not in the ancestor chain used by `extend`.
-      Branchproof::Runtime.leave(decision_id)
+      leave(decision_id)
     end
   end
 end

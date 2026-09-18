@@ -3,20 +3,6 @@
 module Branchproof
   # Runtime mapping for value observations.
   module ValueRuntime
-    DOMAINS = {
-      "truthiness" => ->(value) { value ? 1 : 0 },
-      "defined" => ->(value) { value ? 1 : 0 },
-      "lookup" => lambda { |value|
-        if nil.equal?(value)
-          2
-        else
-          (value ? 0 : 1)
-        end
-      },
-      "comparison" => ->(value) { comparison_index(value) },
-      "dispatch" => ->(_value) { 0 }
-    }.freeze
-
     # rubocop:disable Style/CaseEquality, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def comparison_index(value)
       return 3 if nil.equal?(value)
@@ -38,11 +24,25 @@ module Branchproof
     end
 
     # rubocop:disable-next Metrics/MethodLength -- trace state branches are explicit.
+    # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- domain dispatch mirrors the observable value contract.
     def value_path(decision_id, value, domain)
       frame = current_frame(decision_id)
       return value unless frame
+      return value if frame[:finished]
 
-      index = DOMAINS.fetch(domain.to_s).call(value)
+      index = case domain.to_sym
+              when :truthiness, :defined then value ? 1 : 0
+              when :lookup
+                if nil.equal?(value)
+                  2
+                elsif value
+                  0
+                else
+                  1
+                end
+              when :comparison then comparison_index(value)
+              when :dispatch then 0
+              end
       if index
         frame[:observations] = if frame.fetch(:alternative_count, index + 1) == 2
                                  [[0, index.zero?], [1, index == 1]]

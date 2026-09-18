@@ -9,36 +9,58 @@ module Branchproof
     BOOLEAN_OPERATORS = %i[== != < <= > >= === =~ !~].freeze
     DISPATCH_METHODS = %i[public_send send __send__].freeze
 
-    def decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
-      decisions = super
-      occupied = decisions.flat_map do |decision|
-        ranges = [[decision[:byte_start], decision[:byte_length]]]
-        ranges.concat(Array(decision[:conditions]).map { |condition| condition.values_at(:byte_start, :byte_length) })
-        ranges
+    # rubocop:disable-next Metrics/ParameterLists -- source seam mirrors Source#decisions_for.
+    def additional_decisions_for(program, bytes, source_id, file_reasons, encoding, decisions:, collected:)
+      occupied = decisions.each_with_object({}) do |decision, ranges|
+        ranges[range_key(decision[:byte_start], decision[:byte_length])] = true
+        Array(decision[:conditions]).each do |condition|
+          ranges[range_key(condition[:byte_start], condition[:byte_length])] = true
+        end
       end
-      decisions + value_decisions_for(program, bytes, source_id, occupied_ranges: occupied,
-                                                                 file_reasons: file_reasons, encoding: encoding)
+      value_decisions_for(
+        program, bytes, source_id, nodes: collected.fetch(:value_nodes), occupied_ranges: occupied,
+                                   file_reasons: file_reasons, encoding: encoding
+      )
     end
 
+    # `nodes:` is supplied by Source's fused AST walk. It remains optional for
+    # the standalone discovery API used by focused syntax tests.
     # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- source seam mirrors Source#decisions_for.
-    def value_decisions_for(program, bytes, source_id, occupied_ranges: [], file_reasons: [], encoding: "UTF-8")
-      occupied = occupied_ranges.to_h { |range| [range, true] }
+    def value_decisions_for(program, bytes, source_id, nodes: nil, occupied_ranges: {}, file_reasons: [],
+                            encoding: "UTF-8")
+      occupied = occupied_ranges.transform_keys do |range|
+        range.is_a?(Array) ? range_key(*range) : range
+      end
       decisions = []
-      walker = respond_to?(:walk_skipping_defined_operands, true) ? :walk_skipping_defined_operands : :walk
-      send(walker, program) do |node|
+      each_value_node(program, nodes) do |node|
         spec = value_spec(node)
         next unless spec
 
-        range = [node.location.start_offset, node.location.length]
-        next if occupied[range]
+        key = range_key(node.location.start_offset, node.location.length)
+        next if occupied[key]
 
         decisions << build_value_decision(node, spec, bytes, source_id, file_reasons, encoding)
-        occupied[range] = true
+        occupied[key] = true
       end
       decisions
     end
 
     private
+
+    def value_candidate_node?(node)
+      !value_spec(node).nil?
+    end
+
+    def each_value_node(program, nodes, &)
+      return nodes.each(&) if nodes
+
+      walker = respond_to?(:walk_skipping_defined_operands, true) ? :walk_skipping_defined_operands : :walk
+      send(walker, program, &)
+    end
+
+    def range_key(start_offset, length)
+      (start_offset << 32) | length
+    end
 
     # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def value_spec(node)
@@ -88,7 +110,7 @@ module Branchproof
                     alternatives: alternatives, discovered_condition_count: 0,
                     support_status: reasons.empty? ? "SUPPORTED" : "UNSUPPORTED",
                     support_reasons: reasons.uniq, opaque_ranges: [],
-                    instrumentation: { type: "value", domain: spec.fetch(:domain).to_s })
+                    instrumentation: { type: "value", domain: spec.fetch(:domain) })
     end
   end
 end

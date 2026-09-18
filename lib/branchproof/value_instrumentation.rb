@@ -17,10 +17,10 @@ module Branchproof
       metadata = decision.fetch(:instrumentation)
       runtime = self.class::RUNTIME
       id = decision.fetch(:id).inspect
-      domain = metadata.fetch(:domain).inspect
+      domain = metadata.fetch(:domain).to_sym.inspect
       count = decision.fetch(:alternatives).length
       enter = "#{runtime}.enter(#{id}); #{runtime}.set_alternative_count(#{id}, #{count})"
-      if metadata.fetch(:domain) == "dispatch"
+      if metadata.fetch(:domain).to_sym == :dispatch
         "(begin; #{enter}; begin; " \
           "(begin; #{runtime}.dispatch_path(#{id}, (#{expression}), false); end); " \
           "rescue ::Exception; #{runtime}.dispatch_path(#{id}, nil, true); raise; " \

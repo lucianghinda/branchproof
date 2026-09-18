@@ -25,7 +25,7 @@ module Branchproof
 
     # rubocop:enable Metrics/MethodLength
 
-    # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
+    # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity -- nested exception callback seam
     def render_iteration(bytes, decision, nested, encloses)
       metadata = decision.fetch(:instrumentation)
       identifier = decision[:id].inspect
@@ -33,7 +33,21 @@ module Branchproof
       alternative_count = metadata[:lazy] ? 1 : 2
       marker = "#{runtime}.flow_iteration_callback(#{identifier}, #{alternative_count})"
       suffix = metadata[:empty] ? "nil; " : ""
-      edits = [{ start: metadata[:insert_at], length: 0, text: "; #{marker}; #{suffix}" }]
+      callback = "; #{marker}; #{suffix}"
+      exception_child = nested.find do |child|
+        child[:instrumentation]&.fetch(:type, nil) == "exception" &&
+          child[:instrumentation].fetch(:implicit, false) &&
+          contains?(child[:byte_start], child[:byte_length], metadata[:insert_at], 0)
+      end
+      if exception_child
+        instrumentation = exception_child.fetch(:instrumentation)
+        callback_child = exception_child.merge(instrumentation: instrumentation.merge(
+          iteration_callback: { insert_at: metadata[:insert_at], text: callback }
+        ))
+        nested = nested.map { |child| child.equal?(exception_child) ? callback_child : child }
+        encloses = encloses.merge(callback_child => encloses[exception_child])
+      end
+      edits = exception_child ? [] : [{ start: metadata[:insert_at], length: 0, text: callback }]
       if metadata[:receiver]
         receiver = metadata.fetch(:receiver)
         edits << flow_replacement(bytes, receiver, nested, encloses) do |expression|

@@ -70,19 +70,94 @@ class TestDefaultCoverage < Minitest::Test
     end
   end
 
-  def test_second_pass_standard_error_preserves_first_pass_bytes
-    assert_second_pass_failure_preserves_first_pass(StandardError, "binding walk failed")
+  def test_default_rewrite_parses_once_and_compiles_once
+    source = "def example(value = 1); value; end\n"
+    parse_calls = 0
+    compile_calls = 0
+    trace = TracePoint.new(:call, :c_call) do |point|
+      parse_calls += 1 if point.method_id == :parse
+      compile_calls += 1 if point.method_id == :compile
+    end
+    result = nil
+    trace.enable do
+      Dir.mktmpdir("branchproof-single-pass") do |directory|
+        path = File.join(directory, "fixture.rb")
+        File.write(path, source)
+        inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
+        result = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
+      end
+    end
+    assert_equal 1, parse_calls
+    assert_equal 1, compile_calls
+    assert result[:changed]
   end
 
-  def test_second_pass_syntax_error_preserves_first_pass_bytes
-    assert_second_pass_failure_preserves_first_pass(SyntaxError, "compiled default failed")
+  def test_block_default_nested_in_iteration_records_supplied_path
+    source = "def example; [1].each { |value = 3| value }; end\n"
+    rewritten, inventory = rewrite_fixture(source)
+    decision = inventory[:decisions].find { |item| item[:context] == "default_argument" }
+    assert_includes rewritten, "default_binding(#{decision[:id].inspect}, 0)"
+
+    native = Class.new
+    native.class_eval(source)
+    instrumented = Class.new
+    evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
+                                         run_id: "block-default")
+    Branchproof::Runtime.boot(evidence: evidence)
+    Branchproof::Runtime.context(test_id: "block", phase: "body")
+    instrumented.class_eval(rewritten)
+    assert_equal native.new.example, instrumented.new.example
+    vector = evidence.snapshot[:vectors].find { |item| item[:decision_id] == decision[:id] }
+    assert_equal [true, false], vector[:values]
+  ensure
+    Branchproof::Runtime.context(test_id: nil, phase: "unattributed")
+  end
+
+  def test_default_owner_and_rescue_share_one_rewrite_root
+    source = <<~RUBY
+      def example(value = 1)
+        raise StandardError if value.negative?
+        value
+      rescue StandardError
+        9
+      end
+    RUBY
+    rewritten, inventory = rewrite_fixture(source)
+    native = Class.new
+    native.class_eval(source)
+    instrumented = Class.new
+    evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
+                                         run_id: "default-rescue")
+    Branchproof::Runtime.boot(evidence: evidence)
+    Branchproof::Runtime.context(test_id: "default", phase: "body")
+    instrumented.class_eval(rewritten)
+    assert_equal native.new.example, instrumented.new.example
+    Branchproof::Runtime.context(test_id: "rescued", phase: "body")
+    assert_equal native.new.example(-1), instrumented.new.example(-1)
+    Branchproof::Runtime.context(test_id: "supplied", phase: "body")
+    assert_equal native.new.example(4), instrumented.new.example(4)
+    vectors = evidence.snapshot[:vectors]
+    decisions = inventory[:decisions]
+    decisions.each do |decision|
+      vector = vectors.find { |item| item[:decision_id] == decision[:id] }
+      refute_nil vector, decision[:context]
+    end
+  ensure
+    Branchproof::Runtime.context(test_id: nil, phase: "unattributed")
   end
 
   def test_all_gem_library_files_can_be_rewritten_without_raising
     Dir[File.expand_path("../lib/**/*.rb", __dir__)].each do |path|
       root = File.expand_path("..", path)
       inventory = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(paths: [path])
-      assert_silent { Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first) }
+      result = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
+      assert_empty result[:diagnostics], path
+      refute_nil result[:iseq], path
+      supported = inventory[:decisions].select { |decision| decision[:support_status] == "SUPPORTED" }
+      supported.each do |decision|
+        assert result[:bytes].include?(decision[:id].inspect),
+               "#{path}: missing #{decision[:context]} decision at line #{decision[:line]}"
+      end
     end
   end
 
@@ -198,27 +273,6 @@ class TestDefaultCoverage < Minitest::Test
       actual = instrumented.new.example(*args)
       assert_equal expected, actual
       actual
-    end
-  end
-
-  def assert_second_pass_failure_preserves_first_pass(error_class, message)
-    source = "def example(value = 1); value; end\n"
-    Dir.mktmpdir("branchproof-default-failure") do |directory|
-      path = File.join(directory, "fixture.rb")
-      File.write(path, source)
-      inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
-      unit = inventory[:source_units].first
-      first_pass_method = Branchproof::Instrumenter.instance_method(:rewrite).super_method
-      first_pass = first_pass_method.bind(Branchproof::Instrumenter.new).call(unit: unit)
-      failing = Class.new(Branchproof::Instrumenter) do
-        define_method(:default_body_edits) { |_node, _flags| raise error_class, message }
-      end
-      result = failing.new.rewrite(unit: unit)
-      assert_equal first_pass[:bytes], result[:bytes]
-      refute result[:changed]
-      assert_nil result[:iseq]
-      assert_equal "invalid_default_rewrite", result[:diagnostics].last[:code]
-      assert_includes result[:diagnostics].last[:message], message
     end
   end
 end
