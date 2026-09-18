@@ -507,10 +507,17 @@ module Branchproof
     end
 
     def baseline_test_counts
+      noun = rspec_run? ? "examples" : "tests"
       executed = value(@baseline, :executed_tests)
       failed = value(@baseline, :failed_tests) || value(@baseline, :failures) || 0
       skipped = value(@baseline, :skipped_tests) || value(@baseline, :skips) || 0
-      "#{executed || 0} tests, #{failed} failed, #{skipped} skipped"
+      "#{executed || 0} #{noun}, #{failed} failed, #{skipped} skipped"
+    end
+
+    def rspec_run?
+      framework = value(@run_metadata, :framework) || value(@run_metadata, :project_framework) ||
+                  value(@baseline, :framework)
+      framework.to_s.downcase == "rspec"
     end
 
     def terminal_coverage_label

@@ -1,0 +1,5 @@
+test:
+  adapter: sqlite3
+  database: <%= ENV.fetch("BRANCHPROOF_RSPEC_FIXTURE_DB", Rails.root.join("tmp", "test.sqlite3")) %>
+  pool: 5
+  timeout: 5000

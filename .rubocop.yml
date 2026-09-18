@@ -47,6 +47,7 @@ Metrics/AbcSize:
     - "lib/branchproof/loader.rb"
     - "lib/branchproof/minimizer.rb"
     - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/rspec_adapter.rb"
     - "lib/branchproof/worker.rb"
 
 Metrics/ClassLength:
@@ -65,6 +66,7 @@ Metrics/ClassLength:
     - "lib/branchproof/loader.rb"
     - "lib/branchproof/minimizer.rb"
     - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/rspec_adapter.rb"
 
 Metrics/CyclomaticComplexity:
   Exclude:
@@ -84,6 +86,7 @@ Metrics/CyclomaticComplexity:
     - "lib/branchproof/loader.rb"
     - "lib/branchproof/minimizer.rb"
     - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/rspec_adapter.rb"
     - "lib/branchproof/worker.rb"
 
 Metrics/MethodLength:
@@ -104,6 +107,7 @@ Metrics/MethodLength:
     - "lib/branchproof/loader.rb"
     - "lib/branchproof/minimizer.rb"
     - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/rspec_adapter.rb"
     - "lib/branchproof/worker.rb"
 
 Metrics/ModuleLength:
@@ -146,4 +150,5 @@ Metrics/PerceivedComplexity:
     - "lib/branchproof/loader.rb"
     - "lib/branchproof/minimizer.rb"
     - "lib/branchproof/minitest_adapter.rb"
+    - "lib/branchproof/rspec_adapter.rb"
     - "lib/branchproof/worker.rb"

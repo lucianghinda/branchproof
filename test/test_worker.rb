@@ -4,6 +4,57 @@ require "test_helper"
 require "branchproof/worker"
 
 class TestWorker < Minitest::Test
+  def test_missing_rspec_has_an_actionable_framework_diagnostic
+    missing = LoadError.new("cannot load rspec/core")
+    def missing.path = "rspec/core"
+    Branchproof::Worker.stub(:require, ->(*) { raise missing }) do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "rspec" }, Object.new)
+      end
+      assert_equal "rspec_missing", error.diagnostic_code
+      assert_includes error.message, "application's test bundle"
+    end
+  end
+
+  def test_dependency_load_error_is_not_misreported_as_missing_rspec
+    missing = LoadError.new("cannot load application dependency")
+    def missing.path = "application_dependency"
+    Branchproof::Worker.stub(:require, ->(*) { raise missing }) do
+      error = assert_raises(LoadError) do
+        Branchproof::Worker.adapter_for({ framework: "rspec" }, Object.new)
+      end
+      assert_same missing, error
+    end
+  end
+
+  def test_project_metadata_defaults_legacy_payloads_to_minitest
+    metadata = Branchproof::Worker.project_metadata({ kind: "ruby", root: Dir.pwd, load_paths: [] }, nil)
+
+    assert_equal "minitest", metadata[:framework]
+  end
+
+  def test_project_metadata_preserves_selected_framework
+    metadata = Branchproof::Worker.project_metadata(
+      { kind: "rails", framework: "rspec", root: Dir.pwd, load_paths: [] },
+      { rails_version: "8.1.3.1", rspec_rails_version: "8.0.4" }
+    )
+
+    assert_equal "rspec", metadata[:framework]
+    assert_equal "8.0.4", metadata[:rspec_rails_version]
+  end
+
+  def test_adapter_completion_errors_cannot_be_lost_when_loader_is_healthy
+    diagnostic = { code: "rspec_run", severity: "error", message: "suite hook failed" }
+    result = Branchproof::Worker.completion_result(
+      baseline: { status: "ERROR", finalized: false, diagnostics: [diagnostic] },
+      project: { kind: "ruby", framework: "rspec", root: Dir.pwd, load_paths: [] }, rails_metadata: nil,
+      evidence: { completeness: { observation: true, analysis: true }, diagnostics: [] }, tests: [], diagnostics: []
+    )
+
+    assert_includes result[:diagnostics], diagnostic
+    refute result.dig(:evidence, :completeness, :observation)
+  end
+
   def test_configured_load_paths_are_prepended_in_project_order
     original = $LOAD_PATH.dup
     project = { root: Dir.pwd, load_paths: [File.join(Dir.pwd, "lib"), File.join(Dir.pwd, "test")] }

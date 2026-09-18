@@ -64,6 +64,30 @@ class TestSavedReport < Minitest::Test
     end
   end
 
+  def test_accepts_optional_framework_and_rspec_test_metadata
+    document = valid_document(schema_version: "1.3")
+    document["run_metadata"] = { "framework" => "rspec", "framework_version" => nil,
+                                 "rspec_rails_version" => "7.2.0", "rails_version" => nil,
+                                 "selected_test_files" => ["spec/a_spec.rb"],
+                                 "selected_example_ids" => ["./spec/a_spec.rb[1:1]"] }
+    document["observations"]["tests"][0].merge!("adapter" => "rspec", "example_id" => "./spec/a_spec.rb[1:1]",
+                                                "source" => { "relative_path" => "spec/a_spec.rb", "line" => 1 })
+
+    write_document(document) { |path| assert_equal document, Branchproof::SavedReport.read(path) }
+  end
+
+  def test_rejects_malformed_optional_framework_and_selection_metadata
+    invalid_documents = [
+      valid_document.tap { |doc| doc["run_metadata"] = { "rails_version" => 8.1 } },
+      valid_document.tap { |doc| doc["run_metadata"] = { "selected_test_files" => "spec/a_spec.rb" } },
+      valid_document.tap { |doc| doc["run_metadata"] = { "selected_example_ids" => ["ok", 1] } }
+    ]
+
+    invalid_documents.each do |document|
+      write_document(document) { |path| assert_raises(ArgumentError) { Branchproof::SavedReport.read(path) } }
+    end
+  end
+
   def test_rejects_unreadable_and_malformed_files_with_argument_error
     assert_raises(ArgumentError) { Branchproof::SavedReport.read("/no/such/report.json") }
 

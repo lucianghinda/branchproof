@@ -33,10 +33,10 @@ module Branchproof
 
       inventory = build_inventory(options)
       evidence = empty_evidence(inventory, options)
-      baseline = if options[:tests].empty?
-                   { status: "INCOMPLETE", executed_tests: 0, failed_tests: 0, skipped_tests: 0, finalized: false }
-                 else
+      baseline = if run_worker?(options)
                    run_worker(options, inventory, evidence)
+                 else
+                   { status: "INCOMPLETE", executed_tests: 0, failed_tests: 0, skipped_tests: 0, finalized: false }
                  end
       if value(baseline, :evidence)
         merge_status = evidence.merge(snapshot: value(baseline, :evidence))
@@ -93,7 +93,7 @@ module Branchproof
     def help
       @stdout.write(<<~HELP)
         Usage:
-          branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails]
+          branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only]
             [--format terminal|json] [--output PATH] [--limits PATH] [--no-reachability] [-- RUNNER_ARGS]
           branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
@@ -205,12 +205,24 @@ module Branchproof
         source = value(test, :source) || {}
         [value(test, :id), { relative_path: relative_path(value(source, :path), root), line: value(source, :line) }]
       end
-      { captured_at: Time.now.utc.iso8601, requested_level: options[:level], project_kind: options[:project][:kind],
+      project_metadata = value(baseline, :project) || options[:project]
+      selected_test_files = value(baseline, :selected_test_files)
+      test_files = selected_test_files || options[:tests]
+      metadata = {
+        captured_at: Time.now.utc.iso8601, requested_level: options[:level], project_kind: options[:project][:kind],
         project_root: root, source_patterns: options[:source_patterns].map { |path| relative_path(path, root) },
         test_patterns: options[:test_patterns].map { |path| relative_path(path, root) },
-        test_files: options[:tests].map { |path| relative_path(path, root) }, runner_args: options[:runner_args],
+        test_files: Array(test_files).map { |path| relative_path(path, root) }, runner_args: options[:runner_args],
         seed: value(baseline, :seed), limits: options[:limits], test_locations: locations,
-        reachability: options[:reachability] }
+        reachability: options[:reachability]
+      }
+      %i[selected_test_files selected_example_ids].each do |key|
+        metadata[key] = value(baseline, key) if value(baseline, key)
+      end
+      %i[framework framework_version rspec_rails_version rails_version].each do |key|
+        metadata[key] = value(project_metadata, key) if value(project_metadata, key)
+      end
+      metadata
     end
 
     def relative_path(path, root)
@@ -228,7 +240,7 @@ module Branchproof
       args = args[0...delimiter] if delimiter
       options = { level: 3, format: :terminal, output: nil, tests: [], source_paths: [], limits: Limits.default,
                   runner_args: runner_args, project: nil, missing_only: false, view: :decisions,
-                  reachability: true }
+                  reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false }
       until args.empty?
         token = args.shift
         case token
@@ -255,11 +267,14 @@ module Branchproof
         when "--test"
           options[:tests] << args.shift
           raise ArgumentError, "--test requires a glob" if options[:tests].last.nil? || options[:tests].last.empty?
-        when "--project"
-          mode = args.shift
-          raise ArgumentError, "--project requires auto, ruby, or rails" if mode.nil? || mode.empty?
 
-          options[:project] = Project.new(root: Dir.pwd, mode: mode).to_h
+          options[:explicit_tests] = true
+        when "--framework"
+          options[:framework] = args.shift
+          raise ArgumentError, "--framework requires auto, minitest, or rspec" if options[:framework].nil? || options[:framework].empty?
+        when "--project"
+          options[:project_mode] = args.shift
+          raise ArgumentError, "--project requires auto, ruby, or rails" if options[:project_mode].nil? || options[:project_mode].empty?
         when "--limits"
           limits_path = args.shift
           raise ArgumentError, "--limits requires a readable JSON path" unless limits_path && File.file?(limits_path)
@@ -273,16 +288,16 @@ module Branchproof
           options[:source_paths] << token
         end
       end
+      options[:project] = Project.new(root: Dir.pwd, mode: options[:project_mode], framework: options[:framework]).to_h
       validate_view!(options)
       if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
         raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
       end
 
-      options[:project] ||= Project.new(root: Dir.pwd, mode: "auto").to_h
       options[:source_paths] = default_sources if options[:source_paths].empty?
-      options[:tests] = default_tests if options[:tests].empty?
+      options[:tests] = default_tests(options[:project]) if options[:tests].empty?
       options[:source_patterns] = options[:source_paths].dup
-      options[:test_patterns] = argv.include?("--test") ? options[:tests].dup : %w[test/**/*_test.rb test/**/test_*.rb]
+      options[:test_patterns] = options[:explicit_tests] ? options[:tests].dup : options[:project][:test_patterns]
       options[:tests] = expand_paths(options[:tests], root: options[:project][:root])
       options
     end
@@ -315,11 +330,7 @@ module Branchproof
       begin
         directory = Dir.mktmpdir("branchproof-run-")
         config = File.join(directory, "request.json")
-        payload = {
-          inventory: inventory, limits: options[:limits], run_id: evidence.run_id,
-          test_files: options[:tests], runner_args: options[:runner_args], project: options[:project],
-          result_path: File.join(directory, "result.json"), marker_path: File.join(directory, "complete.marker")
-        }
+        payload = worker_payload(options, inventory, evidence, directory)
         File.binwrite(config, JSON.generate(normalize(payload)))
         script = "require 'branchproof'; exit(Branchproof::Worker.child_process(ARGV.fetch(0)).to_i)"
         child_stdout, stderr, child_status = Open3.capture3(options[:project][:environment], RbConfig.ruby, "-I",
@@ -362,6 +373,19 @@ module Branchproof
       File.unlink(temporary) if created && temporary && File.file?(temporary)
     end
 
+    def run_worker?(options)
+      !options[:tests].empty? || options[:project][:framework].to_s == "rspec"
+    end
+
+    def worker_payload(options, inventory, evidence, directory)
+      {
+        inventory: inventory, limits: options[:limits], run_id: evidence.run_id,
+        test_files: options[:tests], runner_args: options[:runner_args], project: options[:project],
+        test_selection_explicit: options[:explicit_tests],
+        result_path: File.join(directory, "result.json"), marker_path: File.join(directory, "complete.marker")
+      }
+    end
+
     def report_string(report, format)
       buffer = StringIO.new
       report.write(io: buffer, format: format)
@@ -377,8 +401,9 @@ module Branchproof
       %w[lib/**/*.rb app/**/*.rb]
     end
 
-    def default_tests
-      candidates = Dir.glob("test/**/*_test.rb", base: Dir.pwd) + Dir.glob("test/**/test_*.rb", base: Dir.pwd)
+    def default_tests(project = nil)
+      project ||= Project.new(root: Dir.pwd, mode: "auto", framework: "auto").to_h
+      candidates = Array(project[:test_patterns]).flat_map { |pattern| Dir.glob(pattern, base: project[:root]) }
       candidates.map! { |path| File.expand_path(path, Dir.pwd) }
       candidates.reject { |path| default_test_excluded?(path) }.uniq.sort
     end
@@ -387,7 +412,8 @@ module Branchproof
       relative = Pathname.new(path).relative_path_from(Pathname.new(Dir.pwd)).to_s
       segments = relative.split(File::SEPARATOR)
       basename = File.basename(path)
-      basename == "test_helper.rb" || segments.include?("support") || segments.include?("fixtures")
+      %w[test_helper.rb spec_helper.rb rails_helper.rb].include?(basename) ||
+        segments.include?("support") || segments.include?("fixtures")
     end
 
     def expand_paths(paths, root: Dir.pwd)
