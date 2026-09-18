@@ -1,0 +1,1125 @@
+[
+  {
+    "id": "VAL-01",
+    "cases": [
+      {
+        "name": "literal truthiness",
+        "args": [
+
+        ],
+        "result": [
+          "yes",
+          null,
+          null
+        ]
+      }
+    ]
+  },
+  {
+    "id": "VAL-02",
+    "cases": [
+      {
+        "name": "zero and empty values",
+        "args": [
+
+        ],
+        "result": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      }
+    ]
+  },
+  {
+    "id": "VAL-03",
+    "cases": [
+      {
+        "name": "truthy bindings",
+        "args": [
+          "set"
+        ],
+        "result": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "name": "false bindings",
+        "args": [
+          false
+        ],
+        "result": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "name": "nil bindings",
+        "args": [
+          null
+        ],
+        "result": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          false
+        ]
+      }
+    ]
+  },
+  {
+    "id": "VAL-04",
+    "cases": [
+      {
+        "name": "true result",
+        "args": [
+          true
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "false result",
+        "args": [
+          false
+        ],
+        "result": "no"
+      },
+      {
+        "name": "nil result",
+        "args": [
+          null
+        ],
+        "result": "no"
+      },
+      {
+        "name": "object result",
+        "args": [
+          "ready"
+        ],
+        "result": "yes"
+      }
+    ]
+  },
+  {
+    "id": "VAL-05",
+    "cases": [
+      {
+        "name": "truthy assignment",
+        "args": [
+          "found"
+        ],
+        "result": [
+          "yes",
+          "found"
+        ]
+      },
+      {
+        "name": "false assignment",
+        "args": [
+          false
+        ],
+        "result": [
+          "no",
+          false
+        ]
+      },
+      {
+        "name": "nil assignment",
+        "args": [
+          null
+        ],
+        "result": [
+          "no",
+          null
+        ]
+      }
+    ]
+  },
+  {
+    "id": "VAL-06",
+    "cases": [
+      {
+        "name": "truthy last value",
+        "args": [
+          "last"
+        ],
+        "result": [
+          "yes",
+          [
+            "first"
+          ]
+        ]
+      },
+      {
+        "name": "false last value",
+        "args": [
+          false
+        ],
+        "result": [
+          "no",
+          [
+            "first"
+          ]
+        ]
+      },
+      {
+        "name": "nil last value",
+        "args": [
+          null
+        ],
+        "result": [
+          "no",
+          [
+            "first"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "VAL-07",
+    "cases": [
+      {
+        "name": "inner true",
+        "args": [
+          true
+        ],
+        "result": [
+          "yes",
+          "yes",
+          "chosen:yes"
+        ]
+      },
+      {
+        "name": "inner false",
+        "args": [
+          false
+        ],
+        "result": [
+          "yes",
+          "yes",
+          "chosen:no"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "IF-01",
+    "cases": [
+      {
+        "name": "truthy",
+        "args": [
+          true
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": null
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "IF-02",
+    "cases": [
+      {
+        "name": "then",
+        "args": [
+          true
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "else",
+        "args": [
+          false
+        ],
+        "result": "no"
+      }
+    ]
+  },
+  {
+    "id": "IF-03",
+    "cases": [
+      {
+        "name": "first wins",
+        "args": [
+          true,
+          true
+        ],
+        "result": "first"
+      },
+      {
+        "name": "second wins",
+        "args": [
+          false,
+          true
+        ],
+        "result": "second"
+      },
+      {
+        "name": "fallback",
+        "args": [
+          false,
+          false
+        ],
+        "result": "neither"
+      }
+    ]
+  },
+  {
+    "id": "IF-04",
+    "cases": [
+      {
+        "name": "execute",
+        "args": [
+          true
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "skip",
+        "args": [
+          false
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "IF-05",
+    "cases": [
+      {
+        "name": "execute false",
+        "args": [
+          false
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "execute nil",
+        "args": [
+          null
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "skip",
+        "args": [
+          true
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "IF-06",
+    "cases": [
+      {
+        "name": "body",
+        "args": [
+          false
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "else",
+        "args": [
+          true
+        ],
+        "result": "no"
+      }
+    ]
+  },
+  {
+    "id": "IF-07",
+    "cases": [
+      {
+        "name": "execute",
+        "args": [
+          false
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "skip",
+        "args": [
+          true
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "IF-08",
+    "cases": [
+      {
+        "name": "first arm",
+        "args": [
+          true
+        ],
+        "result": "yes"
+      },
+      {
+        "name": "second arm",
+        "args": [
+          false
+        ],
+        "result": "no"
+      }
+    ]
+  },
+  {
+    "id": "IF-09",
+    "cases": [
+      {
+        "name": "inner true",
+        "args": [
+          true,
+          true
+        ],
+        "result": "both"
+      },
+      {
+        "name": "inner false",
+        "args": [
+          true,
+          false
+        ],
+        "result": "first"
+      },
+      {
+        "name": "inner unreachable",
+        "args": [
+          false,
+          true
+        ],
+        "result": "neither"
+      }
+    ]
+  },
+  {
+    "id": "LOG-01",
+    "cases": [
+      {
+        "name": "left false",
+        "args": [
+          false,
+          "right"
+        ],
+        "result": [
+          false,
+          [
+
+          ]
+        ]
+      },
+      {
+        "name": "left nil",
+        "args": [
+          null,
+          "right"
+        ],
+        "result": [
+          null,
+          [
+
+          ]
+        ]
+      },
+      {
+        "name": "right false",
+        "args": [
+          true,
+          false
+        ],
+        "result": [
+          false,
+          [
+            "right"
+          ]
+        ]
+      },
+      {
+        "name": "both truthy",
+        "args": [
+          "left",
+          "right"
+        ],
+        "result": [
+          "right",
+          [
+            "right"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOG-02",
+    "cases": [
+      {
+        "name": "left truthy",
+        "args": [
+          "left",
+          "right"
+        ],
+        "result": [
+          "left",
+          [
+
+          ]
+        ]
+      },
+      {
+        "name": "left false",
+        "args": [
+          false,
+          "right"
+        ],
+        "result": [
+          "right",
+          [
+            "right"
+          ]
+        ]
+      },
+      {
+        "name": "left nil",
+        "args": [
+          null,
+          false
+        ],
+        "result": [
+          false,
+          [
+            "right"
+          ]
+        ]
+      },
+      {
+        "name": "both nil",
+        "args": [
+          null,
+          null
+        ],
+        "result": [
+          null,
+          [
+            "right"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOG-03",
+    "cases": [
+      {
+        "name": "skip right",
+        "args": [
+          false,
+          "right"
+        ],
+        "result": [
+          false,
+          [
+
+          ]
+        ]
+      },
+      {
+        "name": "evaluate right",
+        "args": [
+          "left",
+          false
+        ],
+        "result": [
+          "left",
+          [
+            false
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOG-04",
+    "cases": [
+      {
+        "name": "skip right",
+        "args": [
+          "left",
+          "right"
+        ],
+        "result": [
+          "left",
+          [
+
+          ]
+        ]
+      },
+      {
+        "name": "evaluate right",
+        "args": [
+          false,
+          "right"
+        ],
+        "result": [
+          false,
+          [
+            "right"
+          ]
+        ]
+      },
+      {
+        "name": "nil left",
+        "args": [
+          null,
+          "right"
+        ],
+        "result": [
+          null,
+          [
+            "right"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOG-05",
+    "cases": [
+      {
+        "name": "truthy",
+        "args": [
+          "value"
+        ],
+        "result": false
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": true
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": true
+      },
+      {
+        "name": "custom",
+        "args": [
+          null,
+          true
+        ],
+        "result": "custom"
+      }
+    ]
+  },
+  {
+    "id": "LOG-06",
+    "cases": [
+      {
+        "name": "truthy",
+        "args": [
+          "value"
+        ],
+        "result": false
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": true
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": true
+      },
+      {
+        "name": "custom",
+        "args": [
+          null,
+          true
+        ],
+        "result": "custom"
+      }
+    ]
+  },
+  {
+    "id": "LOG-07",
+    "cases": [
+      {
+        "name": "truthy",
+        "args": [
+          0
+        ],
+        "result": true
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": false
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": false
+      },
+      {
+        "name": "custom negation",
+        "args": [
+          null,
+          true
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "LOG-08",
+    "cases": [
+      {
+        "name": "skip group",
+        "args": [
+          false,
+          true,
+          "last"
+        ],
+        "result": [
+          false,
+          [
+
+          ]
+        ]
+      },
+      {
+        "name": "middle wins",
+        "args": [
+          true,
+          "middle",
+          "last"
+        ],
+        "result": [
+          "middle",
+          [
+            "middle"
+          ]
+        ]
+      },
+      {
+        "name": "last wins",
+        "args": [
+          true,
+          false,
+          "last"
+        ],
+        "result": [
+          "last",
+          [
+            "middle",
+            "last"
+          ]
+        ]
+      },
+      {
+        "name": "last false",
+        "args": [
+          true,
+          null,
+          false
+        ],
+        "result": [
+          false,
+          [
+            "middle",
+            "last"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOG-09",
+    "cases": [
+      {
+        "name": "first false",
+        "args": [
+          [
+            false,
+            true
+          ]
+        ],
+        "result": [
+          false,
+          [
+            false
+          ]
+        ]
+      },
+      {
+        "name": "second false",
+        "args": [
+          [
+            true,
+            false
+          ]
+        ],
+        "result": [
+          false,
+          [
+            true,
+            false
+          ]
+        ]
+      },
+      {
+        "name": "both truthy",
+        "args": [
+          [
+            "first",
+            "second"
+          ]
+        ],
+        "result": [
+          "second",
+          [
+            "first",
+            "second"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOG-10",
+    "cases": [
+      {
+        "name": "keep value",
+        "args": [
+          "existing",
+          "fallback"
+        ],
+        "result": "existing"
+      },
+      {
+        "name": "replace false",
+        "args": [
+          false,
+          "fallback"
+        ],
+        "result": "fallback"
+      },
+      {
+        "name": "replace nil",
+        "args": [
+          null,
+          "fallback"
+        ],
+        "result": "fallback"
+      }
+    ]
+  },
+  {
+    "id": "CASE-01",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          1
+        ],
+        "result": "hit"
+      },
+      {
+        "name": "miss",
+        "args": [
+          2
+        ],
+        "result": "miss"
+      }
+    ]
+  },
+  {
+    "id": "CASE-02",
+    "cases": [
+      {
+        "name": "overlap selects first",
+        "args": [
+          2
+        ],
+        "result": "small"
+      },
+      {
+        "name": "second clause",
+        "args": [
+          8
+        ],
+        "result": "integer"
+      },
+      {
+        "name": "no match",
+        "args": [
+          "other"
+        ],
+        "result": "other"
+      }
+    ]
+  },
+  {
+    "id": "CASE-03",
+    "cases": [
+      {
+        "name": "first candidate",
+        "args": [
+          1
+        ],
+        "result": [
+          "hit",
+          [
+            "first"
+          ]
+        ]
+      },
+      {
+        "name": "second candidate",
+        "args": [
+          2
+        ],
+        "result": [
+          "hit",
+          [
+            "first",
+            "second"
+          ]
+        ]
+      },
+      {
+        "name": "no candidate",
+        "args": [
+          3
+        ],
+        "result": [
+          "miss",
+          [
+            "first",
+            "second"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "CASE-04",
+    "cases": [
+      {
+        "name": "empty splat misses",
+        "args": [
+          2,
+          [
+
+          ]
+        ],
+        "result": "miss"
+      },
+      {
+        "name": "ordinary candidate",
+        "args": [
+          0,
+          [
+
+          ]
+        ],
+        "result": "hit"
+      },
+      {
+        "name": "one candidate",
+        "args": [
+          2,
+          [
+            2
+          ]
+        ],
+        "result": "hit"
+      },
+      {
+        "name": "later splat candidate",
+        "args": [
+          2,
+          [
+            1,
+            2
+          ]
+        ],
+        "result": "hit"
+      }
+    ]
+  },
+  {
+    "id": "CASE-05",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          1
+        ],
+        "result": "hit"
+      },
+      {
+        "name": "unmatched",
+        "args": [
+          2
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "CASE-06",
+    "cases": [
+      {
+        "name": "first wins",
+        "args": [
+          true,
+          true
+        ],
+        "result": "first"
+      },
+      {
+        "name": "second wins",
+        "args": [
+          false,
+          0
+        ],
+        "result": "second"
+      },
+      {
+        "name": "fallback",
+        "args": [
+          null,
+          false
+        ],
+        "result": "neither"
+      }
+    ]
+  },
+  {
+    "id": "CASE-07",
+    "cases": [
+      {
+        "name": "first truthy",
+        "args": [
+          0,
+          true
+        ],
+        "result": [
+          "hit",
+          [
+            "first"
+          ]
+        ]
+      },
+      {
+        "name": "second truthy",
+        "args": [
+          false,
+          "yes"
+        ],
+        "result": [
+          "hit",
+          [
+            "first",
+            "second"
+          ]
+        ]
+      },
+      {
+        "name": "neither truthy",
+        "args": [
+          null,
+          false
+        ],
+        "result": [
+          null,
+          [
+            "first",
+            "second"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "CASE-08",
+    "cases": [
+      {
+        "name": "first clause",
+        "args": [
+          1
+        ],
+        "result": [
+          "first",
+          1
+        ]
+      },
+      {
+        "name": "second clause",
+        "args": [
+          2
+        ],
+        "result": [
+          "second",
+          1
+        ]
+      },
+      {
+        "name": "no match",
+        "args": [
+          3
+        ],
+        "result": [
+          "miss",
+          1
+        ]
+      }
+    ]
+  }
+]

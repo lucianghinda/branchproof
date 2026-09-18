@@ -132,7 +132,13 @@ module Branchproof
     end
 
     def condition_wrapper(decision_id, index, expression)
+      return "(begin; #{expression}; end)" if nonlocal_transfer?(expression)
+
       "#{RUNTIME}.condition(#{decision_id.inspect}, #{index}, (#{expression}))"
+    end
+
+    def nonlocal_transfer?(expression)
+      expression.lstrip.match?(/\A(?:return|break|next|redo|retry)\b/n)
     end
 
     def frame(decision_id, expression)

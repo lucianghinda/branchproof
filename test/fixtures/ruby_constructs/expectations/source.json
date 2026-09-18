@@ -1,0 +1,4003 @@
+{
+  "version": 1,
+  "entries": {
+    "VAL-01": {
+      "file": "val_01.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "true",
+          "conditions": [
+            {
+              "expression": "true",
+              "byte_start": 88,
+              "byte_length": 4,
+              "line": 5,
+              "column": 6
+            }
+          ],
+          "reasons": [],
+          "byte_start": 88,
+          "byte_length": 4,
+          "line": 5,
+          "column": 6
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "false",
+          "conditions": [
+            {
+              "expression": "false",
+              "byte_start": 112,
+              "byte_length": 5,
+              "line": 5,
+              "column": 30
+            }
+          ],
+          "reasons": [],
+          "byte_start": 112,
+          "byte_length": 5,
+          "line": 5,
+          "column": 30
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "nil",
+          "conditions": [
+            {
+              "expression": "nil",
+              "byte_start": 137,
+              "byte_length": 3,
+              "line": 5,
+              "column": 55
+            }
+          ],
+          "reasons": [],
+          "byte_start": 137,
+          "byte_length": 3,
+          "line": 5,
+          "column": 55
+        }
+      ],
+      "diagnostics": []
+    },
+    "VAL-02": {
+      "file": "val_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "value",
+          "conditions": [
+            {
+              "expression": "value",
+              "byte_start": 123,
+              "byte_length": 5,
+              "line": 5,
+              "column": 44
+            }
+          ],
+          "reasons": [],
+          "byte_start": 123,
+          "byte_length": 5,
+          "line": 5,
+          "column": 44
+        }
+      ],
+      "diagnostics": []
+    },
+    "VAL-03": {
+      "file": "val_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "local",
+          "conditions": [
+            {
+              "expression": "local",
+              "byte_start": 274,
+              "byte_length": 5,
+              "line": 15,
+              "column": 5
+            }
+          ],
+          "reasons": [],
+          "byte_start": 274,
+          "byte_length": 5,
+          "line": 15,
+          "column": 5
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "@instance",
+          "conditions": [
+            {
+              "expression": "@instance",
+              "byte_start": 296,
+              "byte_length": 9,
+              "line": 15,
+              "column": 27
+            }
+          ],
+          "reasons": [],
+          "byte_start": 296,
+          "byte_length": 9,
+          "line": 15,
+          "column": 27
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "@@class_value",
+          "conditions": [
+            {
+              "expression": "@@class_value",
+              "byte_start": 322,
+              "byte_length": 13,
+              "line": 15,
+              "column": 53
+            }
+          ],
+          "reasons": [],
+          "byte_start": 322,
+          "byte_length": 13,
+          "line": 15,
+          "column": 53
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "$construct_value",
+          "conditions": [
+            {
+              "expression": "$construct_value",
+              "byte_start": 357,
+              "byte_length": 16,
+              "line": 16,
+              "column": 5
+            }
+          ],
+          "reasons": [],
+          "byte_start": 357,
+          "byte_length": 16,
+          "line": 16,
+          "column": 5
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "VALUE",
+          "conditions": [
+            {
+              "expression": "VALUE",
+              "byte_start": 390,
+              "byte_length": 5,
+              "line": 16,
+              "column": 38
+            }
+          ],
+          "reasons": [],
+          "byte_start": 390,
+          "byte_length": 5,
+          "line": 16,
+          "column": 38
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "Values::VALUE",
+          "conditions": [
+            {
+              "expression": "Values::VALUE",
+              "byte_start": 417,
+              "byte_length": 13,
+              "line": 17,
+              "column": 5
+            }
+          ],
+          "reasons": [],
+          "byte_start": 417,
+          "byte_length": 13,
+          "line": 17,
+          "column": 5
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "@uninitialized",
+          "conditions": [
+            {
+              "expression": "@uninitialized",
+              "byte_start": 447,
+              "byte_length": 14,
+              "line": 17,
+              "column": 35
+            }
+          ],
+          "reasons": [],
+          "byte_start": 447,
+          "byte_length": 14,
+          "line": 17,
+          "column": 35
+        }
+      ],
+      "diagnostics": []
+    },
+    "VAL-04": {
+      "file": "val_04.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "lookup(value)",
+          "conditions": [
+            {
+              "expression": "lookup(value)",
+              "byte_start": 135,
+              "byte_length": 13,
+              "line": 9,
+              "column": 5
+            }
+          ],
+          "reasons": [],
+          "byte_start": 135,
+          "byte_length": 13,
+          "line": 9,
+          "column": 5
+        }
+      ],
+      "diagnostics": []
+    },
+    "VAL-05": {
+      "file": "val_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "value = input",
+          "conditions": [
+            {
+              "expression": "value = input",
+              "byte_start": 108,
+              "byte_length": 13,
+              "line": 5,
+              "column": 17
+            }
+          ],
+          "reasons": [],
+          "byte_start": 108,
+          "byte_length": 13,
+          "line": 5,
+          "column": 17
+        }
+      ],
+      "diagnostics": []
+    },
+    "VAL-06": {
+      "file": "val_06.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "begin\n    trace << \"first\"\n    value\n  end",
+          "conditions": [
+            {
+              "expression": "begin\n    trace << \"first\"\n    value\n  end",
+              "byte_start": 130,
+              "byte_length": 42,
+              "line": 6,
+              "column": 16
+            }
+          ],
+          "reasons": [],
+          "byte_start": 130,
+          "byte_length": 42,
+          "line": 6,
+          "column": 16
+        }
+      ],
+      "diagnostics": []
+    },
+    "VAL-07": {
+      "file": "val_07.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "ready",
+          "conditions": [
+            {
+              "expression": "ready",
+              "byte_start": 138,
+              "byte_length": 5,
+              "line": 5,
+              "column": 19
+            }
+          ],
+          "reasons": [],
+          "byte_start": 138,
+          "byte_length": 5,
+          "line": 5,
+          "column": 19
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "ready",
+          "conditions": [
+            {
+              "expression": "ready",
+              "byte_start": 173,
+              "byte_length": 5,
+              "line": 6,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 173,
+          "byte_length": 5,
+          "line": 6,
+          "column": 12
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "text",
+          "conditions": [
+            {
+              "expression": "text",
+              "byte_start": 197,
+              "byte_length": 4,
+              "line": 7,
+              "column": 3
+            }
+          ],
+          "reasons": [],
+          "byte_start": 197,
+          "byte_length": 4,
+          "line": 7,
+          "column": 3
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "values",
+          "conditions": [
+            {
+              "expression": "values",
+              "byte_start": 218,
+              "byte_length": 6,
+              "line": 7,
+              "column": 24
+            }
+          ],
+          "reasons": [],
+          "byte_start": 218,
+          "byte_length": 6,
+          "line": 7,
+          "column": 24
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-01": {
+      "file": "if_01.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "ready",
+          "conditions": [
+            {
+              "expression": "ready",
+              "byte_start": 80,
+              "byte_length": 5,
+              "line": 5,
+              "column": 5
+            }
+          ],
+          "reasons": [],
+          "byte_start": 80,
+          "byte_length": 5,
+          "line": 5,
+          "column": 5
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-02": {
+      "file": "if_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "ready",
+          "conditions": [
+            {
+              "expression": "ready",
+              "byte_start": 77,
+              "byte_length": 5,
+              "line": 5,
+              "column": 5
+            }
+          ],
+          "reasons": [],
+          "byte_start": 77,
+          "byte_length": 5,
+          "line": 5,
+          "column": 5
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-03": {
+      "file": "if_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "first",
+          "conditions": [
+            {
+              "expression": "first",
+              "byte_start": 84,
+              "byte_length": 5,
+              "line": 5,
+              "column": 5
+            }
+          ],
+          "reasons": [],
+          "byte_start": 84,
+          "byte_length": 5,
+          "line": 5,
+          "column": 5
+        },
+        {
+          "kind": "boolean",
+          "context": "elsif",
+          "support": "SUPPORTED",
+          "expression": "second",
+          "conditions": [
+            {
+              "expression": "second",
+              "byte_start": 110,
+              "byte_length": 6,
+              "line": 7,
+              "column": 8
+            }
+          ],
+          "reasons": [],
+          "byte_start": 110,
+          "byte_length": 6,
+          "line": 7,
+          "column": 8
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-04": {
+      "file": "if_04.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "ready",
+          "conditions": [
+            {
+              "expression": "ready",
+              "byte_start": 82,
+              "byte_length": 5,
+              "line": 5,
+              "column": 11
+            }
+          ],
+          "reasons": [],
+          "byte_start": 82,
+          "byte_length": 5,
+          "line": 5,
+          "column": 11
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-05": {
+      "file": "if_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "unless",
+          "support": "SUPPORTED",
+          "expression": "blocked",
+          "conditions": [
+            {
+              "expression": "blocked",
+              "byte_start": 90,
+              "byte_length": 7,
+              "line": 5,
+              "column": 9
+            }
+          ],
+          "reasons": [],
+          "byte_start": 90,
+          "byte_length": 7,
+          "line": 5,
+          "column": 9
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-06": {
+      "file": "if_06.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "unless",
+          "support": "SUPPORTED",
+          "expression": "blocked",
+          "conditions": [
+            {
+              "expression": "blocked",
+              "byte_start": 87,
+              "byte_length": 7,
+              "line": 5,
+              "column": 9
+            }
+          ],
+          "reasons": [],
+          "byte_start": 87,
+          "byte_length": 7,
+          "line": 5,
+          "column": 9
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-07": {
+      "file": "if_07.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "unless",
+          "support": "SUPPORTED",
+          "expression": "blocked",
+          "conditions": [
+            {
+              "expression": "blocked",
+              "byte_start": 92,
+              "byte_length": 7,
+              "line": 5,
+              "column": 15
+            }
+          ],
+          "reasons": [],
+          "byte_start": 92,
+          "byte_length": 7,
+          "line": 5,
+          "column": 15
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-08": {
+      "file": "if_08.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "ready",
+          "conditions": [
+            {
+              "expression": "ready",
+              "byte_start": 79,
+              "byte_length": 5,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 79,
+          "byte_length": 5,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "IF-09": {
+      "file": "if_09.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "first",
+          "conditions": [
+            {
+              "expression": "first",
+              "byte_start": 88,
+              "byte_length": 5,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 88,
+          "byte_length": 5,
+          "line": 5,
+          "column": 2
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "second",
+          "conditions": [
+            {
+              "expression": "second",
+              "byte_start": 97,
+              "byte_length": 6,
+              "line": 5,
+              "column": 11
+            }
+          ],
+          "reasons": [],
+          "byte_start": 97,
+          "byte_length": 6,
+          "line": 5,
+          "column": 11
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-01": {
+      "file": "log_01.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "left && (trace << \"right\"; right)",
+          "conditions": [
+            {
+              "expression": "left",
+              "byte_start": 115,
+              "byte_length": 4,
+              "line": 6,
+              "column": 10
+            },
+            {
+              "expression": "(trace << \"right\"; right)",
+              "byte_start": 123,
+              "byte_length": 25,
+              "line": 6,
+              "column": 18
+            }
+          ],
+          "reasons": [],
+          "byte_start": 115,
+          "byte_length": 33,
+          "line": 6,
+          "column": 10
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-02": {
+      "file": "log_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "left || (trace << \"right\"; right)",
+          "conditions": [
+            {
+              "expression": "left",
+              "byte_start": 115,
+              "byte_length": 4,
+              "line": 6,
+              "column": 10
+            },
+            {
+              "expression": "(trace << \"right\"; right)",
+              "byte_start": 123,
+              "byte_length": 25,
+              "line": 6,
+              "column": 18
+            }
+          ],
+          "reasons": [],
+          "byte_start": 115,
+          "byte_length": 33,
+          "line": 6,
+          "column": 10
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-03": {
+      "file": "log_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "result = left and trace << right",
+          "conditions": [
+            {
+              "expression": "result = left",
+              "byte_start": 141,
+              "byte_length": 13,
+              "line": 6,
+              "column": 2
+            },
+            {
+              "expression": "trace << right",
+              "byte_start": 159,
+              "byte_length": 14,
+              "line": 6,
+              "column": 20
+            }
+          ],
+          "reasons": [],
+          "byte_start": 141,
+          "byte_length": 32,
+          "line": 6,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-04": {
+      "file": "log_04.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "result = left or trace << right",
+          "conditions": [
+            {
+              "expression": "result = left",
+              "byte_start": 140,
+              "byte_length": 13,
+              "line": 6,
+              "column": 2
+            },
+            {
+              "expression": "trace << right",
+              "byte_start": 157,
+              "byte_length": 14,
+              "line": 6,
+              "column": 19
+            }
+          ],
+          "reasons": [],
+          "byte_start": 140,
+          "byte_length": 31,
+          "line": 6,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-05": {
+      "file": "log_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "custom",
+          "conditions": [
+            {
+              "expression": "custom",
+              "byte_start": 194,
+              "byte_length": 6,
+              "line": 11,
+              "column": 32
+            }
+          ],
+          "reasons": [],
+          "byte_start": 194,
+          "byte_length": 6,
+          "line": 11,
+          "column": 32
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-06": {
+      "file": "log_06.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "custom",
+          "conditions": [
+            {
+              "expression": "custom",
+              "byte_start": 203,
+              "byte_length": 6,
+              "line": 11,
+              "column": 32
+            }
+          ],
+          "reasons": [],
+          "byte_start": 203,
+          "byte_length": 6,
+          "line": 11,
+          "column": 32
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-07": {
+      "file": "log_07.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "custom",
+          "conditions": [
+            {
+              "expression": "custom",
+              "byte_start": 177,
+              "byte_length": 6,
+              "line": 11,
+              "column": 32
+            }
+          ],
+          "reasons": [],
+          "byte_start": 177,
+          "byte_length": 6,
+          "line": 11,
+          "column": 32
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-08": {
+      "file": "log_08.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "first && ((trace << \"middle\"; middle) || (trace << \"last\"; last))",
+          "conditions": [
+            {
+              "expression": "first",
+              "byte_start": 124,
+              "byte_length": 5,
+              "line": 6,
+              "column": 10
+            },
+            {
+              "expression": "(trace << \"middle\"; middle)",
+              "byte_start": 134,
+              "byte_length": 27,
+              "line": 6,
+              "column": 20
+            },
+            {
+              "expression": "(trace << \"last\"; last)",
+              "byte_start": 165,
+              "byte_length": 23,
+              "line": 6,
+              "column": 51
+            }
+          ],
+          "reasons": [],
+          "byte_start": 124,
+          "byte_length": 65,
+          "line": 6,
+          "column": 10
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-09": {
+      "file": "log_09.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "check.call && check.call",
+          "conditions": [
+            {
+              "expression": "check.call",
+              "byte_start": 189,
+              "byte_length": 10,
+              "line": 7,
+              "column": 11
+            },
+            {
+              "expression": "check.call",
+              "byte_start": 203,
+              "byte_length": 10,
+              "line": 7,
+              "column": 25
+            }
+          ],
+          "reasons": [],
+          "byte_start": 189,
+          "byte_length": 24,
+          "line": 7,
+          "column": 11
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOG-10": {
+      "file": "log_10.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "existing || fallback",
+          "conditions": [
+            {
+              "expression": "existing",
+              "byte_start": 125,
+              "byte_length": 8,
+              "line": 5,
+              "column": 10
+            },
+            {
+              "expression": "fallback",
+              "byte_start": 137,
+              "byte_length": 8,
+              "line": 5,
+              "column": 22
+            }
+          ],
+          "reasons": [],
+          "byte_start": 125,
+          "byte_length": 20,
+          "line": 5,
+          "column": 10
+        }
+      ],
+      "diagnostics": []
+    },
+    "CASE-01": {
+      "file": "case_01.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case value\n  when 1\n    \"hit\"\n  else\n    \"miss\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 79,
+          "byte_length": 53,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "CASE-02": {
+      "file": "case_02.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case value\n  when 1..3\n    \"small\"\n  when Integer\n    \"integer\"\n  else\n    \"other\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 95,
+          "byte_length": 88,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "CASE-03": {
+      "file": "case_03.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case value\n  when (trace << \"first\"; 1), (trace << \"second\"; 2)\n    \"hit\"\n  else\n    \"miss\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 128,
+          "byte_length": 97,
+          "line": 6,
+          "column": 11
+        }
+      ],
+      "diagnostics": []
+    },
+    "CASE-04": {
+      "file": "case_04.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "UNSUPPORTED",
+          "expression": "case value\n  when 0, *matchers\n    \"hit\"\n  else\n    \"miss\"\n  end",
+          "conditions": [],
+          "reasons": [
+            "unsupported_case_splat"
+          ],
+          "byte_start": 126,
+          "byte_length": 64,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_case_splat"
+      ]
+    },
+    "CASE-05": {
+      "file": "case_05.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case value\n  when 1\n    \"hit\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 108,
+          "byte_length": 35,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "CASE-06": {
+      "file": "case_06.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "case_when",
+          "support": "SUPPORTED",
+          "expression": "first",
+          "conditions": [
+            {
+              "expression": "first",
+              "byte_start": 117,
+              "byte_length": 5,
+              "line": 6,
+              "column": 7
+            }
+          ],
+          "reasons": [],
+          "byte_start": 117,
+          "byte_length": 5,
+          "line": 6,
+          "column": 7
+        },
+        {
+          "kind": "boolean",
+          "context": "case_when",
+          "support": "SUPPORTED",
+          "expression": "second",
+          "conditions": [
+            {
+              "expression": "second",
+              "byte_start": 142,
+              "byte_length": 6,
+              "line": 8,
+              "column": 7
+            }
+          ],
+          "reasons": [],
+          "byte_start": 142,
+          "byte_length": 6,
+          "line": 8,
+          "column": 7
+        }
+      ],
+      "diagnostics": []
+    },
+    "CASE-07": {
+      "file": "case_07.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "case_when",
+          "support": "SUPPORTED",
+          "expression": "(trace << \"first\"; first)",
+          "conditions": [
+            {
+              "expression": "(trace << \"first\"; first)",
+              "byte_start": 147,
+              "byte_length": 25,
+              "line": 7,
+              "column": 7
+            }
+          ],
+          "reasons": [],
+          "byte_start": 147,
+          "byte_length": 25,
+          "line": 7,
+          "column": 7
+        },
+        {
+          "kind": "boolean",
+          "context": "case_when",
+          "support": "SUPPORTED",
+          "expression": "(trace << \"second\"; second)",
+          "conditions": [
+            {
+              "expression": "(trace << \"second\"; second)",
+              "byte_start": 174,
+              "byte_length": 27,
+              "line": 7,
+              "column": 34
+            }
+          ],
+          "reasons": [],
+          "byte_start": 174,
+          "byte_length": 27,
+          "line": 7,
+          "column": 34
+        }
+      ],
+      "diagnostics": []
+    },
+    "CASE-08": {
+      "file": "case_08.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case load_value.call\n  when 1\n    \"first\"\n  when 2\n    \"second\"\n  else\n    \"miss\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 155,
+          "byte_length": 87,
+          "line": 7,
+          "column": 11
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOOP-01": {
+      "file": "loop_01.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "while",
+          "support": "SUPPORTED",
+          "expression": "count < limit",
+          "conditions": [
+            {
+              "expression": "count < limit",
+              "byte_start": 96,
+              "byte_length": 13,
+              "line": 6,
+              "column": 8
+            }
+          ],
+          "reasons": [],
+          "byte_start": 96,
+          "byte_length": 13,
+          "line": 6,
+          "column": 8
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOOP-02": {
+      "file": "loop_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "until",
+          "support": "SUPPORTED",
+          "expression": "count >= limit",
+          "conditions": [
+            {
+              "expression": "count >= limit",
+              "byte_start": 96,
+              "byte_length": 14,
+              "line": 6,
+              "column": 8
+            }
+          ],
+          "reasons": [],
+          "byte_start": 96,
+          "byte_length": 14,
+          "line": 6,
+          "column": 8
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOOP-03": {
+      "file": "loop_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "while",
+          "support": "SUPPORTED",
+          "expression": "count < limit",
+          "conditions": [
+            {
+              "expression": "count < limit",
+              "byte_start": 129,
+              "byte_length": 13,
+              "line": 6,
+              "column": 19
+            }
+          ],
+          "reasons": [],
+          "byte_start": 129,
+          "byte_length": 13,
+          "line": 6,
+          "column": 19
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOOP-04": {
+      "file": "loop_04.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "until",
+          "support": "SUPPORTED",
+          "expression": "count >= limit",
+          "conditions": [
+            {
+              "expression": "count >= limit",
+              "byte_start": 129,
+              "byte_length": 14,
+              "line": 6,
+              "column": 19
+            }
+          ],
+          "reasons": [],
+          "byte_start": 129,
+          "byte_length": 14,
+          "line": 6,
+          "column": 19
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOOP-05": {
+      "file": "loop_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "while",
+          "support": "SUPPORTED",
+          "expression": "count < limit",
+          "conditions": [
+            {
+              "expression": "count < limit",
+              "byte_start": 143,
+              "byte_length": 13,
+              "line": 8,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 143,
+          "byte_length": 13,
+          "line": 8,
+          "column": 12
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOOP-06": {
+      "file": "loop_06.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "until",
+          "support": "SUPPORTED",
+          "expression": "count >= limit",
+          "conditions": [
+            {
+              "expression": "count >= limit",
+              "byte_start": 143,
+              "byte_length": 14,
+              "line": 8,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 143,
+          "byte_length": 14,
+          "line": 8,
+          "column": 12
+        }
+      ],
+      "diagnostics": []
+    },
+    "LOOP-07": {
+      "file": "loop_07.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "LOOP-08": {
+      "file": "loop_08.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "LOOP-09": {
+      "file": "loop_09.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "inner == 1",
+          "conditions": [
+            {
+              "expression": "inner == 1",
+              "byte_start": 177,
+              "byte_length": 10,
+              "line": 8,
+              "column": 15
+            }
+          ],
+          "reasons": [],
+          "byte_start": 177,
+          "byte_length": 10,
+          "line": 8,
+          "column": 15
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLIP-01": {
+      "file": "flip_01.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "UNSUPPORTED",
+          "expression": "(value == 1)..(value == 1)",
+          "conditions": [
+            {
+              "expression": "(value == 1)..(value == 1)",
+              "byte_start": 154,
+              "byte_length": 26,
+              "line": 7,
+              "column": 7
+            }
+          ],
+          "reasons": [
+            "unsupported_flip_flop"
+          ],
+          "byte_start": 154,
+          "byte_length": 26,
+          "line": 7,
+          "column": 7
+        }
+      ],
+      "diagnostics": [
+        "unsupported_flip_flop"
+      ]
+    },
+    "FLIP-02": {
+      "file": "flip_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "UNSUPPORTED",
+          "expression": "(value == 1)...(value == 1)",
+          "conditions": [
+            {
+              "expression": "(value == 1)...(value == 1)",
+              "byte_start": 154,
+              "byte_length": 27,
+              "line": 7,
+              "column": 7
+            }
+          ],
+          "reasons": [
+            "unsupported_flip_flop"
+          ],
+          "byte_start": 154,
+          "byte_length": 27,
+          "line": 7,
+          "column": 7
+        }
+      ],
+      "diagnostics": [
+        "unsupported_flip_flop"
+      ]
+    },
+    "EXC-01": {
+      "file": "exc_01.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'argument'",
+          "conditions": [
+            {
+              "expression": "mode == 'argument'",
+              "byte_start": 148,
+              "byte_length": 18,
+              "line": 6,
+              "column": 27
+            }
+          ],
+          "reasons": [],
+          "byte_start": 148,
+          "byte_length": 18,
+          "line": 6,
+          "column": 27
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'io'",
+          "conditions": [
+            {
+              "expression": "mode == 'io'",
+              "byte_start": 188,
+              "byte_length": 12,
+              "line": 7,
+              "column": 21
+            }
+          ],
+          "reasons": [],
+          "byte_start": 188,
+          "byte_length": 12,
+          "line": 7,
+          "column": 21
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue ArgumentError\n    'handled'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 212,
+          "byte_length": 34,
+          "line": 9,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-02": {
+      "file": "exc_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "outside",
+          "conditions": [
+            {
+              "expression": "outside",
+              "byte_start": 131,
+              "byte_length": 7,
+              "line": 7,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 131,
+          "byte_length": 7,
+          "line": 7,
+          "column": 12
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue\n      'handled'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 173,
+          "byte_length": 22,
+          "line": 8,
+          "column": 4
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue ScriptError\n    'outside StandardError'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 206,
+          "byte_length": 46,
+          "line": 11,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow",
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-03": {
+      "file": "exc_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "matches",
+          "conditions": [
+            {
+              "expression": "matches",
+              "byte_start": 113,
+              "byte_length": 7,
+              "line": 6,
+              "column": 10
+            }
+          ],
+          "reasons": [],
+          "byte_start": 113,
+          "byte_length": 7,
+          "line": 6,
+          "column": 10
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue IOError => error\n    error.message",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 166,
+          "byte_length": 41,
+          "line": 7,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-04": {
+      "file": "exc_04.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "io",
+          "conditions": [
+            {
+              "expression": "io",
+              "byte_start": 111,
+              "byte_length": 2,
+              "line": 6,
+              "column": 10
+            }
+          ],
+          "reasons": [],
+          "byte_start": 111,
+          "byte_length": 2,
+          "line": 6,
+          "column": 10
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue IOError, ArgumentError\n    'handled'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 143,
+          "byte_length": 43,
+          "line": 7,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-05": {
+      "file": "exc_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "specific",
+          "conditions": [
+            {
+              "expression": "specific",
+              "byte_start": 115,
+              "byte_length": 8,
+              "line": 6,
+              "column": 10
+            }
+          ],
+          "reasons": [],
+          "byte_start": 115,
+          "byte_length": 8,
+          "line": 6,
+          "column": 10
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue ArgumentError\n    'specific'\n  rescue StandardError\n    'general'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 158,
+          "byte_length": 72,
+          "line": 7,
+          "column": 2
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue StandardError\n    'general'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 196,
+          "byte_length": 34,
+          "line": 9,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow",
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-06": {
+      "file": "exc_06.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case mode\n                when 'empty' then []\n                when 'invalid' then [42]\n                else [ArgumentError, IOError]\n                end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 107,
+          "byte_length": 153,
+          "line": 5,
+          "column": 16
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue *error_types\n    'handled'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 289,
+          "byte_length": 33,
+          "line": 12,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-07": {
+      "file": "exc_07.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "fail_body",
+          "conditions": [
+            {
+              "expression": "fail_body",
+              "byte_start": 138,
+              "byte_length": 9,
+              "line": 6,
+              "column": 27
+            }
+          ],
+          "reasons": [],
+          "byte_start": 138,
+          "byte_length": 9,
+          "line": 6,
+          "column": 27
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue ArgumentError\n    'rescue'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 161,
+          "byte_length": 33,
+          "line": 8,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-08": {
+      "file": "exc_08.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'return'",
+          "conditions": [
+            {
+              "expression": "mode == 'return'",
+              "byte_start": 184,
+              "byte_length": 16,
+              "line": 9,
+              "column": 25
+            }
+          ],
+          "reasons": [],
+          "byte_start": 184,
+          "byte_length": 16,
+          "line": 9,
+          "column": 25
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'break'",
+          "conditions": [
+            {
+              "expression": "mode == 'break'",
+              "byte_start": 218,
+              "byte_length": 15,
+              "line": 10,
+              "column": 17
+            }
+          ],
+          "reasons": [],
+          "byte_start": 218,
+          "byte_length": 15,
+          "line": 10,
+          "column": 17
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'exception'",
+          "conditions": [
+            {
+              "expression": "mode == 'exception'",
+              "byte_start": 259,
+              "byte_length": 19,
+              "line": 11,
+              "column": 25
+            }
+          ],
+          "reasons": [],
+          "byte_start": 259,
+          "byte_length": 19,
+          "line": 11,
+          "column": 25
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue IOError\n    events << 'rescued'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 365,
+          "byte_length": 38,
+          "line": 17,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-09": {
+      "file": "exc_09.rb",
+      "decisions": [
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "Integer(value) rescue 0",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 98,
+          "byte_length": 23,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-10": {
+      "file": "exc_10.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "fail_body",
+          "conditions": [
+            {
+              "expression": "fail_body",
+              "byte_start": 149,
+              "byte_length": 9,
+              "line": 6,
+              "column": 25
+            }
+          ],
+          "reasons": [],
+          "byte_start": 149,
+          "byte_length": 9,
+          "line": 6,
+          "column": 25
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue ArgumentError\n  events << 'rescue'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 159,
+          "byte_length": 41,
+          "line": 7,
+          "column": 0
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-11": {
+      "file": "exc_11.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "attempts <= failures",
+          "conditions": [
+            {
+              "expression": "attempts <= failures",
+              "byte_start": 181,
+              "byte_length": 20,
+              "line": 8,
+              "column": 21
+            }
+          ],
+          "reasons": [],
+          "byte_start": 181,
+          "byte_length": 20,
+          "line": 8,
+          "column": 21
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue IOError\n    retry if attempts < 3\n    raise",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 217,
+          "byte_length": 50,
+          "line": 10,
+          "column": 2
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "attempts < 3",
+          "conditions": [
+            {
+              "expression": "attempts < 3",
+              "byte_start": 245,
+              "byte_length": 12,
+              "line": 11,
+              "column": 13
+            }
+          ],
+          "reasons": [],
+          "byte_start": 245,
+          "byte_length": 12,
+          "line": 11,
+          "column": 13
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-12": {
+      "file": "exc_12.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case mode\n  when 'raise' then raise ArgumentError, 'new error'\n  when 'fail' then fail IOError, 'failed'\n  when 'explicit' then raise RangeError.new('explicit')\n  else\n    begin\n      raise TypeError, 'original'\n    rescue TypeError\n      raise\n    end\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 112,
+          "byte_length": 258,
+          "line": 5,
+          "column": 2
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue TypeError\n      raise",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 328,
+          "byte_length": 28,
+          "line": 12,
+          "column": 4
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-13": {
+      "file": "exc_13.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'handler'",
+          "conditions": [
+            {
+              "expression": "mode == 'handler'",
+              "byte_start": 166,
+              "byte_length": 17,
+              "line": 7,
+              "column": 29
+            }
+          ],
+          "reasons": [],
+          "byte_start": 166,
+          "byte_length": 17,
+          "line": 7,
+          "column": 29
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue ArgumentError\n      raise IOError, 'handler'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 188,
+          "byte_length": 51,
+          "line": 8,
+          "column": 4
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'else'",
+          "conditions": [
+            {
+              "expression": "mode == 'else'",
+              "byte_start": 280,
+              "byte_length": 14,
+              "line": 11,
+              "column": 31
+            }
+          ],
+          "reasons": [],
+          "byte_start": 280,
+          "byte_length": 14,
+          "line": 11,
+          "column": 31
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'ensure'",
+          "conditions": [
+            {
+              "expression": "mode == 'ensure'",
+              "byte_start": 339,
+              "byte_length": 16,
+              "line": 13,
+              "column": 33
+            }
+          ],
+          "reasons": [],
+          "byte_start": 339,
+          "byte_length": 16,
+          "line": 13,
+          "column": 33
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue IOError => error\n    error.message",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 366,
+          "byte_length": 41,
+          "line": 15,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow",
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "EXC-14": {
+      "file": "exc_14.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'inner'",
+          "conditions": [
+            {
+              "expression": "mode == 'inner'",
+              "byte_start": 154,
+              "byte_length": 15,
+              "line": 8,
+              "column": 29
+            }
+          ],
+          "reasons": [],
+          "byte_start": 154,
+          "byte_length": 15,
+          "line": 8,
+          "column": 29
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'outer'",
+          "conditions": [
+            {
+              "expression": "mode == 'outer'",
+              "byte_start": 193,
+              "byte_length": 15,
+              "line": 9,
+              "column": 23
+            }
+          ],
+          "reasons": [],
+          "byte_start": 193,
+          "byte_length": 15,
+          "line": 9,
+          "column": 23
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'escape'",
+          "conditions": [
+            {
+              "expression": "mode == 'escape'",
+              "byte_start": 235,
+              "byte_length": 16,
+              "line": 10,
+              "column": 26
+            }
+          ],
+          "reasons": [],
+          "byte_start": 235,
+          "byte_length": 16,
+          "line": 10,
+          "column": 26
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue ArgumentError\n      events << 'inner'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 256,
+          "byte_length": 44,
+          "line": 11,
+          "column": 4
+        },
+        {
+          "kind": "exception",
+          "context": "rescue",
+          "support": "UNSUPPORTED",
+          "expression": "rescue IOError\n    events << 'outer'",
+          "conditions": [],
+          "reasons": [
+            "unsupported_rescue_control_flow"
+          ],
+          "byte_start": 354,
+          "byte_length": 36,
+          "line": 16,
+          "column": 2
+        }
+      ],
+      "diagnostics": [
+        "unsupported_rescue_control_flow",
+        "unsupported_rescue_control_flow"
+      ]
+    },
+    "FLOW-01": {
+      "file": "flow_01.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "bare",
+          "conditions": [
+            {
+              "expression": "bare",
+              "byte_start": 110,
+              "byte_length": 4,
+              "line": 5,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 110,
+          "byte_length": 4,
+          "line": 5,
+          "column": 12
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-02": {
+      "file": "flow_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "bare",
+          "conditions": [
+            {
+              "expression": "bare",
+              "byte_start": 129,
+              "byte_length": 4,
+              "line": 6,
+              "column": 13
+            }
+          ],
+          "reasons": [],
+          "byte_start": 129,
+          "byte_length": 4,
+          "line": 6,
+          "column": 13
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-03": {
+      "file": "flow_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "value == 0",
+          "conditions": [
+            {
+              "expression": "value == 0",
+              "byte_start": 158,
+              "byte_length": 10,
+              "line": 6,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 158,
+          "byte_length": 10,
+          "line": 6,
+          "column": 12
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "value < 0",
+          "conditions": [
+            {
+              "expression": "value < 0",
+              "byte_start": 192,
+              "byte_length": 9,
+              "line": 7,
+              "column": 23
+            }
+          ],
+          "reasons": [],
+          "byte_start": 192,
+          "byte_length": 9,
+          "line": 7,
+          "column": 23
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-04": {
+      "file": "flow_04.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "repeat",
+          "conditions": [
+            {
+              "expression": "repeat",
+              "byte_start": 177,
+              "byte_length": 6,
+              "line": 8,
+              "column": 7
+            }
+          ],
+          "reasons": [],
+          "byte_start": 177,
+          "byte_length": 6,
+          "line": 8,
+          "column": 7
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-05": {
+      "file": "flow_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "unless",
+          "support": "SUPPORTED",
+          "expression": "valid",
+          "conditions": [
+            {
+              "expression": "valid",
+              "byte_start": 117,
+              "byte_length": 5,
+              "line": 5,
+              "column": 16
+            }
+          ],
+          "reasons": [],
+          "byte_start": 117,
+          "byte_length": 5,
+          "line": 5,
+          "column": 16
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "value < 0",
+          "conditions": [
+            {
+              "expression": "value < 0",
+              "byte_start": 177,
+              "byte_length": 9,
+              "line": 8,
+              "column": 13
+            }
+          ],
+          "reasons": [],
+          "byte_start": 177,
+          "byte_length": 9,
+          "line": 8,
+          "column": 13
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "value == 0",
+          "conditions": [
+            {
+              "expression": "value == 0",
+              "byte_start": 199,
+              "byte_length": 10,
+              "line": 9,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 199,
+          "byte_length": 10,
+          "line": 9,
+          "column": 12
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-06": {
+      "file": "flow_06.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "valid or return",
+          "conditions": [
+            {
+              "expression": "valid",
+              "byte_start": 117,
+              "byte_length": 5,
+              "line": 5,
+              "column": 2
+            },
+            {
+              "expression": "return",
+              "byte_start": 126,
+              "byte_length": 6,
+              "line": 5,
+              "column": 11
+            }
+          ],
+          "reasons": [],
+          "byte_start": 117,
+          "byte_length": 15,
+          "line": 5,
+          "column": 2
+        },
+        {
+          "kind": "boolean",
+          "context": "short_circuit",
+          "support": "SUPPORTED",
+          "expression": "value < 0 && break",
+          "conditions": [
+            {
+              "expression": "value < 0",
+              "byte_start": 178,
+              "byte_length": 9,
+              "line": 8,
+              "column": 4
+            },
+            {
+              "expression": "break",
+              "byte_start": 191,
+              "byte_length": 5,
+              "line": 8,
+              "column": 17
+            }
+          ],
+          "reasons": [],
+          "byte_start": 178,
+          "byte_length": 18,
+          "line": 8,
+          "column": 4
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-07": {
+      "file": "flow_07.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'unmatched'",
+          "conditions": [
+            {
+              "expression": "mode == 'unmatched'",
+              "byte_start": 145,
+              "byte_length": 19,
+              "line": 6,
+              "column": 22
+            }
+          ],
+          "reasons": [],
+          "byte_start": 145,
+          "byte_length": 19,
+          "line": 6,
+          "column": 22
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'matching'",
+          "conditions": [
+            {
+              "expression": "mode == 'matching'",
+              "byte_start": 194,
+              "byte_length": 18,
+              "line": 7,
+              "column": 29
+            }
+          ],
+          "reasons": [],
+          "byte_start": 194,
+          "byte_length": 18,
+          "line": 7,
+          "column": 29
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'nearest'",
+          "conditions": [
+            {
+              "expression": "mode == 'nearest'",
+              "byte_start": 220,
+              "byte_length": 17,
+              "line": 8,
+              "column": 7
+            }
+          ],
+          "reasons": [],
+          "byte_start": 220,
+          "byte_length": 17,
+          "line": 8,
+          "column": 7
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-08": {
+      "file": "flow_08.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "escaped",
+          "conditions": [
+            {
+              "expression": "escaped",
+              "byte_start": 189,
+              "byte_length": 7,
+              "line": 9,
+              "column": 32
+            }
+          ],
+          "reasons": [],
+          "byte_start": 189,
+          "byte_length": 7,
+          "line": 9,
+          "column": 32
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-09": {
+      "file": "flow_09.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "use_break",
+          "conditions": [
+            {
+              "expression": "use_break",
+              "byte_start": 146,
+              "byte_length": 9,
+              "line": 6,
+              "column": 22
+            }
+          ],
+          "reasons": [],
+          "byte_start": 146,
+          "byte_length": 9,
+          "line": 6,
+          "column": 22
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-10": {
+      "file": "flow_10.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'missing'",
+          "conditions": [
+            {
+              "expression": "mode == 'missing'",
+              "byte_start": 163,
+              "byte_length": 17,
+              "line": 9,
+              "column": 24
+            }
+          ],
+          "reasons": [],
+          "byte_start": 163,
+          "byte_length": 17,
+          "line": 9,
+          "column": 24
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'break'",
+          "conditions": [
+            {
+              "expression": "mode == 'break'",
+              "byte_start": 229,
+              "byte_length": 15,
+              "line": 11,
+              "column": 23
+            }
+          ],
+          "reasons": [],
+          "byte_start": 229,
+          "byte_length": 15,
+          "line": 11,
+          "column": 23
+        },
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "mode == 'raise'",
+          "conditions": [
+            {
+              "expression": "mode == 'raise'",
+              "byte_start": 266,
+              "byte_length": 15,
+              "line": 12,
+              "column": 21
+            }
+          ],
+          "reasons": [],
+          "byte_start": 266,
+          "byte_length": 15,
+          "line": 12,
+          "column": 21
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-11": {
+      "file": "flow_11.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "block_given?",
+          "conditions": [
+            {
+              "expression": "block_given?",
+              "byte_start": 145,
+              "byte_length": 12,
+              "line": 6,
+              "column": 12
+            }
+          ],
+          "reasons": [],
+          "byte_start": 145,
+          "byte_length": 12,
+          "line": 6,
+          "column": 12
+        }
+      ],
+      "diagnostics": []
+    },
+    "FLOW-12": {
+      "file": "flow_12.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "case",
+          "support": "SUPPORTED",
+          "expression": "case mode\n  when 'exit' then exit 7\n  when 'abort' then abort 'stopped'\n  when 'immediate' then exit! 7\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 110,
+          "byte_length": 109,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-01": {
+      "file": "pat_01.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case value\n  in Integer then \"integer\"\n  else \"other\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 97,
+          "byte_length": 59,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-02": {
+      "file": "pat_02.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case value\n  in Integer then \"integer\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 94,
+          "byte_length": 44,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-03": {
+      "file": "pat_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value in Integer",
+          "conditions": [
+            {
+              "expression": "value in Integer",
+              "byte_start": 86,
+              "byte_length": 16,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 86,
+          "byte_length": 16,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-04": {
+      "file": "pat_04.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PAT-05": {
+      "file": "pat_05.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "UNSUPPORTED",
+          "expression": "case value\n  in [Integer] if allowed then \"match\"\n  else \"fallback\"\n  end",
+          "conditions": [],
+          "reasons": [
+            "unsupported_pattern_guard"
+          ],
+          "byte_start": 88,
+          "byte_length": 73,
+          "line": 5,
+          "column": 2
+        },
+        {
+          "kind": "boolean",
+          "context": "pattern_guard",
+          "support": "SUPPORTED",
+          "expression": "allowed",
+          "conditions": [
+            {
+              "expression": "allowed",
+              "byte_start": 117,
+              "byte_length": 7,
+              "line": 6,
+              "column": 18
+            }
+          ],
+          "reasons": [],
+          "byte_start": 117,
+          "byte_length": 7,
+          "line": 6,
+          "column": 18
+        }
+      ],
+      "diagnostics": [
+        "unsupported_pattern_guard"
+      ]
+    },
+    "PAT-06": {
+      "file": "pat_06.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "UNSUPPORTED",
+          "expression": "case value\n  in [Integer] unless allowed then \"match\"\n  else \"fallback\"\n  end",
+          "conditions": [],
+          "reasons": [
+            "unsupported_pattern_guard"
+          ],
+          "byte_start": 92,
+          "byte_length": 77,
+          "line": 5,
+          "column": 2
+        },
+        {
+          "kind": "boolean",
+          "context": "pattern_guard",
+          "support": "SUPPORTED",
+          "expression": "allowed",
+          "conditions": [
+            {
+              "expression": "allowed",
+              "byte_start": 125,
+              "byte_length": 7,
+              "line": 6,
+              "column": 22
+            }
+          ],
+          "reasons": [],
+          "byte_start": 125,
+          "byte_length": 7,
+          "line": 6,
+          "column": 22
+        }
+      ],
+      "diagnostics": [
+        "unsupported_pattern_guard"
+      ]
+    },
+    "PAT-07": {
+      "file": "pat_07.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case value\n  in Integer then \"integer\"\n  in nil then \"nil\"\n  in /abc/ then \"text\"\n  else \"other\"\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 95,
+          "byte_length": 102,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-08": {
+      "file": "pat_08.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PAT-09": {
+      "file": "pat_09.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value in ^expected",
+          "conditions": [
+            {
+              "expression": "value in ^expected",
+              "byte_start": 94,
+              "byte_length": 18,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 94,
+          "byte_length": 18,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-10": {
+      "file": "pat_10.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value in ^(lower..upper)",
+          "conditions": [
+            {
+              "expression": "value in ^(lower..upper)",
+              "byte_start": 99,
+              "byte_length": 24,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 99,
+          "byte_length": 24,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-11": {
+      "file": "pat_11.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value in [Integer, String]",
+          "conditions": [
+            {
+              "expression": "value in [Integer, String]",
+              "byte_start": 95,
+              "byte_length": 26,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 95,
+          "byte_length": 26,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-12": {
+      "file": "pat_12.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case value\n  in [head, *tail] then [head, tail]\n  else nil\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 81,
+          "byte_length": 64,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-13": {
+      "file": "pat_13.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case value\n  in [*, Integer => number, *] then number\n  else nil\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 99,
+          "byte_length": 70,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-14": {
+      "file": "pat_14.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value.transform_keys(&:to_sym) in {name: String}",
+          "conditions": [
+            {
+              "expression": "value.transform_keys(&:to_sym) in {name: String}",
+              "byte_start": 82,
+              "byte_length": 48,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 82,
+          "byte_length": 48,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-15": {
+      "file": "pat_15.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PAT-16": {
+      "file": "pat_16.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PAT-17": {
+      "file": "pat_17.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value.transform_keys(&:to_sym) in {name:, **nil}",
+          "conditions": [
+            {
+              "expression": "value.transform_keys(&:to_sym) in {name:, **nil}",
+              "byte_start": 85,
+              "byte_length": 48,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 85,
+          "byte_length": 48,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-18": {
+      "file": "pat_18.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value in {}",
+          "conditions": [
+            {
+              "expression": "value in {}",
+              "byte_start": 81,
+              "byte_length": 11,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 81,
+          "byte_length": 11,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-19": {
+      "file": "pat_19.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value in Integer | String",
+          "conditions": [
+            {
+              "expression": "value in Integer | String",
+              "byte_start": 82,
+              "byte_length": 25,
+              "line": 5,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 82,
+          "byte_length": 25,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-20": {
+      "file": "pat_20.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case value\n  in Integer => number then number\n  else nil\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 98,
+          "byte_length": 62,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-21": {
+      "file": "pat_21.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "point",
+          "conditions": [
+            {
+              "expression": "point",
+              "byte_start": 132,
+              "byte_length": 5,
+              "line": 7,
+              "column": 10
+            }
+          ],
+          "reasons": [],
+          "byte_start": 132,
+          "byte_length": 5,
+          "line": 7,
+          "column": 10
+        },
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case value\n  in Point[a, b] then [a, b]\n  else nil\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 167,
+          "byte_length": 56,
+          "line": 8,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-22": {
+      "file": "pat_22.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "value[\"users\"]&.map { |user| user.transform_keys(&:to_sym) }",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 100,
+          "byte_length": 60,
+          "line": 5,
+          "column": 10
+        },
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "SUPPORTED",
+          "expression": "case {users: users}\n  in {users: [{name:}, *]} then name\n  else nil\n  end",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 163,
+          "byte_length": 73,
+          "line": 6,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-23": {
+      "file": "pat_23.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "@mode == \"raise\"",
+          "conditions": [
+            {
+              "expression": "@mode == \"raise\"",
+              "byte_start": 193,
+              "byte_length": 16,
+              "line": 10,
+              "column": 37
+            }
+          ],
+          "reasons": [],
+          "byte_start": 193,
+          "byte_length": 16,
+          "line": 10,
+          "column": 37
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "@mode == \"invalid\"",
+          "conditions": [
+            {
+              "expression": "@mode == \"invalid\"",
+              "byte_start": 214,
+              "byte_length": 18,
+              "line": 11,
+              "column": 4
+            }
+          ],
+          "reasons": [],
+          "byte_start": 214,
+          "byte_length": 18,
+          "line": 11,
+          "column": 4
+        },
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "mode == \"absent\"",
+          "conditions": [
+            {
+              "expression": "mode == \"absent\"",
+              "byte_start": 282,
+              "byte_length": 16,
+              "line": 16,
+              "column": 10
+            }
+          ],
+          "reasons": [],
+          "byte_start": 282,
+          "byte_length": 16,
+          "line": 16,
+          "column": 10
+        },
+        {
+          "kind": "boolean",
+          "context": "pattern_in",
+          "support": "SUPPORTED",
+          "expression": "value in [Integer]",
+          "conditions": [
+            {
+              "expression": "value in [Integer]",
+              "byte_start": 342,
+              "byte_length": 18,
+              "line": 17,
+              "column": 2
+            }
+          ],
+          "reasons": [],
+          "byte_start": 342,
+          "byte_length": 18,
+          "line": 17,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "PAT-24": {
+      "file": "pat_24.rb",
+      "decisions": [
+        {
+          "kind": "pattern",
+          "context": "case_in",
+          "support": "UNSUPPORTED",
+          "expression": "case {age: age}\n  in {age: Integer => years} if years >= 18 && (trace << \"permission\"; permitted)\n    \"adult\"\n  else\n    \"other\"\n  end",
+          "conditions": [],
+          "reasons": [
+            "unsupported_pattern_guard"
+          ],
+          "byte_start": 131,
+          "byte_length": 134,
+          "line": 6,
+          "column": 11
+        },
+        {
+          "kind": "boolean",
+          "context": "pattern_guard",
+          "support": "SUPPORTED",
+          "expression": "years >= 18 && (trace << \"permission\"; permitted)",
+          "conditions": [
+            {
+              "expression": "years >= 18",
+              "byte_start": 179,
+              "byte_length": 11,
+              "line": 7,
+              "column": 32
+            },
+            {
+              "expression": "(trace << \"permission\"; permitted)",
+              "byte_start": 194,
+              "byte_length": 34,
+              "line": 7,
+              "column": 47
+            }
+          ],
+          "reasons": [],
+          "byte_start": 179,
+          "byte_length": 49,
+          "line": 7,
+          "column": 32
+        }
+      ],
+      "diagnostics": [
+        "unsupported_pattern_guard"
+      ]
+    },
+    "NIL-01": {
+      "file": "nil_01.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "receiver&.to_s",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 97,
+          "byte_length": 14,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "NIL-02": {
+      "file": "nil_02.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "user&.[](\"profile\")",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 80,
+          "byte_length": 19,
+          "line": 5,
+          "column": 2
+        },
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "user&.[](\"profile\")&.[](\"name\")",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 80,
+          "byte_length": 31,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "NIL-03": {
+      "file": "nil_03.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "user&.[](\"profile\")",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 97,
+          "byte_length": 19,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "NIL-04": {
+      "file": "nil_04.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "receiver&.zip((trace << \"argument\"; [\"argument\"])) { |pair| trace << \"block\"; pair }",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 129,
+          "byte_length": 84,
+          "line": 6,
+          "column": 11
+        }
+      ],
+      "diagnostics": []
+    },
+    "NIL-05": {
+      "file": "nil_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "present",
+          "conditions": [
+            {
+              "expression": "present",
+              "byte_start": 141,
+              "byte_length": 7,
+              "line": 7,
+              "column": 13
+            }
+          ],
+          "reasons": [],
+          "byte_start": 141,
+          "byte_length": 7,
+          "line": 7,
+          "column": 13
+        },
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "receiver&.name = (trace << \"rhs\"; \"Ada\")",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 183,
+          "byte_length": 40,
+          "line": 9,
+          "column": 2
+        },
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "receiver&.name",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 227,
+          "byte_length": 14,
+          "line": 10,
+          "column": 3
+        }
+      ],
+      "diagnostics": []
+    },
+    "NIL-06": {
+      "file": "nil_06.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "receiver&.[](key)",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 89,
+          "byte_length": 17,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "NIL-07": {
+      "file": "nil_07.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "present",
+          "conditions": [
+            {
+              "expression": "present",
+              "byte_start": 160,
+              "byte_length": 7,
+              "line": 7,
+              "column": 13
+            }
+          ],
+          "reasons": [],
+          "byte_start": 160,
+          "byte_length": 7,
+          "line": 7,
+          "column": 13
+        },
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "UNSUPPORTED",
+          "expression": "receiver&.name ||= (trace << \"build\"; \"Ada\")",
+          "conditions": [],
+          "reasons": [
+            "unsupported_assignment_target"
+          ],
+          "byte_start": 234,
+          "byte_length": 44,
+          "line": 10,
+          "column": 2
+        },
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "receiver&.count",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 282,
+          "byte_length": 15,
+          "line": 11,
+          "column": 3
+        },
+        {
+          "kind": "implicit",
+          "context": "safe_navigation",
+          "support": "SUPPORTED",
+          "expression": "receiver&.name",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 299,
+          "byte_length": 14,
+          "line": 11,
+          "column": 20
+        }
+      ],
+      "diagnostics": [
+        "unsupported_assignment_target"
+      ]
+    },
+    "ASGN-01": {
+      "file": "asgn_01.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "value ||= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 90,
+          "byte_length": 15,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "ASGN-02": {
+      "file": "asgn_02.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "and_assignment",
+          "support": "SUPPORTED",
+          "expression": "value &&= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 90,
+          "byte_length": 15,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "ASGN-03": {
+      "file": "asgn_03.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "initialize_local",
+          "conditions": [
+            {
+              "expression": "initialize_local",
+              "byte_start": 140,
+              "byte_length": 16,
+              "line": 5,
+              "column": 21
+            }
+          ],
+          "reasons": [],
+          "byte_start": 140,
+          "byte_length": 16,
+          "line": 5,
+          "column": 21
+        },
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "value ||= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 159,
+          "byte_length": 15,
+          "line": 6,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "ASGN-04": {
+      "file": "asgn_04.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "initialize_values",
+          "conditions": [
+            {
+              "expression": "initialize_values",
+              "byte_start": 158,
+              "byte_length": 17,
+              "line": 6,
+              "column": 7
+            }
+          ],
+          "reasons": [],
+          "byte_start": 158,
+          "byte_length": 17,
+          "line": 6,
+          "column": 7
+        },
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "@value ||= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 266,
+          "byte_length": 16,
+          "line": 11,
+          "column": 4
+        },
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "@@value ||= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 287,
+          "byte_length": 17,
+          "line": 12,
+          "column": 4
+        },
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "$example_value ||= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 309,
+          "byte_length": 24,
+          "line": 13,
+          "column": 4
+        }
+      ],
+      "diagnostics": []
+    },
+    "ASGN-05": {
+      "file": "asgn_05.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "VALUE ||= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 126,
+          "byte_length": 15,
+          "line": 6,
+          "column": 2
+        },
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "VALUE ||= \"new\"",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 171,
+          "byte_length": 15,
+          "line": 10,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "ASGN-06": {
+      "file": "asgn_06.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "receiver.value ||= (trace << \"build\"; \"new\")",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 167,
+          "byte_length": 44,
+          "line": 9,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "ASGN-07": {
+      "file": "asgn_07.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "and_assignment",
+          "support": "SUPPORTED",
+          "expression": "receiver[(trace << \"index\"; 0)] &&= (trace << \"update\"; \"new\")",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 132,
+          "byte_length": 62,
+          "line": 7,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
+    },
+    "ASGN-08": {
+      "file": "asgn_08.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "or_assignment",
+          "support": "SUPPORTED",
+          "expression": "a ||= (b &&= (trace << \"build\"; \"new\"))",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 106,
+          "byte_length": 39,
+          "line": 6,
+          "column": 2
+        },
+        {
+          "kind": "implicit",
+          "context": "and_assignment",
+          "support": "SUPPORTED",
+          "expression": "b &&= (trace << \"build\"; \"new\")",
+          "conditions": [],
+          "reasons": [],
+          "byte_start": 113,
+          "byte_length": 31,
+          "line": 6,
+          "column": 9
+        }
+      ],
+      "diagnostics": []
+    },
+    "ARG-01": {
+      "file": "arg_01.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "ARG-02": {
+      "file": "arg_02.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "ARG-03": {
+      "file": "arg_03.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "ARG-04": {
+      "file": "arg_04.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "ARG-05": {
+      "file": "arg_05.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "ternary",
+          "support": "SUPPORTED",
+          "expression": "ready",
+          "conditions": [
+            {
+              "expression": "ready",
+              "byte_start": 95,
+              "byte_length": 5,
+              "line": 4,
+              "column": 28
+            }
+          ],
+          "reasons": [],
+          "byte_start": 95,
+          "byte_length": 5,
+          "line": 4,
+          "column": 28
+        }
+      ],
+      "diagnostics": []
+    },
+    "PRED-01": {
+      "file": "pred_01.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-02": {
+      "file": "pred_02.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-03": {
+      "file": "pred_03.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-04": {
+      "file": "pred_04.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-05": {
+      "file": "pred_05.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-06": {
+      "file": "pred_06.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-07": {
+      "file": "pred_07.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-08": {
+      "file": "pred_08.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-09": {
+      "file": "pred_09.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-10": {
+      "file": "pred_10.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-11": {
+      "file": "pred_11.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-12": {
+      "file": "pred_12.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "UNSUPPORTED",
+          "expression": "/a/",
+          "conditions": [
+            {
+              "expression": "/a/",
+              "byte_start": 124,
+              "byte_length": 3,
+              "line": 6,
+              "column": 5
+            }
+          ],
+          "reasons": [
+            "unsupported_implicit_regexp"
+          ],
+          "byte_start": 124,
+          "byte_length": 3,
+          "line": 6,
+          "column": 5
+        }
+      ],
+      "diagnostics": [
+        "unsupported_implicit_regexp"
+      ]
+    },
+    "PRED-13": {
+      "file": "pred_13.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-14": {
+      "file": "pred_14.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-15": {
+      "file": "pred_15.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-16": {
+      "file": "pred_16.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "PRED-17": {
+      "file": "pred_17.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-01": {
+      "file": "api_01.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-02": {
+      "file": "api_02.rb",
+      "decisions": [
+        {
+          "kind": "boolean",
+          "context": "if",
+          "support": "SUPPORTED",
+          "expression": "value > 0",
+          "conditions": [
+            {
+              "expression": "value > 0",
+              "byte_start": 238,
+              "byte_length": 9,
+              "line": 7,
+              "column": 52
+            }
+          ],
+          "reasons": [],
+          "byte_start": 238,
+          "byte_length": 9,
+          "line": 7,
+          "column": 52
+        }
+      ],
+      "diagnostics": []
+    },
+    "API-03": {
+      "file": "api_03.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-04": {
+      "file": "api_04.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-05": {
+      "file": "api_05.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-06": {
+      "file": "api_06.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-07": {
+      "file": "api_07.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-08": {
+      "file": "api_08.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-09": {
+      "file": "api_09.rb",
+      "decisions": [],
+      "diagnostics": []
+    },
+    "API-10": {
+      "file": "api_10.rb",
+      "decisions": [],
+      "diagnostics": []
+    }
+  }
+}

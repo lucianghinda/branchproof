@@ -182,6 +182,77 @@ class TestInstrumenter < Minitest::Test
     end
   end
 
+  def test_logical_right_hand_side_transfers_compile_and_preserve_native_semantics
+    path = File.expand_path("fixtures/ruby_constructs/flow_06.rb", __dir__)
+    source = File.binread(path)
+    inventory = Branchproof::Source.new(root: File.dirname(path), limits: Branchproof::Limits.default)
+                                   .inventory(paths: [path])
+    rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
+
+    assert rewritten[:changed], rewritten.inspect
+    assert_empty rewritten[:diagnostics]
+    assert_instance_of RubyVM::InstructionSequence, rewritten[:iseq]
+
+    harness = <<~RUBY
+      module Branchproof
+        module Runtime
+          def self.enter(*) = nil
+          def self.condition(_, _, value) = value
+          def self.finish(_, value) = value
+          def self.leave(*) = nil
+        end
+      end
+      def capture(source)
+        load source
+        [example(false, [1]), example(true, [1, -1, 2])]
+      end
+      p capture(ARGV.fetch(0))
+    RUBY
+    original = run_fixture_output(harness, path, source)
+    instrumented = run_fixture_output(harness, path, rewritten[:bytes])
+    assert_equal original, instrumented
+    assert_equal "[nil, [1]]", original.strip
+
+    runtime_harness = <<~RUBY
+      require "branchproof"
+      class FakeEvidence
+        attr_reader :records
+        def initialize = @records = []
+        def run_id = "flow-06"
+        def record(execution:) = (@records << execution; {status: "recorded"})
+      end
+      evidence = FakeEvidence.new
+      Branchproof::Runtime.boot(evidence: evidence)
+      load ARGV.fetch(0)
+      example(false, [1])
+      example(true, [1, -1, 2])
+      p evidence.records.map { |record| [record[:status], record[:observations]] }
+    RUBY
+    assert_equal "[[\"aborted\", [[0, false]]], [\"completed\", [[0, true]]], [\"completed\", [[0, false]]], [\"aborted\", [[0, true]]]]",
+                 run_fixture(runtime_harness, path, rewritten[:bytes])
+  end
+
+  def test_other_native_logical_transfers_compile_without_fabricated_rhs_observations
+    sources = {
+      "next" => "def example(values)\n  values.each { |value| value && next }\nend\n",
+      "redo" => "def example(flag)\n  loop do\n    break unless flag\n    flag && redo\n  end\nend\n",
+      "retry" => "def example(flag)\n  begin\n    raise if flag\n  rescue\n    flag && retry\n  end\nend\n",
+      "valued" => "def example(flag, values)\n  flag and return :returned\n  values.each { |value| value and break :broken }\nend\n"
+    }
+
+    sources.each do |name, source|
+      Dir.mktmpdir("branchproof-#{name}") do |directory|
+        path = File.join(directory, "fixture.rb")
+        File.binwrite(path, source)
+        inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
+        rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
+        assert rewritten[:changed], [name, rewritten].inspect
+        assert_empty rewritten[:diagnostics], [name, rewritten].inspect
+        assert_instance_of RubyVM::InstructionSequence, rewritten[:iseq]
+      end
+    end
+  end
+
   def test_nested_predicate_decisions_are_each_instrumented_once
     Dir.mktmpdir("branchproof-nested") do |directory|
       path = File.join(directory, "nested.rb")

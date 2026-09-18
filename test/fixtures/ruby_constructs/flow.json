@@ -1,0 +1,957 @@
+[
+  {
+    "id": "LOOP-01",
+    "cases": [
+      {
+        "name": "zero",
+        "args": [
+          0
+        ],
+        "result": 0
+      },
+      {
+        "name": "many",
+        "args": [
+          3
+        ],
+        "result": 3
+      }
+    ]
+  },
+  {
+    "id": "LOOP-02",
+    "cases": [
+      {
+        "name": "zero",
+        "args": [
+          0
+        ],
+        "result": 0
+      },
+      {
+        "name": "many",
+        "args": [
+          3
+        ],
+        "result": 3
+      }
+    ]
+  },
+  {
+    "id": "LOOP-03",
+    "cases": [
+      {
+        "name": "zero",
+        "args": [
+          0
+        ],
+        "result": 0
+      },
+      {
+        "name": "many",
+        "args": [
+          3
+        ],
+        "result": 3
+      }
+    ]
+  },
+  {
+    "id": "LOOP-04",
+    "cases": [
+      {
+        "name": "zero",
+        "args": [
+          0
+        ],
+        "result": 0
+      },
+      {
+        "name": "many",
+        "args": [
+          3
+        ],
+        "result": 3
+      }
+    ]
+  },
+  {
+    "id": "LOOP-05",
+    "cases": [
+      {
+        "name": "once",
+        "args": [
+          0
+        ],
+        "result": 1
+      },
+      {
+        "name": "many",
+        "args": [
+          3
+        ],
+        "result": 3
+      }
+    ]
+  },
+  {
+    "id": "LOOP-06",
+    "cases": [
+      {
+        "name": "once",
+        "args": [
+          0
+        ],
+        "result": 1
+      },
+      {
+        "name": "many",
+        "args": [
+          3
+        ],
+        "result": 3
+      }
+    ]
+  },
+  {
+    "id": "LOOP-07",
+    "cases": [
+      {
+        "name": "empty",
+        "args": [
+          []
+        ],
+        "result": [
+          0,
+          null
+        ]
+      },
+      {
+        "name": "many",
+        "args": [
+          [
+            2,
+            4
+          ]
+        ],
+        "result": [
+          6,
+          4
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOOP-08",
+    "cases": [
+      {
+        "name": "zero",
+        "args": [
+          0
+        ],
+        "result": []
+      },
+      {
+        "name": "many",
+        "args": [
+          3
+        ],
+        "result": [
+          0,
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "id": "LOOP-09",
+    "cases": [
+      {
+        "name": "empty",
+        "args": [
+          0
+        ],
+        "result": []
+      },
+      {
+        "name": "reentry",
+        "args": [
+          3
+        ],
+        "result": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            2,
+            0
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FLIP-01",
+    "cases": [
+      {
+        "name": "inactive",
+        "args": [
+          [
+            0,
+            0
+          ]
+        ],
+        "result": []
+      },
+      {
+        "name": "same_start_finish",
+        "args": [
+          [
+            1,
+            2,
+            1,
+            3
+          ]
+        ],
+        "result": [
+          1,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FLIP-02",
+    "cases": [
+      {
+        "name": "inactive",
+        "args": [
+          [
+            0,
+            0
+          ]
+        ],
+        "result": []
+      },
+      {
+        "name": "same_start_finish",
+        "args": [
+          [
+            1,
+            2,
+            1,
+            3
+          ]
+        ],
+        "result": [
+          1,
+          2,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "EXC-01",
+    "cases": [
+      {
+        "name": "normal",
+        "args": [
+          "ok"
+        ],
+        "result": "ok"
+      },
+      {
+        "name": "handled",
+        "args": [
+          "argument"
+        ],
+        "result": "handled"
+      },
+      {
+        "name": "escapes",
+        "args": [
+          "io"
+        ],
+        "error": "IOError"
+      }
+    ]
+  },
+  {
+    "id": "EXC-02",
+    "cases": [
+      {
+        "name": "standard",
+        "args": [
+          false
+        ],
+        "result": "handled"
+      },
+      {
+        "name": "outside",
+        "args": [
+          true
+        ],
+        "result": "outside StandardError"
+      }
+    ]
+  },
+  {
+    "id": "EXC-03",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          true
+        ],
+        "result": "broken input"
+      },
+      {
+        "name": "nonmatch",
+        "args": [
+          false
+        ],
+        "error": "ArgumentError"
+      }
+    ]
+  },
+  {
+    "id": "EXC-04",
+    "cases": [
+      {
+        "name": "io",
+        "args": [
+          true
+        ],
+        "result": "handled"
+      },
+      {
+        "name": "argument",
+        "args": [
+          false
+        ],
+        "result": "handled"
+      }
+    ]
+  },
+  {
+    "id": "EXC-05",
+    "cases": [
+      {
+        "name": "specific",
+        "args": [
+          true
+        ],
+        "result": "specific"
+      },
+      {
+        "name": "general",
+        "args": [
+          false
+        ],
+        "result": "general"
+      }
+    ]
+  },
+  {
+    "id": "EXC-06",
+    "cases": [
+      {
+        "name": "empty",
+        "args": [
+          "empty"
+        ],
+        "error": "IOError"
+      },
+      {
+        "name": "multiple",
+        "args": [
+          "multiple"
+        ],
+        "result": "handled"
+      },
+      {
+        "name": "invalid",
+        "args": [
+          "invalid"
+        ],
+        "error": "TypeError"
+      }
+    ]
+  },
+  {
+    "id": "EXC-07",
+    "cases": [
+      {
+        "name": "normal",
+        "args": [
+          false
+        ],
+        "result": "else"
+      },
+      {
+        "name": "handled",
+        "args": [
+          true
+        ],
+        "result": "rescue"
+      }
+    ]
+  },
+  {
+    "id": "EXC-08",
+    "cases": [
+      {
+        "name": "normal",
+        "args": [
+          "normal"
+        ],
+        "result": [
+          "body",
+          "cleanup"
+        ]
+      },
+      {
+        "name": "return",
+        "args": [
+          "return"
+        ],
+        "result": [
+          "cleanup"
+        ]
+      },
+      {
+        "name": "break",
+        "args": [
+          "break"
+        ],
+        "result": [
+          "cleanup"
+        ]
+      },
+      {
+        "name": "exception",
+        "args": [
+          "exception"
+        ],
+        "result": [
+          "cleanup",
+          "rescued"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "EXC-09",
+    "cases": [
+      {
+        "name": "normal",
+        "args": [
+          "12"
+        ],
+        "result": 12
+      },
+      {
+        "name": "fallback",
+        "args": [
+          "no"
+        ],
+        "result": 0
+      }
+    ]
+  },
+  {
+    "id": "EXC-10",
+    "cases": [
+      {
+        "name": "normal",
+        "args": [
+          false
+        ],
+        "result": [
+          "else",
+          "ensure"
+        ]
+      },
+      {
+        "name": "handled",
+        "args": [
+          true
+        ],
+        "result": [
+          "rescue",
+          "ensure"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "EXC-11",
+    "cases": [
+      {
+        "name": "first",
+        "args": [
+          0
+        ],
+        "result": 1
+      },
+      {
+        "name": "retry",
+        "args": [
+          2
+        ],
+        "result": 3
+      },
+      {
+        "name": "propagates",
+        "args": [
+          3
+        ],
+        "error": "IOError"
+      }
+    ]
+  },
+  {
+    "id": "EXC-12",
+    "cases": [
+      {
+        "name": "raise",
+        "args": [
+          "raise"
+        ],
+        "error": "ArgumentError"
+      },
+      {
+        "name": "fail",
+        "args": [
+          "fail"
+        ],
+        "error": "IOError"
+      },
+      {
+        "name": "explicit",
+        "args": [
+          "explicit"
+        ],
+        "error": "RangeError"
+      },
+      {
+        "name": "reraise",
+        "args": [
+          "reraise"
+        ],
+        "error": "TypeError"
+      }
+    ]
+  },
+  {
+    "id": "EXC-13",
+    "cases": [
+      {
+        "name": "handler",
+        "args": [
+          "handler"
+        ],
+        "result": "handler"
+      },
+      {
+        "name": "else",
+        "args": [
+          "else"
+        ],
+        "result": "else"
+      },
+      {
+        "name": "ensure",
+        "args": [
+          "ensure"
+        ],
+        "result": "ensure"
+      }
+    ]
+  },
+  {
+    "id": "EXC-14",
+    "cases": [
+      {
+        "name": "inner",
+        "args": [
+          "inner"
+        ],
+        "result": [
+          "inner",
+          "inner cleanup",
+          "outer cleanup"
+        ]
+      },
+      {
+        "name": "outer",
+        "args": [
+          "outer"
+        ],
+        "result": [
+          "inner cleanup",
+          "outer",
+          "outer cleanup"
+        ]
+      },
+      {
+        "name": "propagates",
+        "args": [
+          "escape"
+        ],
+        "error": "RangeError"
+      }
+    ]
+  },
+  {
+    "id": "FLOW-01",
+    "cases": [
+      {
+        "name": "bare",
+        "args": [
+          true
+        ],
+        "result": null
+      },
+      {
+        "name": "value",
+        "args": [
+          false
+        ],
+        "result": "returned"
+      }
+    ]
+  },
+  {
+    "id": "FLOW-02",
+    "cases": [
+      {
+        "name": "bare",
+        "args": [
+          true
+        ],
+        "result": null
+      },
+      {
+        "name": "value",
+        "args": [
+          false
+        ],
+        "result": "stopped"
+      }
+    ]
+  },
+  {
+    "id": "FLOW-03",
+    "cases": [
+      {
+        "name": "mixed",
+        "args": [
+          [
+            0,
+            -1,
+            2
+          ]
+        ],
+        "result": [
+          null,
+          "negative",
+          4
+        ]
+      },
+      {
+        "name": "empty",
+        "args": [
+          []
+        ],
+        "result": []
+      }
+    ]
+  },
+  {
+    "id": "FLOW-04",
+    "cases": [
+      {
+        "name": "none",
+        "args": [
+          false
+        ],
+        "result": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "redo",
+        "args": [
+          true
+        ],
+        "result": [
+          0,
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FLOW-05",
+    "cases": [
+      {
+        "name": "invalid",
+        "args": [
+          false,
+          [
+            1
+          ]
+        ],
+        "result": null
+      },
+      {
+        "name": "guards",
+        "args": [
+          true,
+          [
+            0,
+            1,
+            -1,
+            2
+          ]
+        ],
+        "result": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FLOW-06",
+    "cases": [
+      {
+        "name": "invalid",
+        "args": [
+          false,
+          [
+            1
+          ]
+        ],
+        "result": null
+      },
+      {
+        "name": "break",
+        "args": [
+          true,
+          [
+            1,
+            -1,
+            2
+          ]
+        ],
+        "result": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FLOW-07",
+    "cases": [
+      {
+        "name": "normal",
+        "args": [
+          "normal"
+        ],
+        "result": "completed"
+      },
+      {
+        "name": "matching",
+        "args": [
+          "matching"
+        ],
+        "result": "thrown"
+      },
+      {
+        "name": "nearest",
+        "args": [
+          "nearest"
+        ],
+        "result": [
+          "inner",
+          "outer continued"
+        ]
+      },
+      {
+        "name": "unmatched",
+        "args": [
+          "unmatched"
+        ],
+        "error": "UncaughtThrowError"
+      }
+    ]
+  },
+  {
+    "id": "FLOW-08",
+    "cases": [
+      {
+        "name": "nonlocal",
+        "args": [
+          false
+        ],
+        "result": "returned"
+      },
+      {
+        "name": "escaped",
+        "args": [
+          true
+        ],
+        "error": "LocalJumpError"
+      }
+    ]
+  },
+  {
+    "id": "FLOW-09",
+    "cases": [
+      {
+        "name": "return",
+        "args": [
+          false
+        ],
+        "result": [
+          "returned",
+          "continued"
+        ]
+      },
+      {
+        "name": "break",
+        "args": [
+          true
+        ],
+        "result": [
+          "broken",
+          "continued"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FLOW-10",
+    "cases": [
+      {
+        "name": "supplied",
+        "args": [
+          "normal"
+        ],
+        "result": 6
+      },
+      {
+        "name": "missing",
+        "args": [
+          "missing"
+        ],
+        "error": "LocalJumpError"
+      },
+      {
+        "name": "break",
+        "args": [
+          "break"
+        ],
+        "result": "stopped"
+      },
+      {
+        "name": "raise",
+        "args": [
+          "raise"
+        ],
+        "error": "IOError"
+      }
+    ]
+  },
+  {
+    "id": "FLOW-11",
+    "cases": [
+      {
+        "name": "implicit",
+        "args": [
+          "implicit",
+          "input"
+        ],
+        "result": [
+          "input",
+          "INPUT"
+        ]
+      },
+      {
+        "name": "empty",
+        "args": [
+          "empty",
+          "input"
+        ],
+        "result": [
+          "default",
+          "DEFAULT"
+        ]
+      },
+      {
+        "name": "explicit",
+        "args": [
+          "explicit",
+          "input"
+        ],
+        "result": [
+          "changed",
+          "CHANGED"
+        ]
+      },
+      {
+        "name": "forwarded",
+        "args": [
+          "forwarded",
+          "input"
+        ],
+        "result": [
+          "input",
+          "INPUT"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FLOW-12",
+    "cases": [
+      {
+        "name": "exit",
+        "args": [
+          "exit"
+        ],
+        "exit": 7,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "name": "abort",
+        "args": [
+          "abort"
+        ],
+        "exit": 1,
+        "stdout": "",
+        "stderr": "stopped\n"
+      },
+      {
+        "name": "immediate",
+        "args": [
+          "immediate"
+        ],
+        "exit": 7,
+        "stdout": "",
+        "stderr": ""
+      }
+    ]
+  }
+]
