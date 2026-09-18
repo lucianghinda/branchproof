@@ -98,6 +98,86 @@ class TestRailsIntegration < Minitest::Test
     end
   end
 
+  def test_namespaced_zeitwerk_service_has_exact_case_coverage_in_lazy_and_eager_modes
+    unless ENV["BRANCHPROOF_RAILS_INTEGRATION"] == "1"
+      skip "set BRANCHPROOF_RAILS_INTEGRATION=1 to run the Rails integration"
+    end
+
+    [false, true].each do |eager|
+      Dir.mktmpdir("branchproof-rails-construct-") do |root|
+        copy_fixture(root)
+        service_dir = File.join(root, "app", "services", "fixture_constructs")
+        FileUtils.mkdir_p(service_dir)
+        File.write(File.join(root, "app", "services", "fixture_constructs.rb"), <<~RUBY)
+          module FixtureConstructs
+          end
+        RUBY
+        File.write(File.join(service_dir, "branch_service.rb"), <<~RUBY)
+          module FixtureConstructs
+            class BranchService
+              #{File.read(File.expand_path("fixtures/ruby_constructs/case_02.rb", __dir__))}
+            end
+          end
+        RUBY
+        File.write(File.join(root, "test", "construct_service_test.rb"), <<~RUBY)
+          require "test_helper"
+
+          class FixtureConstructBranchServiceTest < ActiveSupport::TestCase
+            setup { FixtureConstructs::BranchService.new.example(1) }
+            teardown { FixtureConstructs::BranchService.new.example("other") }
+
+            test "covers every namespaced service branch" do
+              service = FixtureConstructs::BranchService.new
+              assert_equal "small", service.example(1)
+              assert_equal "integer", service.example(10)
+              assert_equal "other", service.example("other")
+            end
+          end
+        RUBY
+
+        previous = ENV.fetch("BRANCHPROOF_FIXTURE_EAGER", nil)
+        ENV["BRANCHPROOF_FIXTURE_EAGER"] = eager ? "1" : "0"
+        stdout = StringIO.new
+        stderr = StringIO.new
+        exit_code = Dir.chdir(root) do
+          Branchproof::CLI.new(stdout: stdout, stderr: stderr).call(
+            ["analyze", "--project", "rails", "--format", "json", "--level", "3", "--test", "test/construct_service_test.rb", "--", "--seed", "24680"]
+          )
+        end
+        report = JSON.parse(stdout.string)
+
+        assert_equal 0, exit_code, stderr.string
+        assert_equal "PASSED", report.dig("baseline", "status"), stderr.string
+        assert_equal 1, report.dig("baseline", "executed_tests")
+        assert_equal 24_680, report.dig("baseline", "seed")
+        assert_equal 1, report.dig("baseline", "project", "serial_policy", "workers")
+
+        source = report.fetch("source_inventory").fetch("source_units").find { |unit| unit.fetch("relative_path").end_with?("app/services/fixture_constructs/branch_service.rb") }
+        refute_nil source
+        decision = source.fetch("decisions").fetch(0)
+        assert_equal "case", decision.fetch("context")
+        assert_equal "multiway", decision.fetch("kind")
+        analyzed = report.fetch("analysis").fetch("decisions").find { |item| item.fetch("decision_id") == decision.fetch("id") }
+        refute_nil analyzed
+        assert_equal 3, analyzed.dig("coverage", "alternative", "covered_alternatives")
+        assert_equal 3, analyzed.dig("coverage", "alternative", "required_alternatives")
+
+        service_test = report.fetch("observations").fetch("tests").find { |test| test.fetch("method_name").include?("every_namespaced_service_branch") }
+        refute_nil service_test
+        assert_equal({ "setup" => 1, "body" => 1, "teardown" => 1 }, service_test.fetch("phase_counts"))
+        vectors = report.fetch("observations").fetch("vectors").select { |vector| vector.fetch("decision_id") == decision.fetch("id") }
+        assert_equal 3, vectors.length
+        assert(vectors.all? { |vector| vector.fetch("test_ids") == [service_test.fetch("id")] })
+        phases = vectors.flat_map { |vector| vector.fetch("phases_by_test").fetch(service_test.fetch("id")) }
+        assert_includes phases, "setup"
+        assert_includes phases, "body"
+        assert_includes phases, "teardown"
+      ensure
+        previous ? ENV["BRANCHPROOF_FIXTURE_EAGER"] = previous : ENV.delete("BRANCHPROOF_FIXTURE_EAGER")
+      end
+    end
+  end
+
   def test_real_rails_reloading_is_rejected
     unless ENV["BRANCHPROOF_RAILS_INTEGRATION"] == "1"
       skip "set BRANCHPROOF_RAILS_INTEGRATION=1 to run the Rails integration"

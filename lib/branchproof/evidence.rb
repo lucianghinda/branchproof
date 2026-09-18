@@ -34,6 +34,7 @@ module Branchproof
       @run_payloads = {}
       @abort_counts = Hash.new(0)
       @diagnostics = []
+      @repetition_cache = {}
       @limited = false
       @attribution_complete = true
     end
@@ -55,6 +56,10 @@ module Branchproof
     end
 
     def record(execution:)
+      if (cached = cached_execution(execution))
+        return record_cached(cached)
+      end
+
       value = symbolize(execution)
       reason = validate_execution(value)
       return reject_record(reason) if reason
@@ -102,6 +107,8 @@ module Branchproof
         phase = value[:phase].to_s
         test[:phase_counts][phase] = test[:phase_counts].fetch(phase, 0) + 1
       end
+      cache_key = execution_cache_key(value)
+      @repetition_cache[cache_key[1]] = { key: cache_key, vector_id: vector_id }
       status("recorded", nil)
     rescue StandardError => e
       diagnose(diagnostic: { code: "record_failure", severity: "error", message: e.message })
@@ -167,6 +174,7 @@ module Branchproof
       @abort_counts.merge!(incoming.fetch(:abort_counts, {})) { |_k, a, b| a.to_i + b.to_i }
       @limited ||= !incoming.dig(:completeness, :observation)
       @attribution_complete &&= incoming.dig(:completeness, :attribution) ? true : false
+      @repetition_cache.clear
       status("merged", nil)
     rescue StandardError => e
       restore_state(backup) if backup
@@ -518,7 +526,8 @@ module Branchproof
       { vectors: deep_dup(@vectors), tests: deep_dup(@tests), run_ids: @run_ids.dup,
         run_payloads: @run_payloads.dup, diagnostics: deep_dup(@diagnostics),
         abort_counts: @abort_counts.dup, limited: @limited, attribution_complete: @attribution_complete,
-        vector_counts_by_decision: @vector_counts_by_decision.dup, owner_associations_count: @owner_associations_count }
+        vector_counts_by_decision: @vector_counts_by_decision.dup, owner_associations_count: @owner_associations_count,
+        repetition_cache: deep_dup(@repetition_cache) }
     end
 
     def restore_state(state)
@@ -530,8 +539,81 @@ module Branchproof
       @abort_counts = state[:abort_counts]
       @vector_counts_by_decision = state[:vector_counts_by_decision]
       @owner_associations_count = state[:owner_associations_count]
+      @repetition_cache = state[:repetition_cache]
       @limited = state[:limited]
       @attribution_complete = state[:attribution_complete]
+    end
+
+    def cached_execution(execution)
+      return nil unless execution.is_a?(Hash)
+
+      key = raw_execution_cache_key(execution)
+      return nil unless key
+
+      entry = @repetition_cache[key[1]]
+      return nil unless entry && entry[:key] == key
+
+      vector = @vectors[entry[:vector_id]]
+      return nil unless vector
+
+      [key, vector, raw_execution_attribution(execution)]
+    end
+
+    def record_cached(cached)
+      _key, vector, value = cached
+      vector[:count] += 1
+      if value[:test_id] && @tests.key?(value[:test_id].to_s)
+        test = @tests[value[:test_id].to_s]
+        phase = value[:phase].to_s
+        test[:phase_counts][phase] = test[:phase_counts].fetch(phase, 0) + 1
+      end
+      vector[:unattributed_count] += 1 unless value[:test_id]
+      status("recorded", nil)
+    end
+
+    def raw_execution_cache_key(execution)
+      required = %i[run_id decision_id test_id phase observations outcome status]
+      return nil unless required.all? { |key| execution.key?(key) || execution.key?(key.to_s) }
+
+      status = raw_value(execution, :status)
+      outcome = raw_value(execution, :outcome)
+      return nil unless status.to_s == "completed" && [true, false].include?(outcome)
+
+      observations = raw_value(execution, :observations)
+      return nil unless observations.is_a?(Array)
+
+      test_id = raw_value(execution, :test_id)
+      [raw_value(execution, :run_id).to_s, raw_value(execution, :decision_id).to_s,
+       test_id_marker(test_id), test_id&.to_s, raw_value(execution, :phase).to_s,
+       observations, outcome, status.to_s]
+    end
+
+    def execution_cache_key(value)
+      key = [copy_string(value[:run_id]), copy_string(value[:decision_id]), test_id_marker(value[:test_id]),
+             copy_string(value[:test_id]),
+             copy_string(value[:phase]), deep_dup(value[:observations]), value[:outcome], copy_string(value[:status])]
+      deep_freeze(key)
+    end
+
+    def raw_execution_attribution(execution)
+      { test_id: raw_value(execution, :test_id), phase: raw_value(execution, :phase) }
+    end
+
+    def copy_string(value)
+      value.nil? ? nil : value.to_s.dup
+    end
+
+    def test_id_marker(value)
+      return :nil if value.nil?
+      return :false_test_id if value == false
+
+      :present
+    end
+
+    def raw_value(hash, key)
+      return hash[key] if hash.key?(key)
+
+      hash[key.to_s]
     end
 
     def deep_freeze(value)

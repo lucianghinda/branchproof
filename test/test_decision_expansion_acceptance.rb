@@ -44,8 +44,8 @@ class TestDecisionExpansionAcceptance < Minitest::Test
       document = Branchproof::SavedReport.read(File.join(root, "report.json"))
       assert_equal "1.3", document["schema_version"]
       inventory = document.fetch("source_inventory").fetch("decisions")
-      assert_equal %w[case or_assignment pattern_in safe_navigation short_circuit while],
-                   inventory.map { |decision| decision.fetch("context") }.sort
+      contexts = inventory.map { |decision| decision.fetch("context") }
+      assert_equal %w[case or_assignment pattern_in safe_navigation short_circuit while], contexts.sort
       assert_equal %w[boolean implicit multiway], inventory.map { |decision| decision.fetch("kind") }.uniq.sort
       assert(document.fetch("observations").fetch("vectors").all? { |vector| vector["test_ids"].length == 1 })
       assert_equal 3, document.dig("analysis", "coverage", "decision", "supported_decisions")

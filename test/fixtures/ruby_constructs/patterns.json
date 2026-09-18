@@ -1,0 +1,1455 @@
+[
+  {
+    "id": "PAT-01",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          1
+        ],
+        "result": "integer"
+      },
+      {
+        "name": "fallback",
+        "args": [
+          false
+        ],
+        "result": "other"
+      }
+    ]
+  },
+  {
+    "id": "PAT-02",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          1
+        ],
+        "result": "integer"
+      },
+      {
+        "name": "mismatch",
+        "args": [
+          false
+        ],
+        "error": "NoMatchingPatternError"
+      }
+    ]
+  },
+  {
+    "id": "PAT-03",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          1
+        ],
+        "result": true
+      },
+      {
+        "name": "mismatch",
+        "args": [
+          false
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-04",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          [
+            2
+          ]
+        ],
+        "result": 2
+      },
+      {
+        "name": "mismatch",
+        "args": [
+          [
+            false
+          ]
+        ],
+        "error": "NoMatchingPatternError"
+      }
+    ]
+  },
+  {
+    "id": "PAT-05",
+    "cases": [
+      {
+        "name": "true_guard",
+        "args": [
+          [
+            2
+          ],
+          true
+        ],
+        "result": "match"
+      },
+      {
+        "name": "false_guard",
+        "args": [
+          [
+            2
+          ],
+          false
+        ],
+        "result": "fallback"
+      },
+      {
+        "name": "nil_guard",
+        "args": [
+          [
+            2
+          ],
+          null
+        ],
+        "result": "fallback"
+      },
+      {
+        "name": "structure_mismatch",
+        "args": [
+          [
+            false
+          ],
+          true
+        ],
+        "result": "fallback"
+      }
+    ]
+  },
+  {
+    "id": "PAT-06",
+    "cases": [
+      {
+        "name": "true_guard",
+        "args": [
+          [
+            2
+          ],
+          true
+        ],
+        "result": "fallback"
+      },
+      {
+        "name": "false_guard",
+        "args": [
+          [
+            2
+          ],
+          false
+        ],
+        "result": "match"
+      },
+      {
+        "name": "nil_guard",
+        "args": [
+          [
+            2
+          ],
+          null
+        ],
+        "result": "match"
+      },
+      {
+        "name": "structure_mismatch",
+        "args": [
+          [
+            false
+          ],
+          true
+        ],
+        "result": "fallback"
+      }
+    ]
+  },
+  {
+    "id": "PAT-07",
+    "cases": [
+      {
+        "name": "integer",
+        "args": [
+          42
+        ],
+        "result": "integer"
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": "nil"
+      },
+      {
+        "name": "regexp",
+        "args": [
+          "abc"
+        ],
+        "result": "text"
+      },
+      {
+        "name": "mismatch",
+        "args": [
+          false
+        ],
+        "result": "other"
+      }
+    ]
+  },
+  {
+    "id": "PAT-08",
+    "cases": [
+      {
+        "name": "nil_capture",
+        "args": [
+          [
+            null,
+            1
+          ]
+        ],
+        "result": null
+      },
+      {
+        "name": "false_capture",
+        "args": [
+          [
+            false,
+            null
+          ]
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-09",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          2,
+          2
+        ],
+        "result": true
+      },
+      {
+        "name": "mismatch",
+        "args": [
+          2,
+          3
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-10",
+    "cases": [
+      {
+        "name": "inside",
+        "args": [
+          3,
+          1,
+          5
+        ],
+        "result": true
+      },
+      {
+        "name": "outside",
+        "args": [
+          8,
+          1,
+          5
+        ],
+        "result": false
+      },
+      {
+        "name": "invalid_range",
+        "args": [
+          3,
+          1,
+          "x"
+        ],
+        "error": "ArgumentError"
+      }
+    ]
+  },
+  {
+    "id": "PAT-11",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          [
+            1,
+            "a"
+          ]
+        ],
+        "result": true
+      },
+      {
+        "name": "element_mismatch",
+        "args": [
+          [
+            1,
+            false
+          ]
+        ],
+        "result": false
+      },
+      {
+        "name": "length_mismatch",
+        "args": [
+          [
+            1
+          ]
+        ],
+        "result": false
+      },
+      {
+        "name": "type_mismatch",
+        "args": [
+          1
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-12",
+    "cases": [
+      {
+        "name": "empty_rest",
+        "args": [
+          [
+            1
+          ]
+        ],
+        "result": [
+          1,
+          []
+        ]
+      },
+      {
+        "name": "nonempty_rest",
+        "args": [
+          [
+            1,
+            2,
+            3
+          ]
+        ],
+        "result": [
+          1,
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      {
+        "name": "empty_array",
+        "args": [
+          []
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "PAT-13",
+    "cases": [
+      {
+        "name": "first",
+        "args": [
+          [
+            1,
+            "a"
+          ]
+        ],
+        "result": 1
+      },
+      {
+        "name": "later",
+        "args": [
+          [
+            "a",
+            2,
+            "b"
+          ]
+        ],
+        "result": 2
+      },
+      {
+        "name": "absent",
+        "args": [
+          [
+            "a"
+          ]
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "PAT-14",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          {
+            "name": "Ada"
+          }
+        ],
+        "result": true
+      },
+      {
+        "name": "extra_key",
+        "args": [
+          {
+            "name": "Ada",
+            "age": 20
+          }
+        ],
+        "result": true
+      },
+      {
+        "name": "missing_key",
+        "args": [
+          {}
+        ],
+        "result": false
+      },
+      {
+        "name": "wrong_value",
+        "args": [
+          {
+            "name": false
+          }
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-15",
+    "cases": [
+      {
+        "name": "capture",
+        "args": [
+          {
+            "name": "Ada"
+          }
+        ],
+        "result": "Ada"
+      },
+      {
+        "name": "false_capture",
+        "args": [
+          {
+            "name": false
+          }
+        ],
+        "result": false
+      },
+      {
+        "name": "missing",
+        "args": [
+          {}
+        ],
+        "error": "NoMatchingPatternKeyError"
+      }
+    ]
+  },
+  {
+    "id": "PAT-16",
+    "cases": [
+      {
+        "name": "empty_rest",
+        "args": [
+          {
+            "name": "Ada"
+          }
+        ],
+        "result": [
+          "Ada",
+          {}
+        ]
+      },
+      {
+        "name": "rest",
+        "args": [
+          {
+            "name": "Ada",
+            "age": 20
+          }
+        ],
+        "result": [
+          "Ada",
+          {
+            "age": 20
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PAT-17",
+    "cases": [
+      {
+        "name": "exact",
+        "args": [
+          {
+            "name": "Ada"
+          }
+        ],
+        "result": true
+      },
+      {
+        "name": "extra",
+        "args": [
+          {
+            "name": "Ada",
+            "age": 20
+          }
+        ],
+        "result": false
+      },
+      {
+        "name": "missing",
+        "args": [
+          {}
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-18",
+    "cases": [
+      {
+        "name": "empty",
+        "args": [
+          {}
+        ],
+        "result": true
+      },
+      {
+        "name": "nonempty",
+        "args": [
+          {
+            "name": "Ada"
+          }
+        ],
+        "result": false
+      },
+      {
+        "name": "wrong_type",
+        "args": [
+          []
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-19",
+    "cases": [
+      {
+        "name": "left",
+        "args": [
+          1
+        ],
+        "result": true
+      },
+      {
+        "name": "right",
+        "args": [
+          "a"
+        ],
+        "result": true
+      },
+      {
+        "name": "neither",
+        "args": [
+          false
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "PAT-20",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          2
+        ],
+        "result": 2
+      },
+      {
+        "name": "mismatch",
+        "args": [
+          false
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "PAT-21",
+    "cases": [
+      {
+        "name": "point",
+        "args": [
+          true,
+          2,
+          3
+        ],
+        "result": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "plain_array",
+        "args": [
+          false,
+          2,
+          3
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "PAT-22",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          {
+            "users": [
+              {
+                "name": "Ada"
+              }
+            ]
+          }
+        ],
+        "result": "Ada"
+      },
+      {
+        "name": "missing_users",
+        "args": [
+          {}
+        ],
+        "result": null
+      },
+      {
+        "name": "empty_users",
+        "args": [
+          {
+            "users": []
+          }
+        ],
+        "result": null
+      },
+      {
+        "name": "missing_name",
+        "args": [
+          {
+            "users": [
+              {}
+            ]
+          }
+        ],
+        "result": null
+      }
+    ]
+  },
+  {
+    "id": "PAT-23",
+    "cases": [
+      {
+        "name": "match",
+        "args": [
+          "valid"
+        ],
+        "result": true
+      },
+      {
+        "name": "missing_protocol",
+        "args": [
+          "absent"
+        ],
+        "result": false
+      },
+      {
+        "name": "invalid_return",
+        "args": [
+          "invalid"
+        ],
+        "error": "TypeError"
+      },
+      {
+        "name": "protocol_error",
+        "args": [
+          "raise"
+        ],
+        "error": "RuntimeError"
+      }
+    ]
+  },
+  {
+    "id": "PAT-24",
+    "cases": [
+      {
+        "name": "allowed",
+        "args": [
+          20,
+          true
+        ],
+        "result": [
+          "adult",
+          [
+            "permission"
+          ]
+        ]
+      },
+      {
+        "name": "denied",
+        "args": [
+          20,
+          false
+        ],
+        "result": [
+          "other",
+          [
+            "permission"
+          ]
+        ]
+      },
+      {
+        "name": "young",
+        "args": [
+          17,
+          true
+        ],
+        "result": [
+          "other",
+          []
+        ]
+      },
+      {
+        "name": "shape_mismatch",
+        "args": [
+          "unknown",
+          true
+        ],
+        "result": [
+          "other",
+          []
+        ]
+      }
+    ]
+  },
+  {
+    "id": "NIL-01",
+    "cases": [
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": null
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": "false"
+      },
+      {
+        "name": "value",
+        "args": [
+          2
+        ],
+        "result": "2"
+      }
+    ]
+  },
+  {
+    "id": "NIL-02",
+    "cases": [
+      {
+        "name": "nil_user",
+        "args": [
+          null
+        ],
+        "result": null
+      },
+      {
+        "name": "nil_profile",
+        "args": [
+          {
+            "profile": null
+          }
+        ],
+        "result": null
+      },
+      {
+        "name": "name",
+        "args": [
+          {
+            "profile": {
+              "name": "Ada"
+            }
+          }
+        ],
+        "result": "Ada"
+      }
+    ]
+  },
+  {
+    "id": "NIL-03",
+    "cases": [
+      {
+        "name": "value",
+        "args": [
+          {
+            "profile": [
+              1,
+              2
+            ]
+          }
+        ],
+        "result": 2
+      },
+      {
+        "name": "nil_user",
+        "args": [
+          null
+        ],
+        "error": "NoMethodError"
+      },
+      {
+        "name": "nil_profile",
+        "args": [
+          {
+            "profile": null
+          }
+        ],
+        "error": "NoMethodError"
+      }
+    ]
+  },
+  {
+    "id": "NIL-04",
+    "cases": [
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": [
+          null,
+          []
+        ]
+      },
+      {
+        "name": "invoked",
+        "args": [
+          [
+            2
+          ]
+        ],
+        "result": [
+          null,
+          [
+            "argument",
+            "block"
+          ]
+        ]
+      },
+      {
+        "name": "non-nil receiver does not yield",
+        "args": [
+          []
+        ],
+        "result": [
+          null,
+          [
+            "argument"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "NIL-05",
+    "cases": [
+      {
+        "name": "nil",
+        "args": [
+          false
+        ],
+        "result": [
+          null,
+          []
+        ]
+      },
+      {
+        "name": "present",
+        "args": [
+          true
+        ],
+        "result": [
+          "Ada",
+          [
+            "rhs"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "NIL-06",
+    "cases": [
+      {
+        "name": "nil",
+        "args": [
+          null,
+          "x"
+        ],
+        "result": null
+      },
+      {
+        "name": "hit",
+        "args": [
+          {
+            "x": false
+          },
+          "x"
+        ],
+        "result": false
+      },
+      {
+        "name": "miss",
+        "args": [
+          {},
+          "x"
+        ],
+        "result": null
+      },
+      {
+        "name": "false_receiver",
+        "args": [
+          false,
+          "x"
+        ],
+        "error": "NoMethodError"
+      }
+    ]
+  },
+  {
+    "id": "NIL-07",
+    "cases": [
+      {
+        "name": "nil",
+        "args": [
+          false,
+          null
+        ],
+        "result": [
+          null,
+          null,
+          []
+        ]
+      },
+      {
+        "name": "missing_name",
+        "args": [
+          true,
+          null
+        ],
+        "result": [
+          2,
+          "Ada",
+          [
+            "build"
+          ]
+        ]
+      },
+      {
+        "name": "false_name",
+        "args": [
+          true,
+          false
+        ],
+        "result": [
+          2,
+          "Ada",
+          [
+            "build"
+          ]
+        ]
+      },
+      {
+        "name": "existing_name",
+        "args": [
+          true,
+          "Grace"
+        ],
+        "result": [
+          2,
+          "Grace",
+          []
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ASGN-01",
+    "cases": [
+      {
+        "name": "truthy",
+        "args": [
+          "existing"
+        ],
+        "result": "existing"
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": "new"
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": "new"
+      }
+    ]
+  },
+  {
+    "id": "ASGN-02",
+    "cases": [
+      {
+        "name": "truthy",
+        "args": [
+          "existing"
+        ],
+        "result": "new"
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": null
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": false
+      }
+    ]
+  },
+  {
+    "id": "ASGN-03",
+    "cases": [
+      {
+        "name": "undefined",
+        "args": [
+          false,
+          null
+        ],
+        "result": "new"
+      },
+      {
+        "name": "initialized",
+        "args": [
+          true,
+          "existing"
+        ],
+        "result": "existing"
+      },
+      {
+        "name": "initialized_false",
+        "args": [
+          true,
+          false
+        ],
+        "result": "new"
+      }
+    ]
+  },
+  {
+    "id": "ASGN-04",
+    "cases": [
+      {
+        "name": "undefined",
+        "args": [
+          false,
+          null
+        ],
+        "result": [
+          "new",
+          "new",
+          "new"
+        ]
+      },
+      {
+        "name": "false",
+        "args": [
+          true,
+          false
+        ],
+        "result": [
+          "new",
+          "new",
+          "new"
+        ]
+      },
+      {
+        "name": "existing",
+        "args": [
+          true,
+          "old"
+        ],
+        "result": [
+          "old",
+          "old",
+          "old"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ASGN-05",
+    "cases": [
+      {
+        "name": "initialized and missing constants",
+        "args": [],
+        "result": [
+          "old",
+          "new"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ASGN-06",
+    "cases": [
+      {
+        "name": "existing",
+        "args": [
+          "old"
+        ],
+        "result": [
+          "old",
+          []
+        ]
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": [
+          "new",
+          [
+            "build"
+          ]
+        ]
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": [
+          "new",
+          [
+            "build"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ASGN-07",
+    "cases": [
+      {
+        "name": "truthy",
+        "args": [
+          "old"
+        ],
+        "result": [
+          [
+            "new"
+          ],
+          [
+            "index",
+            "update"
+          ]
+        ]
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": [
+          [
+            null
+          ],
+          [
+            "index"
+          ]
+        ]
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": [
+          [
+            false
+          ],
+          [
+            "index"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ASGN-08",
+    "cases": [
+      {
+        "name": "outer_skips",
+        "args": [
+          "a",
+          "b"
+        ],
+        "result": [
+          "a",
+          "b",
+          []
+        ]
+      },
+      {
+        "name": "inner_skips",
+        "args": [
+          null,
+          false
+        ],
+        "result": [
+          false,
+          false,
+          []
+        ]
+      },
+      {
+        "name": "both_assign",
+        "args": [
+          null,
+          "b"
+        ],
+        "result": [
+          "new",
+          "new",
+          [
+            "build"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ARG-01",
+    "cases": [
+      {
+        "name": "omitted",
+        "args": [],
+        "result": "default"
+      },
+      {
+        "name": "nil",
+        "args": [
+          null
+        ],
+        "result": null
+      },
+      {
+        "name": "false",
+        "args": [
+          false
+        ],
+        "result": false
+      },
+      {
+        "name": "supplied",
+        "args": [
+          "value"
+        ],
+        "result": "value"
+      }
+    ]
+  },
+  {
+    "id": "ARG-02",
+    "cases": [
+      {
+        "name": "omitted",
+        "kwargs": {},
+        "result": "default"
+      },
+      {
+        "name": "nil",
+        "kwargs": {
+          "value": null
+        },
+        "result": null
+      },
+      {
+        "name": "false",
+        "kwargs": {
+          "value": false
+        },
+        "result": false
+      },
+      {
+        "name": "supplied",
+        "kwargs": {
+          "value": "value"
+        },
+        "result": "value"
+      }
+    ]
+  },
+  {
+    "id": "ARG-03",
+    "cases": [
+      {
+        "name": "both_omitted",
+        "args": [],
+        "result": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "later_omitted",
+        "args": [
+          5
+        ],
+        "result": [
+          5,
+          6
+        ]
+      },
+      {
+        "name": "both_supplied",
+        "args": [
+          5,
+          null
+        ],
+        "result": [
+          5,
+          null
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ARG-04",
+    "cases": [
+      {
+        "name": "omitted",
+        "args": [
+          []
+        ],
+        "result": "default"
+      },
+      {
+        "name": "nil",
+        "args": [
+          [
+            null
+          ]
+        ],
+        "result": null
+      },
+      {
+        "name": "false",
+        "args": [
+          [
+            false
+          ]
+        ],
+        "result": false
+      },
+      {
+        "name": "too_many",
+        "args": [
+          [
+            1,
+            2
+          ]
+        ],
+        "error": "ArgumentError"
+      }
+    ]
+  },
+  {
+    "id": "ARG-05",
+    "cases": [
+      {
+        "name": "fast_default",
+        "args": [
+          true
+        ],
+        "result": "fast"
+      },
+      {
+        "name": "slow_default",
+        "args": [
+          false
+        ],
+        "result": "slow"
+      },
+      {
+        "name": "supplied_nil",
+        "args": [
+          true,
+          null
+        ],
+        "result": null
+      },
+      {
+        "name": "supplied_false",
+        "args": [
+          false,
+          false
+        ],
+        "result": false
+      }
+    ]
+  }
+]

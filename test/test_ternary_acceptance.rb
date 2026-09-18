@@ -177,9 +177,22 @@ class TernaryAcceptanceTest < Minitest::Test
 
     assert_equal 0, result[:status].exitstatus, result[:stderr]
     report = result.fetch(:json)
-    assert_equal 2, ternary_decisions(report).length
+    ternaries = ternary_decisions(report)
+    assert_equal 2, ternaries.length
     assert_operator report.fetch("metrics").fetch("aborted"), :>=, 1
-    assert_equal 1, report.fetch("metrics").fetch("completed")
+    assert_equal 2, report.fetch("metrics").fetch("completed")
+    boolean_rows = ternaries.map do |decision|
+      report.fetch("analysis").fetch("decisions").find { |row| row.fetch("decision_id") == decision.fetch("id") }
+    end
+    assert(boolean_rows.all? { |row| row.fetch("condition_results").any? })
+    exception = report.fetch("source_inventory").fetch("decisions").find do |decision|
+      decision.fetch("context") == "rescue"
+    end
+    refute_nil exception
+    exception_row = report.fetch("analysis").fetch("decisions").find do |row|
+      row.fetch("decision_id") == exception.fetch("id")
+    end
+    assert_equal "partial", exception_row.dig("coverage", "alternative", "status")
     refute_empty report.fetch("observations").fetch("vectors")
     assert_equal true, report.fetch("completeness").fetch("observation")
     assert_equal true, report.fetch("completeness").fetch("attribution")
@@ -192,7 +205,9 @@ class TernaryAcceptanceTest < Minitest::Test
       end
 
       def unsafe
-        (value .. value) ? :yes : :no
+        (<<~TEXT) ? :yes : :no
+        value
+        TEXT
       end
     RUBY
       class TernaryDiagnosticTest < Minitest::Test
@@ -206,7 +221,7 @@ class TernaryAcceptanceTest < Minitest::Test
     report = result.fetch(:json)
     safe, unsafe = ternary_decisions(report).sort_by { |decision| decision.fetch("line") }
     assert_empty safe.fetch("support_reasons")
-    assert_includes unsafe.fetch("support_reasons"), "unsupported_flip_flop"
+    assert_includes unsafe.fetch("support_reasons"), "unsupported_heredoc"
     refute_includes safe.fetch("support_reasons"), "unsupported_ternary"
   end
 

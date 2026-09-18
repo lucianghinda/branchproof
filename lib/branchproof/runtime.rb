@@ -2,6 +2,11 @@
 
 require "securerandom"
 require_relative "runtime_flow"
+require_relative "extended_alternative_runtime"
+require_relative "exception_runtime"
+require_relative "default_runtime"
+require_relative "value_runtime"
+require_relative "iteration_runtime"
 
 module Branchproof
   # Process-local execution recorder. It deliberately never coerces or stores
@@ -9,6 +14,11 @@ module Branchproof
   # Captures condition evaluations while preserving application values.
   module Runtime
     extend RuntimeFlow
+    extend ExtendedAlternativeRuntime
+    extend ExceptionRuntime
+    extend DefaultRuntime
+    extend ValueRuntime
+    extend IterationRuntime
 
     FRAME_STATE_KEY = :branchproof_runtime_frame_state
 

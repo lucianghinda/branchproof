@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "flow_instrumentation"
+require_relative "iteration_instrumentation"
+require_relative "exception_instrumentation"
+require_relative "default_instrumentation"
+require_relative "value_instrumentation"
 
 module Branchproof
   # Applies the smallest possible source edits around inventoried expressions.
@@ -8,6 +12,10 @@ module Branchproof
   # never evaluates application code or introduces a Ruby scope.
   class Instrumenter
     include FlowInstrumentation
+    include IterationInstrumentation
+    include ExceptionInstrumentation
+    prepend DefaultInstrumentation
+    prepend ValueInstrumentation
 
     RUNTIME = "::Branchproof::Runtime"
 
@@ -54,8 +62,29 @@ module Branchproof
     def build_enclosures(decisions)
       encloses = {}.compare_by_identity
       enclosed = {}.compare_by_identity
-      decisions.each do |outer|
-        contained = decisions.select { |inner| encloses_decision?(outer, inner) }
+      indexed = decisions.each_index.group_by { |index| decisions[index][:byte_start] }
+      active = []
+      relations = Array.new(decisions.length) { [] }
+
+      indexed.sort_by { |start, _indices| start }.each do |start, indices|
+        active.reject! do |index|
+          decision = decisions[index]
+          decision[:byte_start] + decision[:byte_length] < start
+        end
+        active.concat(indices)
+        indices.each do |inner_index|
+          inner = decisions[inner_index]
+          active.each do |outer_index|
+            outer = decisions[outer_index]
+            next unless encloses_decision?(outer, inner)
+
+            relations[outer_index] << inner_index
+          end
+        end
+      end
+
+      decisions.each_with_index do |outer, outer_index|
+        contained = relations[outer_index].sort.map { |inner_index| decisions[inner_index] }
         encloses[outer] = contained
         contained.each { |inner| enclosed[inner] = true }
       end
@@ -89,7 +118,7 @@ module Branchproof
 
         chunks << bytes.byteslice(cursor, cstart - cursor)
         original = render_children(bytes, cstart, clen, nested, encloses)
-        chunks << condition_wrapper(decision[:id], condition[:index], original)
+        chunks << condition_wrapper(decision, condition, original)
         cursor = cstart + clen
       end
       chunks << render_children(bytes, cursor, length - (cursor - start), nested, encloses)
@@ -131,8 +160,24 @@ module Branchproof
       end
     end
 
-    def condition_wrapper(decision_id, index, expression)
-      "#{RUNTIME}.condition(#{decision_id.inspect}, #{index}, (#{expression}))"
+    def condition_wrapper(decision, condition, expression)
+      return "(begin; #{expression}; end)" if nonlocal_transfer?(expression)
+
+      identifier = decision[:id].inspect
+      index = condition[:index]
+      case condition[:contextual]
+      when "implicit_regexp", "flip_flop"
+        # These operations require Ruby's conditional context: a bare regexp
+        # implicitly matches $_ and a flip-flop retains its state across calls.
+        "(if (#{expression}) then #{RUNTIME}.condition(#{identifier}, #{index}, true) " \
+        "else #{RUNTIME}.condition(#{identifier}, #{index}, false) end)"
+      else
+        "#{RUNTIME}.condition(#{identifier}, #{index}, (#{expression}))"
+      end
+    end
+
+    def nonlocal_transfer?(expression)
+      expression.lstrip.match?(/\A(?:return|break|next|redo|retry)\b/n)
     end
 
     def frame(decision_id, expression)

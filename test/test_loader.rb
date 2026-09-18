@@ -21,8 +21,8 @@ class TestLoader < Minitest::Test
   def test_unchanged_sources_explain_absent_and_unsupported_conditions
     { "plain.rb" => ["VALUE = 1\n", "no supported conditions to instrument"],
       "limited.rb" => ["if a && b\n  true\nend\n", "conditions cannot be instrumented: condition_limit_exceeded"],
-      "unsupported.rb" => ["if /pattern/\n  true\nend\n",
-                           "conditions cannot be instrumented: unsupported_implicit_regexp"] }.each do |name, (bytes, reason)|
+      "unsupported.rb" => ["if <<~TEXT\n  value\nTEXT\nend\n",
+                           "conditions cannot be instrumented: unsupported_heredoc"] }.each do |name, (bytes, reason)|
       Dir.mktmpdir("branchproof-diagnostic") do |directory|
         path = File.join(directory, name)
         File.write(path, bytes)

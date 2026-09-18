@@ -169,12 +169,14 @@ class TestSource < Minitest::Test
     assert_equal "UTF-8", source.send(:source_encoding, "if true\nend\n".b, parsed)
   end
 
-  def test_unsafe_syntax_is_diagnosed
+  def test_contextual_implicit_regexp_is_supported
     Dir.mktmpdir do |root|
-      path = File.join(root, "unsafe.rb")
+      path = File.join(root, "regexp.rb")
       File.binwrite(path, "if /pattern/\nend\n")
       inventory = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(paths: [path])
-      assert(inventory[:diagnostics].any? { |d| d[:code] == "unsupported_implicit_regexp" })
+      decision = inventory.fetch(:decisions).first
+      assert_equal "SUPPORTED", decision.fetch(:support_status)
+      refute_includes decision.fetch(:support_reasons), "unsupported_implicit_regexp"
     end
   end
 
@@ -200,8 +202,6 @@ class TestSource < Minitest::Test
         end
         if first and second
         end
-        if /pattern/
-        end
         __END__
         if ignored
         end
@@ -210,7 +210,6 @@ class TestSource < Minitest::Test
                                           limits: Branchproof::Limits.default).inventory(paths: [path])[:decisions]
       assert(decisions.all? { |d| d[:support_status] == "UNSUPPORTED" })
       refute(decisions.any? { |d| d[:support_reasons].include?("unsupported_keyword_boolean") })
-      assert(decisions.any? { |d| d[:support_reasons].include?("unsupported_implicit_regexp") })
       assert(decisions.any? { |d| d[:support_reasons].include?("unsupported_data_section") })
     end
   end

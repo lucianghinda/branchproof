@@ -5,6 +5,9 @@ AllCops:
   Exclude:
     - "vendor/**/*"
     - "tmp/**/*"
+    # These demonstrate Ruby syntax that style cops would remove or rewrite.
+    # test_ruby_construct_examples.rb checks syntax and behavior instead.
+    - "test/fixtures/ruby_constructs/**/*.rb"
 
 Layout/LineLength:
   Max: 120

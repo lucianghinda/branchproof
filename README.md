@@ -542,6 +542,13 @@ ID. Repeated equivalent executions aggregate into a vector's `count`, retaining
 the supporting tests. Ternary outcomes likewise describe the predicate, not
 the value returned by the chosen branch.
 
+Value decisions remain enabled by default. For each decision, evidence caches
+the most recent successful completed trace, keyed by its observations, outcome,
+test, and phase. Consecutive equivalent executions increment vector and phase
+counts without repeating serialization and digest work. When observations,
+test, or phase changes, the execution is recorded normally, so alternating
+traces retain their full evidence and attribution.
+
 Other constructs use alternative coverage, separate from MC/DC:
 
 | Construct | Kind | Context | Required alternatives |
@@ -551,6 +558,18 @@ Other constructs use alternative coverage, separate from MC/DC:
 | `receiver&.method` | `implicit` | `safe_navigation` | Receiver nil / non-nil |
 | `lhs ||= rhs` | `implicit` | `or_assignment` | RHS skipped / executed |
 | `lhs &&= rhs` | `implicit` | `and_assignment` | RHS skipped / executed |
+| `receiver&.value ||= rhs` / `&&=` | `multiway` | `or_assignment` / `and_assignment` | Receiver nil / RHS skipped / RHS evaluated |
+| `value => pattern` | `pattern` | `required_pattern` | Matched / mismatch |
+| Rescue regions | `exception` | `rescue` | Normal completion / rescue clause / unhandled exception |
+| Optional positional and keyword arguments | `implicit` | `default_argument` | Supplied / default evaluated |
+| Standalone predicate calls | `implicit` | `predicate` | Falsey / truthy result |
+| `<=>` | `multiway` | `comparison` | Negative / zero / positive / nil |
+| `[]` lookup | `multiway` | `lookup` | Truthy / false / nil result |
+| `send`, `public_send`, and `__send__` | `implicit` | `dispatch` | Successful return / exception |
+| Regular-expression match capture | `implicit` | `match_capture` | False / true |
+| Iterator bodies | `implicit` | `iteration` | Empty / entered |
+| Lazy iterator callbacks | `multiway` | `lazy_callback` | Callback entered |
+| `fetch` with a fallback block | `implicit` | `fetch_fallback` | Value present / fallback entered |
 
 Each safe-navigation operation in a chain is a distinct decision. Assignment
 instrumentation preserves Ruby's native local, instance, class, global,
@@ -572,16 +591,30 @@ that fails before choosing a branch is aborted, not counted as a selected
 alternative. Selected branches and assignment paths remain observed even when
 their bodies or right-hand sides subsequently raise or return.
 
-Unsupported syntax stays visible and outside coverage denominators. Current
-exclusions include guarded `case/in` (`unsupported_pattern_guard`), dynamic
-`when` splats (`unsupported_case_splat`), safe-navigation compound assignment
-(`unsupported_assignment_target`), and rescue alternatives
-(`unsupported_rescue_control_flow`). A guard predicate can still supply Boolean
-evidence when Ruby evaluates it; an unsupported guarded case does not claim
-pattern-match coverage from that evidence. Flip-flops remain
-`unsupported_flip_flop`. Decisions inside `defined?`, contextual regular
-expressions, heredocs, unsafe predicates, and limit overflows retain explicit
-exclusions. Ruby-defined custom `!` methods keep their runtime behavior;
+Guarded pattern alternatives measure the selected clause, including guard
+acceptance. The guard also supplies Boolean evidence when Ruby evaluates it.
+A dynamic `when *candidates` is one static candidate group; the report does not
+claim coverage of individual elements in that runtime collection.
+
+Flip-flops and implicit regular-expression conditions retain Ruby's conditional
+semantics and contribute one atomic predicate outcome. `defined?` measures its
+result without evaluating or instrumenting the operand. Standalone predicate
+calls record returned truthiness as alternative coverage; they do not claim
+short-circuit conditions or coverage of library internals. Eager bitwise `&`,
+`|`, and `^` are excluded because integer results do not represent Ruby
+truthiness decisions: integer `0` is truthy in Ruby. These expressions add no
+decisions or coverage obligations.
+Dynamic dispatch records completion or exception, and preserves the original
+return value. Lazy callback observations arise only when the callback runs.
+Lookup coverage cannot distinguish an absent key from a stored nil; `fetch`
+fallback coverage measures that separate absence-based choice.
+Optional argument probes use generated local flags and preserve parameter
+signatures, defaults, and existing local bindings. Code that enumerates its own
+local variables can see these instrumentation locals.
+
+Unsupported syntax stays visible and outside coverage denominators. Heredocs,
+unsafe predicates, data sections, and limit overflows retain explicit exclusions.
+Ruby-defined custom `!` methods keep their runtime behavior;
 evidence that contradicts Boolean negation is rejected instead of proving
 coverage with an invalid logical model.
 
