@@ -50,6 +50,42 @@ class TestDefaultCoverage < Minitest::Test
     assert(vectors.any? { |vector| vector[:values] == [false, true] })
   end
 
+  def test_implicit_block_and_empty_parenthesis_shapes_do_not_crash_default_rewrite
+    [
+      <<~RUBY,
+        def with_default(a, b = 1) = a + b
+        def uses_it(items) = items.select { it > 0 }
+      RUBY
+      <<~RUBY,
+        def with_default(a, b = 1) = a + b
+        def uses_numbered(items) = items.select { _1 > 0 }
+      RUBY
+      <<~RUBY
+        def with_default(a, b = 1) = a + b
+        def uses_empty = ->(y = ()) { y }
+      RUBY
+    ].each do |source|
+      rewritten, = rewrite_fixture(source)
+      refute_nil rewritten
+    end
+  end
+
+  def test_second_pass_standard_error_preserves_first_pass_bytes
+    assert_second_pass_failure_preserves_first_pass(StandardError, "binding walk failed")
+  end
+
+  def test_second_pass_syntax_error_preserves_first_pass_bytes
+    assert_second_pass_failure_preserves_first_pass(SyntaxError, "compiled default failed")
+  end
+
+  def test_all_gem_library_files_can_be_rewritten_without_raising
+    Dir[File.expand_path("../lib/**/*.rb", __dir__)].each do |path|
+      root = File.expand_path("..", path)
+      inventory = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(paths: [path])
+      assert_silent { Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first) }
+    end
+  end
+
   def test_defaults_remain_valid_after_an_earlier_boolean_rewrite
     source = <<~RUBY
       def earlier(value)
@@ -162,6 +198,27 @@ class TestDefaultCoverage < Minitest::Test
       actual = instrumented.new.example(*args)
       assert_equal expected, actual
       actual
+    end
+  end
+
+  def assert_second_pass_failure_preserves_first_pass(error_class, message)
+    source = "def example(value = 1); value; end\n"
+    Dir.mktmpdir("branchproof-default-failure") do |directory|
+      path = File.join(directory, "fixture.rb")
+      File.write(path, source)
+      inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
+      unit = inventory[:source_units].first
+      first_pass_method = Branchproof::Instrumenter.instance_method(:rewrite).super_method
+      first_pass = first_pass_method.bind(Branchproof::Instrumenter.new).call(unit: unit)
+      failing = Class.new(Branchproof::Instrumenter) do
+        define_method(:default_body_edits) { |_node, _flags| raise error_class, message }
+      end
+      result = failing.new.rewrite(unit: unit)
+      assert_equal first_pass[:bytes], result[:bytes]
+      refute result[:changed]
+      assert_nil result[:iseq]
+      assert_equal "invalid_default_rewrite", result[:diagnostics].last[:code]
+      assert_includes result[:diagnostics].last[:message], message
     end
   end
 end

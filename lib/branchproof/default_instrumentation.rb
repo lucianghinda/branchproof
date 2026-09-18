@@ -16,15 +16,21 @@ module Branchproof
       end
       return rewritten if defaults.empty? || rewritten[:diagnostics].any?
 
-      bytes = rewritten[:bytes].dup
-      flags = defaults.to_h { |decision| [default_flag(decision, unit[:original_bytes]), decision[:id]] }
-      edits = default_body_edits(Prism.parse(bytes).value, flags)
-      bytes = apply_edits(bytes, edits)
-      iseq = RubyVM::InstructionSequence.compile(bytes, unit[:absolute_path] || "(branchproof)",
-                                                 unit[:real_path] || "(branchproof)", 1)
-      rewritten.merge(bytes: bytes, changed: true, iseq: iseq)
-    rescue SyntaxError => e
-      rewritten.merge(bytes: bytes, diagnostics: [diagnostic("invalid_default_rewrite", e.message)], iseq: nil)
+      begin
+        bytes = rewritten[:bytes].dup
+        flags = defaults.to_h { |decision| [default_flag(decision, unit[:original_bytes]), decision[:id]] }
+        edits = default_body_edits(Prism.parse(bytes).value, flags)
+        bytes = apply_edits(bytes, edits)
+        iseq = RubyVM::InstructionSequence.compile(bytes, unit[:absolute_path] || "(branchproof)",
+                                                   unit[:real_path] || "(branchproof)", 1)
+        rewritten.merge(bytes: bytes, changed: true, iseq: iseq)
+      rescue StandardError, SyntaxError => e
+        rewritten.merge(
+          bytes: rewritten[:bytes], changed: false, iseq: nil,
+          diagnostics: Array(rewritten[:diagnostics]) +
+            [diagnostic("invalid_default_rewrite", "#{e.class}: #{e.message}")]
+        )
+      end
     end
 
     private
@@ -61,14 +67,17 @@ module Branchproof
     end
 
     def default_bindings(parameters, flags)
-      return [] unless parameters
+      return [] unless parameters.is_a?(Prism::ParametersNode)
 
       (parameters.optionals + parameters.keywords).filter_map do |parameter|
         next unless parameter.respond_to?(:value)
 
         value = parameter.value
-        value = value.body.body.first if value.is_a?(Prism::ParenthesesNode)
-        first = value.statements.body.first if value.is_a?(Prism::BeginNode)
+        value = value.body&.body&.first if value.is_a?(Prism::ParenthesesNode)
+        if value.is_a?(Prism::BeginNode)
+          statements = value&.statements
+          first = statements&.body&.first
+        end
         name = first.name.to_s if first.is_a?(Prism::LocalVariableWriteNode)
         [name, flags[name]] if flags.key?(name)
       end
@@ -80,12 +89,16 @@ module Branchproof
       end.join
       body = owner.body
       if owner.is_a?(Prism::DefNode) && owner.equal_loc
+        return [] unless body
+
         start = body.location.start_offset
         finish = body.location.end_offset
         [{ start: start, finish: start, text: "(begin; #{marker}" },
          { start: finish, finish: finish, text: "; end)" }]
       else
         closing = owner.is_a?(Prism::DefNode) ? owner.end_keyword_loc : owner.closing_loc
+        return [] unless closing
+
         start = if body.is_a?(Prism::BeginNode) && body.begin_keyword_loc.nil?
                   body.statements&.location&.start_offset || body.rescue_clause&.keyword_loc&.start_offset ||
                     body.ensure_clause&.ensure_keyword_loc&.start_offset || closing.start_offset

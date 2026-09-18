@@ -47,7 +47,12 @@ module Branchproof
         add_diagnostic("source_drift", "selected source changed after inventory", unit[:source_id])
         return nil
       end
-      rewritten = @instrumenter.rewrite(unit: unit.merge(original_bytes: bytes))
+      begin
+        rewritten = @instrumenter.rewrite(unit: unit.merge(original_bytes: bytes))
+      rescue StandardError => e
+        add_diagnostic("rewrite_failure", "#{e.class}: #{e.message}", unit[:source_id], severity: "error")
+        return nil
+      end
       Array(rewritten[:diagnostics]).each do |diagnostic|
         add_diagnostic(diagnostic[:code], diagnostic[:message], unit[:source_id], severity: diagnostic[:severity])
       end
