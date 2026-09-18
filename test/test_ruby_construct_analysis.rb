@@ -16,8 +16,8 @@ class TestRubyConstructAnalysis < Minitest::Test
   end
 
   def test_every_native_fixture_has_an_analysis_with_correct_population_denominators
-    assert_equal 142, RubyConstructs.entries.length
-    assert_equal 142, RubyConstructs.entries.map { |entry| entry.fetch("id") }.uniq.length
+    assert_equal 143, RubyConstructs.entries.length
+    assert_equal 143, RubyConstructs.entries.map { |entry| entry.fetch("id") }.uniq.length
 
     RubyConstructs.entries.each do |entry|
       id = entry.fetch("id")

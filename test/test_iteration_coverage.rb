@@ -15,6 +15,154 @@ class TestIterationCoverage < Minitest::Test
     assert_equal [[true, false], [false, true]], vectors(snapshot, decision)
   end
 
+  def test_user_defined_each_records_one_entered_execution_for_nonempty_bag
+    source = <<~RUBY
+      class Bag
+        include Enumerable
+
+        def initialize(items)
+          @items = items
+        end
+
+        def each
+          @items.each { |item| yield item }
+        end
+      end
+
+      def self.exercise(items)
+        bag = Bag.new(items)
+        seen = []
+        bag.each { |item| seen << item }
+        seen
+      end
+    RUBY
+
+    inventory, snapshot = capture(source, [[1, 2, 3]])
+    decision = inventory[:decisions].find { |row| row[:context] == "iteration" && row[:expression].include?("bag.each") }
+    assert_equal 1, vectors(snapshot, decision).length
+    assert_equal [[false, true]], vectors(snapshot, decision)
+  end
+
+  def test_nested_each_inside_define_method_records_each_outer_and_inner_once
+    source = <<~RUBY
+      class Bag
+        include Enumerable
+
+        def initialize(items)
+          @items = items
+        end
+
+        def each
+          @items.each { |item| yield item }
+        end
+      end
+
+      define_singleton_method(:exercise) do |items|
+        outer = Bag.new(items)
+        inner = Bag.new(items)
+        seen = []
+        outer.each { |item| inner.each { |nested| seen << [item, nested] } }
+        seen
+      end
+    RUBY
+
+    inventory, snapshot = capture(source, [[1, 2]])
+    decisions = inventory[:decisions].select { |row| row[:context] == "iteration" }
+    outer = decisions.find { |row| row[:expression].include?("outer.each") }
+    inner = decisions.find { |row| row[:expression].include?("inner.each") }
+    assert_equal [[false, true]], vectors(snapshot, outer)
+    assert_equal [[false, true]], vectors(snapshot, inner)
+  end
+
+  def test_stored_proc_invocation_inside_each_preserves_entered_evidence
+    source = <<~RUBY
+      def self.exercise(items)
+        seen = []
+        callback = proc { |item| seen << item }
+        items.each { |item| callback.call(item) }
+        seen
+      end
+    RUBY
+
+    inventory, snapshot = capture(source, [[1, 2, 3]])
+    decision = inventory[:decisions].find { |row| row[:context] == "iteration" }
+    assert_equal [[false, true]], vectors(snapshot, decision)
+  end
+
+  def test_stored_proc_invoked_after_iteration_return_keeps_one_outer_execution
+    source = <<~RUBY
+      def self.exercise(items)
+        callback = nil
+        items.each { |item| callback = proc { item } }
+        callback.call
+      end
+    RUBY
+
+    inventory, snapshot = capture(source, [[1, 2, 3]])
+    decision = inventory[:decisions].find { |row| row[:context] == "iteration" }
+    assert_equal 1, vectors(snapshot, decision).length
+    assert_equal [[false, true]], vectors(snapshot, decision)
+  end
+
+  def test_custom_iterator_deferred_callback_keeps_empty_and_later_entered_paths
+    source = <<~RUBY
+      class DeferredEach
+        def initialize
+          @callback = nil
+        end
+
+        def each(&block)
+          @callback = block
+          self
+        end
+
+        def emit(value)
+          @callback.call(value)
+        end
+      end
+
+      def self.exercise(emit)
+        iterator = DeferredEach.new
+        iterator.each { |value| value }
+        iterator.emit(:value) if emit
+        :done
+      end
+    RUBY
+
+    inventory, snapshot = capture(source, [false, true])
+    decision = inventory[:decisions].find { |row| row[:context] == "iteration" }
+    assert_equal [[true, false], [false, true]], vectors(snapshot, decision)
+    decision_vectors = snapshot[:vectors].select { |vector| vector[:decision_id] == decision[:id] }
+    assert_equal [[true, false, 2], [false, true, 1]],
+                 decision_vectors.map { |vector| vector.values_at(:values, :count) }.map(&:flatten)
+    assert_empty(snapshot[:abort_counts].select { |id, _count| id == decision[:id] })
+    assert_equal [], Thread.current[Branchproof::Runtime::FRAME_STATE_KEY]&.fetch(:frames)
+  end
+
+  def test_finished_iteration_callbacks_have_constant_allocation_cost
+    recorder = Object.new
+    recorder.define_singleton_method(:run_id) { "iteration-allocation" }
+    recorder.define_singleton_method(:record) { |**_execution| nil }
+    Branchproof::Runtime.boot(evidence: recorder)
+    decision_id = "iteration-allocation-decision"
+    Branchproof::Runtime.enter(decision_id)
+    Branchproof::Runtime.flow_iteration_callback(decision_id, 2)
+
+    GC.start
+    before_small = GC.stat(:total_allocated_objects)
+    10.times { Branchproof::Runtime.flow_iteration_callback(decision_id, 2) }
+    small_delta = GC.stat(:total_allocated_objects) - before_small
+
+    GC.start
+    before_large = GC.stat(:total_allocated_objects)
+    10_000.times { Branchproof::Runtime.flow_iteration_callback(decision_id, 2) }
+    large_delta = GC.stat(:total_allocated_objects) - before_large
+
+    assert_operator large_delta, :<=, small_delta + 20
+  ensure
+    Branchproof::Runtime.leave(decision_id) if decision_id && Branchproof::Runtime.send(:iteration_frame, decision_id)
+  end
+
   def test_fetch_measures_fallback_instead_of_truthiness
     source = "def self.exercise(key); {nil: nil, false: false}.fetch(key) { :fallback }; end"
     inventory, snapshot = capture(source, %i[nil false missing])

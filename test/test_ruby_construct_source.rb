@@ -17,7 +17,7 @@ class TestRubyConstructSource < Minitest::Test
 
   def test_expectations_cover_exactly_the_native_corpus
     ids = @manifests.map { |entry| entry.fetch("id") }
-    assert_equal 142, ids.length
+    assert_equal 143, ids.length
     assert_equal ids.sort, @expectations.keys.sort
     assert_equal ids.uniq.length, ids.length
     assert(@expectations.values.all? { |entry| entry.fetch("file").end_with?(".rb") })

@@ -7316,6 +7316,60 @@
         }
       ],
       "diagnostics": []
+    },
+    "LOOP-10": {
+      "file": "loop_10.rb",
+      "decisions": [
+        {
+          "kind": "implicit",
+          "context": "iteration",
+          "support": "SUPPORTED",
+          "expression": "@items.each { |item| yield item }",
+          "conditions": [],
+          "alternatives": [
+            {
+              "expression": "empty",
+              "byte_start": 205,
+              "byte_length": 33
+            },
+            {
+              "expression": "entered",
+              "byte_start": 205,
+              "byte_length": 33
+            }
+          ],
+          "reasons": [],
+          "byte_start": 205,
+          "byte_length": 33,
+          "line": 12,
+          "column": 4
+        },
+        {
+          "kind": "implicit",
+          "context": "iteration",
+          "support": "SUPPORTED",
+          "expression": "bag.each { |item| seen << item }",
+          "conditions": [],
+          "alternatives": [
+            {
+              "expression": "empty",
+              "byte_start": 306,
+              "byte_length": 32
+            },
+            {
+              "expression": "entered",
+              "byte_start": 306,
+              "byte_length": 32
+            }
+          ],
+          "reasons": [],
+          "byte_start": 306,
+          "byte_length": 32,
+          "line": 19,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
     }
   }
 }
