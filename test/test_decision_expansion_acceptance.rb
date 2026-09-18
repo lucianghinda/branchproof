@@ -45,13 +45,11 @@ class TestDecisionExpansionAcceptance < Minitest::Test
       assert_equal "1.3", document["schema_version"]
       inventory = document.fetch("source_inventory").fetch("decisions")
       contexts = inventory.map { |decision| decision.fetch("context") }
-      %w[case or_assignment pattern_in safe_navigation short_circuit while].each do |context|
-        assert_includes contexts, context
-      end
+      assert_equal %w[case or_assignment pattern_in safe_navigation short_circuit while], contexts.sort
       assert_equal %w[boolean implicit multiway], inventory.map { |decision| decision.fetch("kind") }.uniq.sort
       assert(document.fetch("observations").fetch("vectors").all? { |vector| vector["test_ids"].length == 1 })
-      assert_operator document.dig("analysis", "coverage", "decision", "supported_decisions"), :>=, 3
-      assert_operator document.dig("analysis", "coverage", "alternative", "required_alternatives"), :>=, 7
+      assert_equal 3, document.dig("analysis", "coverage", "decision", "supported_decisions")
+      assert_equal 7, document.dig("analysis", "coverage", "alternative", "required_alternatives")
       FileUtils.rm_rf(File.join(root, "lib"))
       FileUtils.rm_rf(File.join(root, "test"))
       %w[decisions conditions tests].each do |view|

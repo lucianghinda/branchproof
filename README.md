@@ -542,6 +542,13 @@ ID. Repeated equivalent executions aggregate into a vector's `count`, retaining
 the supporting tests. Ternary outcomes likewise describe the predicate, not
 the value returned by the chosen branch.
 
+Value decisions remain enabled by default. For each decision, evidence caches
+the most recent successful completed trace, keyed by its observations, outcome,
+test, and phase. Consecutive equivalent executions increment vector and phase
+counts without repeating serialization and digest work. When observations,
+test, or phase changes, the execution is recorded normally, so alternating
+traces retain their full evidence and attribution.
+
 Other constructs use alternative coverage, separate from MC/DC:
 
 | Construct | Kind | Context | Required alternatives |
@@ -558,7 +565,10 @@ Other constructs use alternative coverage, separate from MC/DC:
 | Standalone predicate calls | `implicit` | `predicate` | Falsey / truthy result |
 | `<=>` | `multiway` | `comparison` | Negative / zero / positive / nil |
 | `[]` lookup | `multiway` | `lookup` | Truthy / false / nil result |
+| `send`, `public_send`, and `__send__` | `implicit` | `dispatch` | Successful return / exception |
+| Regular-expression match capture | `implicit` | `match_capture` | False / true |
 | Iterator bodies | `implicit` | `iteration` | Empty / entered |
+| Lazy iterator callbacks | `multiway` | `lazy_callback` | Callback entered |
 | `fetch` with a fallback block | `implicit` | `fetch_fallback` | Value present / fallback entered |
 
 Each safe-navigation operation in a chain is a distinct decision. Assignment
@@ -589,8 +599,11 @@ claim coverage of individual elements in that runtime collection.
 Flip-flops and implicit regular-expression conditions retain Ruby's conditional
 semantics and contribute one atomic predicate outcome. `defined?` measures its
 result without evaluating or instrumenting the operand. Standalone predicate
-calls and eager `&`, `|`, `^` record returned truthiness as alternative coverage;
-they do not claim short-circuit conditions or coverage of library internals.
+calls record returned truthiness as alternative coverage; they do not claim
+short-circuit conditions or coverage of library internals. Eager bitwise `&`,
+`|`, and `^` are excluded because integer results do not represent Ruby
+truthiness decisions: integer `0` is truthy in Ruby. These expressions add no
+decisions or coverage obligations.
 Dynamic dispatch records completion or exception, and preserves the original
 return value. Lazy callback observations arise only when the callback runs.
 Lookup coverage cannot distinguish an absent key from a stored nil; `fetch`

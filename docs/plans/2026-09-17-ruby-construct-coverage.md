@@ -1,6 +1,6 @@
 # Ruby construct coverage implementation plan
 
-**Goal:** Exercise all 142 restored Ruby examples against Branchproof's supported discovery, instrumentation, coverage analysis, and reporting contracts.
+**Goal:** Exercise all 144 restored Ruby examples against Branchproof's supported discovery, instrumentation, coverage analysis, and reporting contracts.
 
 **Architecture:** Keep the four native-semantics manifests as the behavioral oracle. Add explicit source expectations and a small test-only subprocess harness. Reuse captured evidence across analysis and rendering assertions rather than executing every combination of presentation options.
 
@@ -8,7 +8,7 @@
 
 ## Contract and evidence
 
-- Native examples: `test/test_ruby_construct_examples.rb:8`, 142 IDs across 14 families and 400 execution cases; syntax and behavior checked separately.
+- Native examples: `test/test_ruby_construct_examples.rb:8`, 144 IDs across 14 families and 406 execution cases; syntax and behavior checked separately.
 - Boolean criteria: decision, condition, condition/decision, masking MC/DC, decision table (`README.md:130`). Alternative coverage for multiway, pattern and implicit decisions is separate (`README.md:545`).
 - Levels 1, 2, 3 change presentation, not analysis (`README.md:407`). Views group by decision, condition, test, or decision table (`README.md:421`).
 - Supported execution: serial Minitest in plain Ruby and Rails; CRuby 3.3/3.4 (`README.md:624`, `.github/workflows/main.yml`). RSpec remains a separately planned capability.
@@ -26,7 +26,7 @@
 
 ## Acceptance criteria
 
-1. All 142 IDs are accounted for exactly once in static expectations and every original named case runs against rewritten or unchanged source.
+1. All 144 IDs are accounted for exactly once in static expectations and every original named case runs against rewritten or unchanged source.
 2. Supported Boolean decisions exercise all five criteria; alternatives never inflate Boolean denominators; unsupported/no-decision cases cannot become false coverage success.
 3. Every fixture is exercised at all presentation levels and legal views using its captured evidence, with analysis unchanged by rendering.
 4. Exact semantic anchors detect dropped observations, incorrect short-circuit skips, wrong outcome selection, misplaced provenance and lost exclusions; broad generated checks supplement these anchors.
@@ -64,3 +64,20 @@ Restored native harness passes on CRuby 3.3.6 and 3.4.5: 543 tests, 2,031 assert
 - Final specification review approved source, analysis, reporting and execution contracts; separate quality review found no blocking production issue. Its missing-only filtering suggestion is covered by an explicit condition/rule removal test.
 
 Implementation was prepared on `test/ruby-construct-coverage`. The original stash is retained. No dependency, lockfile, or production support-scope changes were made; the instrumentation correction restores already-supported nonlocal logical control flow.
+
+## Current corpus completion — 2026-09-18
+
+The catalog now contains 144 fixtures and 406 native cases. Static expectations
+cover 285 decisions across 143 decision-bearing fixtures; `PRED-15` remains an
+intentional no-decision fixture because eager integer bitwise results do not
+have a meaningful false/truthy domain. This supersedes the earlier corpus
+population for current verification; the 2026-09-17 counts above remain the
+historical baseline for that run.
+
+The RC-04 follow-up removes unreachable bitwise alternatives, while RC-05 keeps
+value coverage enabled by default and caches repeated evidence without changing
+counts, test/phase attribution, or saved-report semantics. RC-02 and RC-03
+regressions cover transfer-safe exception paths and nested/deferred iterator
+callbacks. The remaining review follow-up is the documented exception `else`
+body with a nonlocal transfer, which still needs a production fix before its
+acceptance case can be marked complete.

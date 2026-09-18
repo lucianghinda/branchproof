@@ -1,13 +1,16 @@
 # Executable Ruby construct examples
 
 Each `.rb` file is a complete, independent Ruby example for one catalog ID.
-`IF-01` maps to `if_01.rb`, `PAT-03` to `pat_03.rb`, and so on. All 142 IDs
+`IF-01` maps to `if_01.rb`, `PAT-03` to `pat_03.rb`, and so on. All 144 IDs
 have a source file and named test cases in one of the four JSON manifests.
 
-The examples demonstrate ordinary Ruby semantics. As of 0.9.0, every fixture
-has supported measurable coverage, with Boolean predicates and other choices
-reported separately. Cases exercise representative paths, not every edge case
-in the language catalog or every internal branch of a called library method.
+The examples demonstrate ordinary Ruby semantics. As of 0.9.0, 143 fixtures
+have decision-bearing measurable coverage, with Boolean predicates and other
+choices reported separately. `PRED-15` demonstrates eager integer bitwise
+operators and is intentionally excluded because integer `0` is truthy, so
+those results do not form a meaningful false/truthy coverage domain. Cases
+exercise representative paths, not every edge case in the language catalog or
+every internal branch of a called library method.
 
 ## Use the Ruby directly
 
@@ -95,7 +98,8 @@ The native manifests remain the behavior oracle. Branchproof expectations live
 separately in `expectations/source.json`, so an example can demonstrate valid
 Ruby without claiming that its syntax is instrumentable.
 
-The corpus is exercised through these test layers:
+The corpus contains 144 fixtures and 406 native cases. It is exercised through
+these test layers:
 
 | Test file | Contract |
 | --- | --- |

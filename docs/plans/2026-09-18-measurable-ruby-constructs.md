@@ -71,3 +71,13 @@ data-section, and subjectless-case-splat tests remain negative controls.
   16 assertions. Guard vectors are checked exactly, independently of the newly
   supported outer pattern alternatives.
 - RuboCop: 124 files, no offenses. Staged whitespace validation is clean.
+
+## Current corpus review follow-up — 2026-09-18
+
+The catalog has since expanded to 144 fixtures and 406 native cases. Current
+source expectations contain 285 decisions across 143 decision-bearing
+fixtures. `PRED-15` remains an intentional no-decision fixture because eager
+integer bitwise results do not provide a meaningful false/truthy domain; those
+operators are explicitly excluded from coverage. The 277-decision, 142-fixture
+inventory above is retained as the historical implementation record for the
+earlier corpus state.

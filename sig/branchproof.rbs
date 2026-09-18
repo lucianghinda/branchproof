@@ -68,6 +68,23 @@ module Branchproof
     def self.flow_path: (String decision_id, Integer index) -> nil
     def self.flow_finish: (String decision_id, untyped value, ?Integer? default_path) -> untyped
     def self.flow_receiver: (String decision_id, untyped receiver) -> untyped
+    def self.flow_assignment_receiver: (String decision_id, untyped receiver) -> untyped
+    def self.flow_assignment_path: (String decision_id, Integer index) -> nil
+    def self.flow_assignment_finish: (String decision_id, untyped value, ?Integer? default_path) -> untyped
+    def self.exception_enter: (String decision_id, Integer unhandled_index) -> nil
+    def self.exception_path: (String decision_id, Integer index) -> nil
+    def self.exception_value: (String decision_id, untyped value, Integer index) -> untyped
+    def self.exception_finish: (String decision_id, untyped value) -> untyped
+    def self.exception_unhandled: (String decision_id) -> nil
+    def self.exception_leave: (String decision_id) -> nil
+    def self.default_binding: (String decision_id, Integer index) -> nil
+    def self.set_alternative_count: (String decision_id, Integer count) -> nil
+    def self.value_path: (String decision_id, untyped value, Symbol domain) -> untyped
+    def self.dispatch_path: (String decision_id, untyped value, bool raised) -> untyped
+    def self.flow_iteration_begin: (String decision_id, untyped receiver, ?Integer alternative_count) -> untyped
+    def self.flow_iteration_callback: (String decision_id, ?Integer alternative_count) -> nil
+    def self.flow_iteration_finish: (String decision_id, untyped value, ?Integer? default_path) -> untyped
+    def self.flow_iteration_leave: (String decision_id) -> nil
     def self.context: (?test_id: String?, ?phase: String?) -> nil
     def self.snapshot: () -> record
     def self.diagnostics: () -> Array[record]
