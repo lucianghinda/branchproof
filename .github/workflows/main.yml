@@ -38,7 +38,11 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: false
       - run: bundle update rspec rspec-core
-      - run: bundle exec ruby -rrspec/core/version -e 'abort "unexpected RSpec core #{RSpec::Core::Version::STRING}" unless RSpec::Core::Version::STRING == ENV.fetch("BRANCHPROOF_RSPEC_CORE_VERSION")'
+      - name: Verify resolved RSpec Core version
+        env:
+          EXPECTED_RSPEC_CORE_VERSION: ${{ matrix.rspec_core }}
+        run: >-
+          bundle exec ruby -rrspec/core/version -e 'abort "unexpected RSpec core #{RSpec::Core::Version::STRING}" unless RSpec::Core::Version::STRING == ENV.fetch("EXPECTED_RSPEC_CORE_VERSION")'
       - run: bundle exec rake
 
   rails-integration:
