@@ -1,8 +1,8 @@
 # Ruby construct coverage review and action register
 
-Date: 2026-09-18  
-Reviewed branch: `test/ruby-construct-coverage`  
-Reviewed commits: `4344ddc`, `bd8c97e` (base `main` at `d7cfba2`)  
+Date: 2026-09-18
+Reviewed branch: `test/ruby-construct-coverage`
+Reviewed commits: `4344ddc`, `bd8c97e` (base `main` at `d7cfba2`)
 Status: RC-01 through RC-11 implemented and verified with Luna subagents; final verification and measurements are recorded below. The original findings and baseline measurements are retained as historical evidence.
 
 ## Original review assessment
