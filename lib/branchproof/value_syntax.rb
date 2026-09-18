@@ -7,7 +7,6 @@ module Branchproof
   # This deliberately excludes control-flow predicates already owned by Source.
   module ValueSyntax
     BOOLEAN_OPERATORS = %i[== != < <= > >= === =~ !~].freeze
-    BITWISE_OPERATORS = %i[& | ^].freeze
     DISPATCH_METHODS = %i[public_send send __send__].freeze
 
     def decisions_for(program, bytes, source_id, file_reasons = [], encoding = "UTF-8")
@@ -56,10 +55,6 @@ module Branchproof
       return { context: "lookup", domain: :lookup, alternatives: %w[truthy false nil], type: "value" } if name == :[]
       if DISPATCH_METHODS.include?(name)
         return { context: "dispatch", domain: :dispatch, alternatives: %w[success exception],
-                 type: "value" }
-      end
-      if BITWISE_OPERATORS.include?(name)
-        return { context: "bitwise", domain: :truthiness, alternatives: %w[false true],
                  type: "value" }
       end
       if BOOLEAN_OPERATORS.include?(name) || name.to_s.end_with?("?")

@@ -77,11 +77,15 @@ class TestRubyConstructSource < Minitest::Test
     end
   end
 
-  def test_every_construct_has_supported_measurable_coverage
+  def test_every_decision_bearing_construct_has_supported_measurable_coverage
     @manifests.each do |manifest|
       id = manifest.fetch("id")
       inventory = inventory_for(canonical_filename(id))
-      refute_empty inventory[:decisions], id
+      if id == "PRED-15"
+        assert_empty inventory[:decisions], "bitwise results do not define truthiness alternatives"
+      else
+        refute_empty inventory[:decisions], id
+      end
       assert_empty inventory[:diagnostics], id
       assert inventory[:decisions].all? { |decision| decision[:support_status] == "SUPPORTED" }, id
       inventory[:decisions].each do |decision|
