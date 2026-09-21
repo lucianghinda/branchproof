@@ -107,6 +107,10 @@ module Branchproof
         nil
       end
 
+      def test_phase_counts
+        @evidence.test_phase_counts
+      end
+
       def snapshot
         if @evidence.respond_to?(:snapshot)
           result = @evidence.snapshot

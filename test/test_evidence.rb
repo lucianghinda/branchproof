@@ -22,6 +22,20 @@ class TestEvidence < Minitest::Test
     assert_equal ["t"], vector[:test_ids]
   end
 
+  def test_phase_counts_are_an_immutable_copy_without_snapshotting_vectors
+    evidence = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "run")
+    evidence.register_test(test: { id: "t", name: "test_x", adapter: "fake" })
+    execution = { run_id: "run", execution_id: "e", decision_id: "d", test_id: "t", phase: "body",
+                  owner: {}, observations: [[0, true], [1, false]], outcome: false, status: "completed" }
+    evidence.record(execution: execution)
+    counts = evidence.test_phase_counts
+    assert_equal({ "t" => { "body" => 1 } }, counts)
+    assert_raises(FrozenError) { counts.fetch("t")["body"] = 7 }
+    evidence.record(execution: execution.merge(execution_id: "e2"))
+    assert_equal 1, counts.fetch("t").fetch("body")
+    assert_equal 2, evidence.test_phase_counts.fetch("t").fetch("body")
+  end
+
   def test_merge_rejects_incompatible_source_without_mutating
     evidence = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "run")
     snapshot = evidence.snapshot.merge(source_digests: { "a.rb" => "other" }, run_ids: ["other"])

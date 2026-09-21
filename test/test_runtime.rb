@@ -15,6 +15,11 @@ class TestRuntime < Minitest::Test
     end
   end
 
+  def teardown
+    Branchproof::Runtime.context(test_id: nil, phase: "unattributed")
+    Thread.current[Branchproof::Runtime::FRAME_STATE_KEY] = nil
+  end
+
   def test_condition_and_finish_return_the_original_objects_and_record_truthiness
     store = Store.new
     Branchproof::Runtime.boot(evidence: store)

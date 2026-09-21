@@ -7,6 +7,10 @@ require "branchproof/extended_alternative_runtime"
 Branchproof::Runtime.extend(Branchproof::ExtendedAlternativeRuntime)
 
 class TestExtendedAlternatives < Minitest::Test
+  def teardown
+    Branchproof::Runtime.context(test_id: nil, phase: "unattributed")
+  end
+
   def test_dynamic_case_splat_is_one_static_candidate_group_and_rewrites
     source = <<~RUBY
       def self.exercise(value, candidates)

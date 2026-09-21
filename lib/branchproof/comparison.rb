@@ -2,6 +2,7 @@
 
 # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 require "json"
+require "pathname"
 
 module Branchproof
   # Compares two complete report documents without loading or executing the project.
@@ -369,9 +370,17 @@ module Branchproof
         tests = Array(value(value(document, :observations), :tests)).to_h { |test| [value(test, :id).to_s, test] }
         rows = index.tests.to_h { |test| [test[:id].to_s, test] }
         keys = tests.to_h do |id, test|
-          parts = %i[adapter class_name method_name].map { |key| value(test, key) }
-          parts << rows.dig(id, :relative_path)
-          [id, parts.all? { |part| part.is_a?(String) && !part.empty? } ? parts : nil]
+          adapter = value(test, :adapter).to_s
+          path = rows.dig(id, :relative_path)
+          key = if adapter.downcase == "rspec"
+                  example_id = value(test, :example_id).to_s
+                  # Scoped IDs are positional selectors, valid only within the same spec revision.
+                  [adapter, rspec_example_path(document, example_id) || path, rspec_scope(example_id),
+                   value(test, :name), path, value(test, :spec_digest), value(test, :source_digest)]
+                else
+                  [adapter, value(test, :class_name), value(test, :method_name), path]
+                end
+          [id, key.all? { |part| part.is_a?(String) && !part.empty? } ? key : nil]
         end
         results = Array(value(value(document, :analysis), :decisions)).flat_map do |decision|
           Array(value(decision, :condition_results))
@@ -447,6 +456,13 @@ module Branchproof
       if context(@before)[:test_keys].values.sort_by(&:to_s) != context(@after)[:test_keys].values.sort_by(&:to_s)
         changes << "test population differs"
       end
+      if [@before, @after].any? do |document|
+        context(document)[:tests].any? do |id, test|
+          value(test, :adapter).to_s.downcase == "rspec" && context(document)[:test_keys][id].nil?
+        end
+      end
+        changes << "RSpec example identity is uncertain: missing spec revision or selector evidence"
+      end
       changes << "Deltas describe observed runs; nondeterminism and external environment changes are not ruled out."
       changes
     end
@@ -454,9 +470,10 @@ module Branchproof
     def comparability_reasons(changed_paths)
       reasons = []
       reasons << "source files changed: #{changed_paths.sort.join(", ")}" unless changed_paths.empty?
-      %i[project_kind runner_args source_patterns test_patterns limits runtime].each do |key|
-        left = metadata(@before, key)
-        right = metadata(@after, key)
+      %i[project_kind framework framework_version rspec_rails_version runner_args source_patterns test_patterns limits
+         runtime].each do |key|
+        left = key == :framework ? comparison_framework(@before) : metadata(@before, key)
+        right = key == :framework ? comparison_framework(@after) : metadata(@after, key)
         if key == :runner_args
           left = comparable_runner_args(left)
           right = comparable_runner_args(right)
@@ -465,6 +482,35 @@ module Branchproof
       end
       reasons << "source selection differs" if source_selection(@before) != source_selection(@after)
       reasons
+    end
+
+    def comparison_framework(document)
+      explicit = metadata(document, :framework)
+      return explicit unless explicit.nil? || explicit.to_s.empty?
+
+      adapters = Array(value(value(document, :observations), :tests)).filter_map do |test|
+        adapter = value(test, :adapter).to_s.downcase
+        adapter unless adapter.empty? || adapter == "unknown"
+      end.uniq
+      adapters.length == 1 ? adapters.first : nil
+    end
+
+    def rspec_scope(example_id)
+      match = example_id.to_s.match(/(\[[^\]]+\])\z/)
+      match && match[1]
+    end
+
+    def rspec_example_path(document, example_id)
+      path = example_id.to_s.sub(/\[[^\]]+\]\z/, "")
+      return nil if path.empty?
+      return path.sub(%r{\A\./}, "") unless path.start_with?("/")
+
+      root = value(value(document, :source_inventory), :root) || metadata(document, :project_root)
+      return nil unless root
+
+      Pathname.new(path).relative_path_from(Pathname.new(root.to_s)).to_s
+    rescue ArgumentError
+      nil
     end
 
     def source_selection(document)

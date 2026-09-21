@@ -43,4 +43,53 @@ class TestProject < Minitest::Test
 
     assert_includes error.message, "project must be auto, ruby, or rails"
   end
+
+  def test_auto_selects_rspec_from_spec_files_and_uses_spec_load_path
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "spec/support"))
+      FileUtils.touch(File.join(root, "spec/example_spec.rb"))
+      FileUtils.touch(File.join(root, "spec/support/spec_helper.rb"))
+
+      project = Branchproof::Project.new(root: root).to_h
+
+      assert_equal "rspec", project[:framework]
+      assert_equal [File.join(root, "lib"), File.join(root, "spec")], project[:load_paths]
+      assert_equal ["spec/**/*_spec.rb"], project[:test_patterns]
+    end
+  end
+
+  def test_auto_rejects_projects_with_both_framework_markers
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "spec"))
+      FileUtils.mkdir_p(File.join(root, "test"))
+      FileUtils.touch(File.join(root, "spec/example_spec.rb"))
+      FileUtils.touch(File.join(root, "test/example_test.rb"))
+
+      error = assert_raises(ArgumentError) { Branchproof::Project.new(root: root) }
+      assert_includes error.message, "both RSpec and Minitest"
+      assert_equal "rspec", Branchproof::Project.new(root: root, framework: "rspec").to_h[:framework]
+    end
+  end
+
+  def test_explicit_framework_overrides_ambiguous_markers_in_either_direction
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "spec"))
+      FileUtils.mkdir_p(File.join(root, "test"))
+      FileUtils.touch(File.join(root, "spec/example_spec.rb"))
+      FileUtils.touch(File.join(root, "test/example_test.rb"))
+
+      assert_equal "rspec", Branchproof::Project.new(root: root, framework: "rspec").to_h[:framework]
+      assert_equal "minitest", Branchproof::Project.new(root: root, framework: "minitest").to_h[:framework]
+    end
+  end
+
+  def test_plain_ruby_without_markers_keeps_minitest_defaults
+    Dir.mktmpdir do |root|
+      project = Branchproof::Project.new(root: root).to_h
+
+      assert_equal "minitest", project[:framework]
+      assert_equal ["test/**/*_test.rb", "test/**/test_*.rb"], project[:test_patterns]
+      assert_equal [File.join(root, "lib"), File.join(root, "test")], project[:load_paths]
+    end
+  end
 end

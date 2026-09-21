@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ["3.3", "3.4"]
+        ruby: ["3.3", "3.4", "4.0"]
 
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +19,30 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
+      - run: bundle exec rake
+
+  rspec-compatibility:
+    name: RSpec core ${{ matrix.rspec_core }} on Ruby 3.4
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rspec_core: ["3.13.0", "3.13.6"]
+    env:
+      BRANCHPROOF_RSPEC_CORE_VERSION: ${{ matrix.rspec_core }}
+      BUNDLE_FROZEN: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: false
+      - run: bundle update rspec rspec-core
+      - name: Verify resolved RSpec Core version
+        env:
+          EXPECTED_RSPEC_CORE_VERSION: ${{ matrix.rspec_core }}
+        run: >-
+          bundle exec ruby -rrspec/core/version -e 'abort "unexpected RSpec core #{RSpec::Core::Version::STRING}" unless RSpec::Core::Version::STRING == ENV.fetch("EXPECTED_RSPEC_CORE_VERSION")'
       - run: bundle exec rake
 
   rails-integration:
@@ -35,4 +59,19 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: true
           cache-version: rails-integration
+      - run: bundle exec rake
+
+  rspec-rails-integration:
+    name: RSpec Rails 8.1 on Ruby 3.4
+    runs-on: ubuntu-latest
+    env:
+      BRANCHPROOF_RSPEC_RAILS_INTEGRATION: "1"
+      BUNDLE_FROZEN: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          cache-version: rspec-rails-integration
       - run: bundle exec rake

@@ -3,8 +3,30 @@
 require "test_helper"
 require "branchproof/report"
 require "stringio"
+require "shellwords"
 
 class TestFocusedReport < Minitest::Test
+  def test_rspec_selectors_are_copyable_in_saved_terminal_views
+    snapshot = document
+    selector = "./spec/policy's shared_spec.rb[1:2]"
+    snapshot[:observations][:tests].first.replace(
+      id: "tt", name: "shared policy allows access", adapter: "rspec", example_id: selector,
+      source: { relative_path: "spec/support/shared.rb", line: 7 }, status: "passed"
+    )
+    snapshot = JSON.parse(JSON.generate(snapshot))
+
+    %i[decisions conditions tests].each do |view|
+      output = StringIO.new
+      Branchproof::Report.from_document(document: snapshot, view: view, level: 3)
+                         .write(io: output, format: :terminal)
+      command = output.string.lines.find { |line| line.include?("bundle exec rspec") }
+      refute_nil command, "missing rerun selector in #{view} view"
+      command = command[command.index("bundle exec rspec")..].strip
+      command = command.delete_suffix(")")
+      assert_equal ["bundle", "exec", "rspec", selector], Shellwords.split(command)
+    end
+  end
+
   def render(view: :conditions, level: 2, missing_only: false, status: "PASSED")
     report = Branchproof::Report.from_document(document: document(status: status), view: view,
                                                level: level, missing_only: missing_only)

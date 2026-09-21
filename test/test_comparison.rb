@@ -199,6 +199,102 @@ class TestComparison < Minitest::Test
     assert_equal "not observed in current run", owner.fetch("observation_status")
   end
 
+  def test_rspec_examples_match_by_relative_path_and_scoped_id_in_unchanged_specs
+    tests = [
+      { id: "t1", adapter: "rspec", name: "does the thing", example_id: "./spec/policy_spec.rb[1:1]",
+        source: { relative_path: "spec/policy_spec.rb", line: 8 } },
+      { id: "t2", adapter: "rspec", name: "does the thing", example_id: "./spec/policy_spec.rb[1:2]",
+        source: { relative_path: "spec/policy_spec.rb", line: 12 } }
+    ]
+    tests.each { |test| test.merge!(spec_digest: "spec-revision", source_digest: "spec-revision") }
+    before = document(status: "PROVEN", tests: tests)
+    after = document(status: "NOT_PROVEN", tests: tests.map { |test| test.merge(id: "new-#{test[:id]}") })
+    after[:observations][:vectors].each_with_index { |vector, index| vector[:test_ids] = ["new-t#{index + 1}"] }
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_equal 1, result.fetch("regressions")
+    assert_equal "complete", result.fetch("status")
+    assert(result.fetch("changes").first.fetch("owner_context").all? { |owner| owner.fetch("test_status") == "present in current run" })
+  end
+
+  def test_rspec_insertions_do_not_match_shifted_scoped_ids
+    assert_rspec_revision_unmatched(%w[first second], %w[inserted first second])
+  end
+
+  def test_rspec_deletions_do_not_match_shifted_scoped_ids
+    assert_rspec_revision_unmatched(%w[first second], %w[second])
+  end
+
+  def test_rspec_reordering_warns_even_with_the_same_population_size
+    assert_rspec_revision_unmatched(%w[first second], %w[second first])
+  end
+
+  def test_rspec_duplicate_descriptions_cannot_identify_examples_in_changed_specs
+    assert_rspec_revision_unmatched(%w[same same], %w[same same])
+  end
+
+  def test_rspec_shared_definition_changes_make_identity_uncertain
+    assert_rspec_revision_unmatched(%w[first second], %w[first second], digest_field: :source_digest)
+  end
+
+  def test_rspec_legacy_reports_without_revision_evidence_do_not_claim_identity
+    tests = rspec_tests(%w[first second], "unchanged").map { |test| test.except(:spec_digest, :source_digest) }
+    result = Branchproof::Comparison.new(before: document(status: "PROVEN", tests: tests),
+                                         after: document(status: "NOT_PROVEN", tests: tests)).call
+
+    assert(result.fetch("changes").first.fetch("owner_context").all? { |owner| owner.fetch("test_status").include?("no unique test match") })
+    assert(result.fetch("context").any? { |message| message.include?("RSpec example identity is uncertain") })
+  end
+
+  def test_rspec_duplicate_scoped_ids_are_ambiguous_instead_of_matching
+    tests = 2.times.map do |index|
+      { id: "t#{index + 1}", adapter: "rspec", name: "same description",
+        spec_digest: "unchanged", source_digest: "unchanged",
+        example_id: "./spec/policy_spec.rb[1:1]", source: { relative_path: "spec/policy_spec.rb", line: 8 + index } }
+    end
+    before = document(status: "PROVEN", tests: tests)
+    after = document(status: "NOT_PROVEN", tests: tests)
+
+    owner = Branchproof::Comparison.new(before: before, after: after).call.fetch("changes").first
+                                   .fetch("owner_context").find { |item| item.fetch("label").include?("same description") }
+    assert_includes owner.fetch("test_status"), "no unique test match"
+  end
+
+  def test_framework_changes_are_context_reasons_before_regression_is_considered
+    before = document(status: "PROVEN", run_metadata: { framework: "rspec", framework_version: "3.13" })
+    after = document(status: "NOT_PROVEN", run_metadata: { framework: "minitest", framework_version: "5.20" })
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_includes result.fetch("reasons"), "framework differs"
+    refute result.fetch("regression")
+  end
+
+  def test_rspec_example_ids_normalize_checkout_roots
+    tests_before = [{ id: "old", adapter: "rspec", name: "same", example_id: "/old/spec/policy_spec.rb[1:1]",
+                      source: { path: "/old/spec/policy_spec.rb", line: 8 } }]
+    tests_after = [{ id: "new", adapter: "rspec", name: "same", example_id: "/new/spec/policy_spec.rb[1:1]",
+                     source: { path: "/new/spec/policy_spec.rb", line: 8 } }]
+    (tests_before + tests_after).each { |test| test.merge!(spec_digest: "unchanged", source_digest: "unchanged") }
+    before = document(status: "PROVEN", tests: tests_before).tap do |item|
+      item[:source_inventory][:root] = "/old"
+      item[:run_metadata][:project_root] = "/old"
+      item[:observations][:vectors].each { |vector| vector[:test_ids] = ["old"] }
+    end
+    after = document(status: "NOT_PROVEN", tests: tests_after).tap do |item|
+      item[:source_inventory][:root] = "/new"
+      item[:run_metadata][:project_root] = "/new"
+      item[:observations][:vectors].each { |vector| vector[:test_ids] = ["new"] }
+    end
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_equal "complete", result.fetch("status")
+    assert_equal 1, result.fetch("regressions")
+    assert(result.fetch("changes").first.fetch("owner_context").all? { |owner| owner.fetch("test_status") == "present in current run" })
+  end
+
   def test_owner_observation_requires_matching_values_and_outcome
     before = document(status: "PROVEN")
     altered_vectors = [
@@ -211,5 +307,26 @@ class TestComparison < Minitest::Test
                                    .fetch("owner_context").find { |item| item.fetch("label").include?("test_true") }
     assert_equal "present in current run", owner.fetch("test_status")
     assert_equal "not observed in current run", owner.fetch("observation_status")
+  end
+
+  private
+
+  def assert_rspec_revision_unmatched(before_names, after_names, digest_field: :spec_digest)
+    before_tests = rspec_tests(before_names, "old")
+    after_tests = rspec_tests(after_names, "old").map { |test| test.merge(digest_field => "new") }
+    result = Branchproof::Comparison.new(before: document(status: "PROVEN", tests: before_tests),
+                                         after: document(status: "NOT_PROVEN", tests: after_tests)).call
+
+    owners = result.fetch("changes").first.fetch("owner_context")
+    assert owners.all? { |owner| owner.fetch("test_status").include?("no unique test match") }, owners.inspect
+    assert(owners.all? { |owner| owner.fetch("observation_status") == "not observed in current run" })
+    assert_includes result.fetch("context"), "test population differs"
+  end
+
+  def rspec_tests(names, digest)
+    names.each_with_index.map do |name, index|
+      { id: "t#{index + 1}", adapter: "rspec", name: name, example_id: "./spec/policy_spec.rb[1:#{index + 1}]",
+        spec_digest: digest, source_digest: digest, source: { relative_path: "spec/policy_spec.rb", line: 8 + index } }
+    end
   end
 end

@@ -14,6 +14,7 @@ module Branchproof
   autoload :Loader, "branchproof/loader"
   autoload :Runtime, "branchproof/runtime"
   autoload :MinitestAdapter, "branchproof/minitest_adapter"
+  autoload :RSpecAdapter, "branchproof/rspec_adapter"
   autoload :Evidence, "branchproof/evidence"
   autoload :Analyzer, "branchproof/analyzer"
   autoload :Constraints, "branchproof/constraints"

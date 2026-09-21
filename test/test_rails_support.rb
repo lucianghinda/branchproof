@@ -32,6 +32,11 @@ class TestRailsSupport < Minitest::Test
       Branchproof::RailsSupport.send(:rails_application)
     end
     assert_includes error.message, "did not initialize"
+
+    error = assert_raises(Branchproof::RailsSupport::Error) do
+      Branchproof::RailsSupport.validate_rspec!(project: { kind: "rails", root: Dir.pwd })
+    end
+    assert_includes error.message, "did not initialize"
   ensure
     Object.send(:remove_const, :Rails) if Object.const_defined?(:Rails, false)
     Object.const_set(:Rails, previous) if had_rails

@@ -118,6 +118,16 @@ module Branchproof
       0
     end
 
+    def rerun_command(test_id)
+      test = test_records_by_id[test_id.to_s]
+      return unless test && value(test, :adapter).to_s == "rspec"
+
+      selector = value(test, :example_id).to_s
+      return if selector.empty?
+
+      "bundle exec rspec '#{selector.gsub("'", %q('"'"'))}'"
+    end
+
     private
 
     def json_document
@@ -507,10 +517,17 @@ module Branchproof
     end
 
     def baseline_test_counts
+      noun = rspec_run? ? "examples" : "tests"
       executed = value(@baseline, :executed_tests)
       failed = value(@baseline, :failed_tests) || value(@baseline, :failures) || 0
       skipped = value(@baseline, :skipped_tests) || value(@baseline, :skips) || 0
-      "#{executed || 0} tests, #{failed} failed, #{skipped} skipped"
+      "#{executed || 0} #{noun}, #{failed} failed, #{skipped} skipped"
+    end
+
+    def rspec_run?
+      framework = value(@run_metadata, :framework) || value(@run_metadata, :project_framework) ||
+                  value(@baseline, :framework)
+      framework.to_s.downcase == "rspec"
     end
 
     def terminal_coverage_label
@@ -583,6 +600,9 @@ module Branchproof
                value(test, :name).to_s
              end
       return short_id(id) if name.empty? || name == id
+
+      command = rerun_command(id)
+      return "#{name} (rerun: #{command})" if command
 
       duplicates = test_records_by_name[name]
       return name if duplicates.length == 1
