@@ -44,3 +44,6 @@ Not documented.
 
 ### `snapshot()` <a id="method-i-snapshot"></a> <a id="snapshot-instance_method"></a>
 Not documented.
+
+### `test_phase_counts()` <a id="method-i-test_phase_counts"></a> <a id="test_phase_counts-instance_method"></a>
+Not documented.

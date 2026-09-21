@@ -60,5 +60,8 @@ Not documented.
 - **@raise** [ArgumentError]
 - **@return** [Report] a new instance of Report
 
+### `rerun_command(test_id)` <a id="method-i-rerun_command"></a> <a id="rerun_command-instance_method"></a>
+Not documented.
+
 ### `write(io:, format:)` <a id="method-i-write"></a> <a id="write-instance_method"></a>
 - **@raise** [ArgumentError]

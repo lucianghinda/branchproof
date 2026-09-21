@@ -108,6 +108,9 @@ Metrics/PerceivedComplexity
 ### `snapshot()` <a id="method-c-snapshot"></a> <a id="snapshot-class_method"></a>
 Not documented.
 
+### `test_phase_counts()` <a id="method-c-test_phase_counts"></a> <a id="test_phase_counts-class_method"></a>
+Not documented.
+
 ### `value_path(decision_id, value, domain)` <a id="method-c-value_path"></a> <a id="value_path-class_method"></a>
 rubocop:disable-next Metrics/MethodLength -- trace state branches are
 explicit. rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity,

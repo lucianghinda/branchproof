@@ -4,9 +4,12 @@
 | --- | --- |
 | **Defined in** | lib/branchproof/worker.rb |
 
-Runs one isolated Minitest worker and atomically exports its result.
+Runs one isolated test worker and atomically exports its result.
 
 ## Public Class Methods
+### `adapter_for(project, runtime)` <a id="method-c-adapter_for"></a> <a id="adapter_for-class_method"></a>
+Not documented.
+
 ### `boot_project(project)` <a id="method-c-boot_project"></a> <a id="boot_project-class_method"></a>
 Not documented.
 
@@ -16,6 +19,10 @@ Not documented.
 ### `completion_result(baseline:, project:, rails_metadata:, evidence:, tests:, diagnostics:)` <a id="method-c-completion_result"></a> <a id="completion_result-class_method"></a>
 This result boundary intentionally carries the complete worker payload.
 rubocop:disable-next Metrics/ParameterLists
+
+### `guard_late_rspec_execution(adapter, payload)` <a id="method-c-guard_late_rspec_execution"></a> <a id="guard_late_rspec_execution-class_method"></a>
+Installed before application hooks, so this runs after their at_exit work. A
+rescued second runner must still invalidate the already-exported result.
 
 ### `incomplete_evidence(evidence, diagnostics)` <a id="method-c-incomplete_evidence"></a> <a id="incomplete_evidence-class_method"></a>
 Not documented.

@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-21
+
+- Add the first-release RSpec execution path for plain Ruby and Rails projects.
+  It supports RSpec 3.13, including Rails 8.1 with rspec-rails 8.x on CRuby 3.4.
+  Integration is verified against rspec-rails 8.0.4 and native RSpec behavior.
+- Add `--framework auto|minitest|rspec`, native RSpec discovery that respects
+  exclusions and custom patterns, full-description labels, and status mapping for pending,
+  skipped, fixed pending, and failed examples.
+- Keep Rails helper ownership with the application after Branchproof's loader;
+  transaction behavior, in-process specs, and context/suite/unattributed
+  evidence are recorded explicitly.
+- Allow focused pure-Ruby specs inside Rails projects without requiring Rails boot.
+- Match RSpec examples across saved reports only when spec and declaration
+  revisions agree, preventing false matches after examples are inserted or reordered.
+- Stream test progress to stderr, show quoted RSpec rerun commands, and explain
+  unmatched test globs, empty suites, and filters selecting no examples.
+- Document repeated ordinary and shared-example benchmarks with allocations
+  and peak process memory; end-to-end overhead remains substantial.
+
 ## [0.9.0] - 2026-09-18
 
 - Measure contextual predicates, guarded pattern selection, dynamic case splat

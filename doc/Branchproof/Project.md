@@ -8,6 +8,9 @@
 Resolves the project policy used by the isolated analysis worker.
 
 ## Constants
+### `FRAMEWORKS` <a id="constant-FRAMEWORKS"></a> <a id="FRAMEWORKS-constant"></a>
+Not documented.
+
 ### `MODES` <a id="constant-MODES"></a> <a id="MODES-constant"></a>
 Not documented.
 
@@ -15,7 +18,7 @@ Not documented.
 Not documented.
 
 ## Public Instance Methods
-### `initialize(root:, mode: = "auto")` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(root:, mode: = "auto", framework: = "auto")` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@raise** [ArgumentError]
 - **@return** [Project] a new instance of Project
 
