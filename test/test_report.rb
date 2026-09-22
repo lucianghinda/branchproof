@@ -56,8 +56,49 @@ class TestReport < Minitest::Test
     output = StringIO.new
     base_report(inventory: { decisions: [] }).write(io: output, format: :json)
     document = JSON.parse(output.string)
-    assert_equal "1.3", document.fetch("schema_version")
+    assert_equal "1.4", document.fetch("schema_version")
     assert_nil document.fetch("metrics").fetch("percentage")
+  end
+
+  def test_report_persists_separate_policy_and_uses_policy_exit_status
+    report = base_report(inventory: { decisions: [{ id: "d", conditions: [{ id: "c", index: 0 }] }] },
+                         evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: true } },
+                         analysis: { coverage: { mcdc: { proven_conditions: 0, supported_conditions: 1 } },
+                                     completeness: { observation: true, attribution: true, analysis: true } },
+                         baseline: { status: "PASSED", finalized: true }, minimum: { mcdc: 100 })
+    output = StringIO.new
+    report.write(io: output, format: :json)
+    document = JSON.parse(output.string)
+
+    assert_equal "1.4", document.fetch("schema_version")
+    assert_equal "failed", document.dig("coverage_policy", "status")
+    assert_equal 0, document.dig("coverage_policy", "gates", 0, "numerator")
+    assert_equal 1, document.dig("coverage_policy", "gates", 0, "denominator")
+    assert_equal 1, report.exit_code
+  end
+
+  def test_saved_report_policy_override_preserves_input_schema_and_top_level_completeness
+    document = JSON.parse(base_report(
+      inventory: { decisions: [{ id: "d", conditions: [{ id: "c", index: 0 }] }] },
+      evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: true } },
+      analysis: { coverage: { mcdc: { proven_conditions: 1, supported_conditions: 1 } },
+                  completeness: { observation: true, attribution: true, analysis: true } },
+      baseline: { status: "PASSED", finalized: true }
+    ).then { |report| StringIO.new.tap { |io| report.write(io: io, format: :json) }.string })
+    document["schema_version"] = "1.3"
+    document.delete("coverage_policy")
+    document["completeness"]["analysis"] = false
+
+    report = Branchproof::Report.from_document(document: document, minimum: { mcdc: 100 })
+    output = StringIO.new
+    report.write(io: output, format: :json)
+    overridden = JSON.parse(output.string)
+
+    assert_equal "1.3", overridden.fetch("schema_version")
+    assert_equal "unavailable", overridden.dig("coverage_policy", "status")
+    assert_equal 2, report.exit_code
+    assert_equal "1.3", document.fetch("schema_version")
+    refute document.key?("coverage_policy")
   end
 
   def test_rspec_baseline_uses_example_counts_in_terminal_header

@@ -133,10 +133,30 @@ before source inventory and are recorded in run metadata for comparison.
 selectors continue to conflict with an explicit test selection, including one
 supplied by this file.
 
-The `minimum` values are validated percentages for the supported criteria
-`decision`, `condition`, `condition_decision`, `mcdc`, and `decision_table`.
-They are carried in the analysis options for a later enforcement step; this
-release does not enforce minimum gates yet.
+The `minimum` values are validated percentages from 0 through 100 for the five
+supported criteria: `decision`, `condition`, `condition_decision`, `mcdc`, and
+`decision_table`. A policy is evaluated against the exact numerator and
+denominator counts in the report, so a value such as `66.67` is not rounded
+before it is compared. The policy is recorded in JSON under
+`coverage_policy`.
+
+The command line can add or replace individual policy entries with repeatable
+`--minimum` options. Use `criterion=threshold`, for example:
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' --minimum mcdc=80 \
+  --minimum decision_table=75
+```
+
+CLI values take precedence over matching `minimum` keys from `.branchproof.json`.
+Specifying the same criterion more than once on the command line is an error.
+The five criteria are evaluated independently. A threshold met exactly passes;
+a result below it fails. A requested gate with a zero denominator, unavailable
+coverage, or incomplete observations or analysis is `unavailable`, and exits
+with status 2. A below-threshold gate exits 1. A failed test run makes
+requested policy gates unavailable and exits 2; without a policy, a failed test
+run retains the existing exit status 1. With no policy, the existing report
+exit behavior remains unchanged.
 
 For a Minitest project, a focused configuration can select the library and
 test trees directly:
@@ -253,6 +273,15 @@ The skipped `admin?` in `[F-]` counts as neither true nor false. Conditions
 that did evaluate count toward Condition Coverage even when their value was
 masked by another condition. Here, the two observations prove independence
 for `logged_in?`; `admin?` still needs `[TF] => F`.
+
+This is also a compact test-design walkthrough. A test that records
+`[F-] => F` proves the false branch of `logged_in?`; a test that records
+`[TT] => T` proves the true branch and establishes the current positive path.
+Adding a test that records `[TF] => F` evaluates `admin?` false while
+`logged_in?` stays true, so it supplies the missing independence witness and
+improves the condition, Condition/Decision, MC/DC, and applicable decision-table
+results. The report names the missing vector and its owning test when it is
+observed.
 
 Decision and Condition Coverage are calculated independently from the captured
 evidence. Condition/Decision requires both; MC/DC adds independence evidence.
@@ -564,13 +593,26 @@ The output's parent directory must already exist. Replacing a baseline is an
 explicit `analyze --format json --output` operation; keep CI snapshots as
 artifacts when you need to retain multiple runs.
 
-The `report` command reads the saved document without loading the application
-or running tests. It uses locations and metadata captured in the report, so
-rendering remains useful after the original checkout has moved or been
-removed. New snapshots retain the ladder at every level. Legacy snapshots
-without analysis can still be rendered at Level 1; levels 2 and 3 require
-analysis in the saved report. The repository ignores `.branchproof/`; choose a
-different path and CI artifact policy when a project needs to retain reports.
+The `report` command reads the saved document without loading the application,
+project configuration, or running tests. It uses locations and metadata
+captured in the report, so rendering remains useful after the original
+checkout has moved or been removed. A saved report's policy is inherited by
+default. Repeatable `--minimum criterion=threshold` options override matching
+saved policy entries for that rendering without changing the snapshot file;
+other saved thresholds remain inherited. Offline rendering never consults the
+current `.branchproof.json`.
+
+New live JSON reports use schema `1.4` and include the required
+`coverage_policy` object with the normalized requested minima and recomputed
+gate results. The report validates those results from its exact coverage
+counts rather than trusting a persisted percentage. Readers continue to accept
+schemas `1.0` through `1.3`; an offline policy overlay is optional and
+preserves the input snapshot's schema version, including for legacy reports.
+New snapshots retain the ladder at every level. Legacy snapshots without
+analysis can still be rendered at Level 1; levels 2 and 3 require analysis in
+the saved report.
+The repository ignores `.branchproof/`; choose a different path and CI artifact
+policy when a project needs to retain reports.
 Saved JSON includes existing raw metadata such as test names and expressions;
 relative terminal labels do not mean every legacy JSON field is sanitized.
 
@@ -605,6 +647,29 @@ as analysis context changes rather than silently treated as unchanged analysis.
 Invalid input or an incomplete comparison exits 2, which takes
 precedence. Reports are explicit snapshots: comparison never creates history,
 promotes a baseline, or overwrites either input.
+
+### GitHub Actions artifacts
+
+A coverage policy can fail a job while still preserving the report for review.
+Create the output directory before invoking Branchproof and upload the report
+with `if: always()` so failed gates and failed test runs leave an artifact:
+
+```yaml
+- name: Branchproof coverage
+  run: |
+    mkdir -p .branchproof
+    bundle exec branchproof analyze 'lib/**/*.rb' --test 'test/**/*_test.rb' \
+      --format json --output .branchproof/coverage.json \
+      --minimum mcdc=80 --minimum decision_table=75
+
+- name: Upload Branchproof report
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: branchproof-coverage
+    path: .branchproof/coverage.json
+    if-no-files-found: warn
+```
 
 MC/DC has two related questions. Evaluation asks whether a condition was
 observed with a value, including short-circuiting. Independent proof asks
@@ -716,8 +781,8 @@ Ruby-defined custom `!` methods keep their runtime behavior;
 evidence that contradicts Boolean negation is rejected instead of proving
 coverage with an invalid logical model.
 
-New reports use schema `1.3`; saved schema `1.0`, `1.1`, and `1.2` reports
-remain readable. Comparison distinguishes decision-table coverage movement
+New reports use schema `1.4`; saved schema `1.0`, `1.1`, `1.2`, and `1.3`
+reports remain readable. Comparison distinguishes decision-table coverage movement
 (`rule coverage gained`, `rule coverage lost`) from analysis movement
 (`rule reachability changed`), and treats a structurally changed decision as a
 changed decision-table context instead of guessing which old rule a new rule
@@ -776,7 +841,11 @@ namespace. The CLI is the supported way to run a complete analysis;
 child-environment policy,
 and `Branchproof::RailsSupport` is the optional Rails boot boundary. The library
 classes expose the source, runtime, evidence, analysis, and report contracts
-for adapters and integrations.
+for adapters and integrations. `Branchproof::CoveragePolicy#call` evaluates a
+normalized `minimum` hash against a report document. `Report#coverage_policy`
+returns the recomputed policy record, and `Report#coverage_policy_lines`
+returns its terminal lines; both are available to integrations that need the
+same gate result as the CLI.
 
 ## Development
 

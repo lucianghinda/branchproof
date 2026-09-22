@@ -46,6 +46,7 @@ module Branchproof
       lines << "Empty groups mean no recorded completed observation."
       lines << ""
       lines.concat(@coordinator.coverage_ladder_lines)
+      lines.concat(@coordinator.coverage_policy_lines)
       case @view
       when :conditions
         render_conditions(lines)

@@ -16,6 +16,15 @@ class TestCLI < Minitest::Test
     assert_equal false, cli.send(:value, { finalized: false }, :finalized)
   end
 
+  def test_minimum_flags_are_normalized_merged_and_rejected_before_execution
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    options = cli.send(:parse, ["analyze", "--minimum", "mcdc=66.67", "--minimum", "decision=80"])
+    assert_equal({ "mcdc" => 66.67, "decision" => 80 }, options[:minimum])
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "mcdc=80", "--minimum", "mcdc=90"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "unknown=80"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "mcdc=NaN"]) }
+  end
+
   def test_primary_help_lists_offline_commands
     stdout = StringIO.new
     status = Branchproof::CLI.new(stdout: stdout, stderr: StringIO.new).call(["--help"])
@@ -243,6 +252,19 @@ class TestCLI < Minitest::Test
         assert_equal "minitest", options[:framework]
         assert_equal [File.realpath(File.join(root, "configured_test.rb"))], options[:tests]
         assert_equal true, options[:explicit_tests]
+      end
+    end
+  end
+
+  def test_cli_minimum_overrides_one_config_criterion_and_retains_the_rest
+    Dir.mktmpdir do |root|
+      File.write(File.join(root, ".branchproof.json"), JSON.generate(schema_version: 1,
+                                                                     minimum: { mcdc: 70, decision: 80 }))
+      Dir.chdir(root) do
+        cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+        options = cli.send(:parse, ["analyze", "--minimum", "mcdc=90"])
+
+        assert_equal({ "mcdc" => 90, "decision" => 80 }, options[:minimum])
       end
     end
   end

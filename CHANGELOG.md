@@ -1,9 +1,17 @@
 ## [Unreleased]
 
-- Add declarative `.branchproof.json` project configuration with CLI precedence,
-  source exclusions, and comparison metadata for repeatable coverage runs.
+- Add validated coverage policies for Decision, Condition, Condition/Decision,
+  MC/DC, and Decision Table criteria. Repeatable `--minimum criterion=threshold`
+  options override matching project or saved-report policy entries, compare
+  exact counts, and distinguish failed gates from unavailable or incomplete
+  evidence in exit status and JSON.
+- Persist policy decisions in live schema `1.4` reports while keeping saved
+  schemas `1.0` through `1.3` readable; offline policy overrides do not load
+  project configuration or mutate snapshots.
 - Preserve setup, body, and teardown phase totals when independent evidence runs
   are merged, keeping phase attribution complete in combined snapshots.
+- Add declarative `.branchproof.json` project configuration with CLI precedence,
+  source exclusions, and comparison metadata for repeatable coverage runs.
 ## [0.10.0] - 2026-09-21
 
 - Add the first-release RSpec execution path for plain Ruby and Rails projects.

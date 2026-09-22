@@ -77,7 +77,7 @@ module Branchproof
       report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || snapshot,
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
                           level: options[:level], missing_only: options[:missing_only], view: options[:view],
-                          run_metadata: run_metadata(options, baseline))
+                          run_metadata: run_metadata(options, baseline), minimum: options[:minimum])
       output_report(report, options)
       report.exit_code
     rescue ArgumentError => e
@@ -94,11 +94,12 @@ module Branchproof
       @stdout.write(<<~HELP)
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
-            [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only]
+            [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
             [--format terminal|json] [--output PATH] [--limits PATH] [--config PATH|--no-config]
             [--no-reachability] [-- RUNNER_ARGS]
           branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
-            [--level 1|2|3] [--missing-only] [--format terminal|json] [--output PATH]
+            [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
+            [--format terminal|json] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
         JSON always contains full evidence; --view requires terminal output.
@@ -143,14 +144,14 @@ module Branchproof
         end
 
         report = Report.from_document(document: document, level: options[:level], view: options[:view],
-                                      missing_only: options[:missing_only])
+                                      missing_only: options[:missing_only], minimum: options[:minimum_overrides])
         output_report(report, options)
         report.exit_code
       end
     end
 
     def parse_offline(command, args)
-      options = { format: :terminal, view: :decisions, missing_only: false }
+      options = { format: :terminal, view: :decisions, missing_only: false, minimum_overrides: {} }
       paths = []
       until args.empty?
         token = args.shift
@@ -167,7 +168,7 @@ module Branchproof
           raise ArgumentError, "--fail-on-regression requires compare" unless command == "compare"
 
           options[:fail_on_regression] = true
-        when "--view", "--level", "--missing-only"
+        when "--view", "--level", "--missing-only", "--minimum"
           raise ArgumentError, "#{token} requires report" unless command == "report"
 
           case token
@@ -177,6 +178,8 @@ module Branchproof
           when "--level"
             options[:level] = Integer(args.shift.to_s, 10)
             raise ArgumentError, "level must be 1, 2, or 3" unless (1..3).cover?(options[:level])
+          when "--minimum"
+            add_minimum_override!(options, args.shift)
           else options[:missing_only] = true
           end
         else
@@ -254,7 +257,7 @@ module Branchproof
                   runner_args: runner_args, project: nil, missing_only: false, view: :decisions,
                   reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false,
                   explicit_project: false, explicit_framework: false, explicit_sources: false,
-                  config_path: nil, config_disabled: false }
+                  config_path: nil, config_disabled: false, minimum_overrides: {} }
       until args.empty?
         token = args.shift
         case token
@@ -263,6 +266,8 @@ module Branchproof
           options[:explicit_view] = true
         when "--missing-only"
           options[:missing_only] = true
+        when "--minimum"
+          add_minimum_override!(options, args.shift)
         when "--no-reachability"
           options[:reachability] = false
         when "--level"
@@ -333,10 +338,10 @@ module Branchproof
           options[:explicit_tests] = true
         end
         options[:exclude] = Array(configuration[:exclude]).dup
-        options[:minimum] = configuration.fetch(:minimum, {}).dup
+        options[:minimum] = configuration.fetch(:minimum, {}).dup.merge(options[:minimum_overrides])
       else
         options[:exclude] = []
-        options[:minimum] = {}
+        options[:minimum] = options[:minimum_overrides].dup
       end
       options[:project] = Project.new(root: root, mode: options[:project_mode], framework: options[:framework]).to_h
       validate_view!(options)
@@ -350,6 +355,25 @@ module Branchproof
       options[:test_patterns] = options[:explicit_tests] ? options[:tests].dup : options[:project][:test_patterns]
       options[:tests] = expand_paths(options[:tests], root: options[:project][:root])
       options
+    end
+
+    def add_minimum_override!(options, argument)
+      text = argument.to_s
+      match = text.match(/\A([a-z_]+)=([0-9]+(?:\.[0-9]+)?)\z/)
+      raise ArgumentError, "minimum must be CRITERION=THRESHOLD" unless match
+
+      criterion = match[1]
+      threshold_text = match[2]
+      threshold = threshold_text.include?(".") ? Float(threshold_text) : Integer(threshold_text, 10)
+      normalized = CoveragePolicy.normalize(criterion => threshold)
+      criterion = normalized.keys.first
+      raise ArgumentError, "duplicate coverage criterion: #{criterion}" if options[:minimum_overrides].key?(criterion)
+
+      options[:minimum_overrides][criterion] = normalized.fetch(criterion)
+    rescue ArgumentError
+      raise
+    rescue TypeError
+      raise ArgumentError, "minimum threshold must be a finite number from 0 to 100"
     end
 
     def build_inventory(options)

@@ -127,7 +127,7 @@ class TestRubyConstructAcceptance < Minitest::Test
     Dir.mktmpdir("branchproof-construct-offline-") do |root|
       report_path = File.join(root, "report.json")
       File.write(report_path, JSON.generate(reports.last))
-      assert_equal "1.3", Branchproof::SavedReport.read(report_path).fetch("schema_version")
+      assert_equal "1.4", Branchproof::SavedReport.read(report_path).fetch("schema_version")
       output, error, status = Open3.capture3(RbConfig.ruby, EXECUTABLE, "report", report_path, "--view", "decisions")
       assert status.success?, error
       assert_includes output, "Coverage ladder"

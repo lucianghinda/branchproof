@@ -9,6 +9,7 @@ require "branchproof/report"
 class TestDecisionTablePresentation < Minitest::Test
   Coordinator = Struct.new(:ladder) do
     def coverage_ladder_lines = Array(ladder)
+    def coverage_policy_lines = []
     def diagnostic_message(diagnostic) = diagnostic[:message].to_s
     def decision_table_requirement(value) = { "true" => "truthy", "false" => "falsey" }[value.to_s]
     def decision_table_reachability(rule) = rule[:reachability].to_s

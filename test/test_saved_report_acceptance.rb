@@ -22,7 +22,7 @@ class TestSavedReportAcceptance < Minitest::Test
       _, stderr, status = command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "saved.json")
       assert_equal 0, status, stderr
       document = JSON.parse(File.read(File.join(root, "saved.json")))
-      assert_equal "1.3", document["schema_version"]
+      assert_equal "1.4", document["schema_version"]
       assert_equal ["lib/**/*.rb"], document.dig("run_metadata", "source_patterns")
       assert_equal ["test/decision_test.rb"], document.dig("run_metadata", "test_files")
       count = marker_count(root)
@@ -99,6 +99,21 @@ class TestSavedReportAcceptance < Minitest::Test
       %w[branchproof mcdc].each do |executable|
         assert_equal 1, command(root, "analyze", "lib/**/*.rb", executable: executable).last
       end
+    end
+  end
+
+  def test_saved_policy_status_is_recomputed_instead_of_trusted
+    with_project do |root|
+      _, stderr, status = command(root, "analyze", "lib/**/*.rb", "--minimum", "mcdc=80", "--format", "json",
+                                  "--output", "saved.json")
+      assert_equal 0, status, stderr
+      document = JSON.parse(File.read(File.join(root, "saved.json")))
+      document["coverage_policy"]["status"] = "failed"
+      File.write(File.join(root, "forged.json"), JSON.generate(document))
+
+      _, report_stderr, report_status = command(root, "report", "forged.json")
+      assert_equal 2, report_status
+      assert_includes report_stderr, "coverage_policy"
     end
   end
 

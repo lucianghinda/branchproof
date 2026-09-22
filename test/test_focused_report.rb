@@ -164,4 +164,17 @@ class TestFocusedReport < Minitest::Test
 
     assert_equal before, Marshal.dump(snapshot)
   end
+
+  def test_policy_summary_renders_in_each_focused_view
+    snapshot = document
+    snapshot[:analysis][:coverage] = { mcdc: { proven_conditions: 1, supported_conditions: 1 } }
+
+    %i[conditions tests decision_tables].each do |view|
+      output = StringIO.new
+      Branchproof::Report.from_document(document: snapshot, view: view, level: 2, minimum: { mcdc: 100 })
+                         .write(io: output, format: :terminal)
+      assert_includes output.string, "Coverage policy: PASSED"
+      assert_includes output.string, "mcdc: 1/1, threshold 100, PASSED"
+    end
+  end
 end

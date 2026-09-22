@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require_relative "coverage_policy"
 
 module Branchproof
   # Loads and validates the project-local .branchproof.json policy.
@@ -8,7 +9,7 @@ module Branchproof
     SCHEMA_VERSION = 1
     PROJECTS = %w[auto ruby rails].freeze
     FRAMEWORKS = %w[auto minitest rspec].freeze
-    MINIMUM_CRITERIA = %w[decision condition condition_decision mcdc decision_table].freeze
+    MINIMUM_CRITERIA = CoveragePolicy::CRITERIA.keys.freeze
     FIELDS = %w[schema_version project framework sources tests exclude minimum].freeze
 
     class << self
@@ -101,26 +102,9 @@ module Branchproof
       def validate_minimum(value)
         raise ArgumentError, "configuration minimum must be an object" unless value.is_a?(Hash)
 
-        validate_minimum_criteria!(value)
-        value.each do |criterion, threshold|
-          criterion = criterion.to_s
-          valid = MINIMUM_CRITERIA.include?(criterion) && finite_percentage?(threshold)
-          next if valid
-
-          raise ArgumentError, "configuration minimum #{criterion} must be a finite number from 0 to 100"
-        end
-      end
-
-      def validate_minimum_criteria!(value)
-        unknown = value.keys.map(&:to_s) - MINIMUM_CRITERIA
-        return if unknown.empty?
-
-        raise ArgumentError, "configuration minimum has unknown criteria: #{unknown.join(", ")}"
-      end
-
-      def finite_percentage?(value)
-        numeric = value.is_a?(Integer) || (value.is_a?(Float) && value.finite?)
-        numeric && value >= 0 && value <= 100
+        CoveragePolicy.normalize(value)
+      rescue ArgumentError => e
+        raise ArgumentError, "configuration minimum #{e.message.sub(/\Acoverage minimum for /, "")}"
       end
     end
   end

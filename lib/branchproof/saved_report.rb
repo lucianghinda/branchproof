@@ -7,13 +7,14 @@
 require "json"
 # rubocop:disable-next Lint/RedundantRequireStatement -- supports standalone core entry
 require "set"
+require_relative "coverage_policy"
 require_relative "decision_table"
 
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
   class SavedReport
-    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3].freeze
-    STRICT_FLOW_SCHEMAS = %w[1.2 1.3].freeze
+    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4].freeze
+    STRICT_FLOW_SCHEMAS = %w[1.2 1.3 1.4].freeze
     DECISION_TABLE_STATUSES = %w[calculated not_calculated].freeze
     RULE_CONDITION_VALUES = DecisionTable::CONDITION_VALUES
     RULE_COVERAGE_STATUSES = DecisionTable::COVERAGE_STATUSES
@@ -60,6 +61,7 @@ module Branchproof
       validate_completeness(@document["completeness"])
       validate_completeness(@document.dig("observations", "completeness"))
       validate_completeness(@document.dig("analysis", "completeness")) if @document["analysis"]
+      validate_coverage_policy
       validate_optional_sections
       validate_analysis_coverage
       @document
@@ -218,7 +220,9 @@ module Branchproof
           fail_with("nonboolean condition results must be empty") unless results.empty?
           validate_nonboolean_analysis(decision, inventory_decision)
         elsif decision.key?("decision_table")
-          fail_with("decision tables are unsupported in legacy report schemas") unless @schema_version == "1.3"
+          unless %w[1.3 1.4].include?(@schema_version)
+            fail_with("decision tables are unsupported in legacy report schemas")
+          end
           validate_decision_table(decision["decision_table"], inventory_decision)
         end
         seen_conditions = {}
@@ -624,6 +628,28 @@ module Branchproof
       end
       validate_metadata(@document["run_metadata"]) if @document["run_metadata"]
       fail_with("document contains non-string object keys") unless all_hashes_have_string_keys?(@document)
+    end
+
+    def validate_coverage_policy
+      policy = @document["coverage_policy"]
+      fail_with("missing field: coverage_policy") if @schema_version == "1.4" && !policy
+      return if policy.nil?
+
+      fail_with("coverage_policy must be an object") unless hash_with_string_keys?(policy)
+      minimum = policy["minimum"]
+      fail_with("coverage_policy minimum must be an object") unless hash_with_string_keys?(minimum)
+      normalized = CoveragePolicy.normalize(minimum)
+      fail_with("coverage_policy status must be a string") unless policy["status"].is_a?(String)
+      fail_with("coverage_policy gates must be an array") unless policy["gates"].is_a?(Array)
+      expected = CoveragePolicy.new(minimum: normalized).call(
+        document: { baseline: @document["baseline"], completeness: @document["completeness"],
+                    observations: @document["observations"], analysis: @document["analysis"] }
+      )
+      actual = JSON.parse(JSON.generate(policy))
+      expected = JSON.parse(JSON.generate(expected))
+      fail_with("coverage_policy does not match report coverage") unless actual == expected
+    rescue ArgumentError => e
+      fail_with(e.message.sub(/\Ainvalid saved report: /, ""))
     end
 
     def validate_phases(vector)

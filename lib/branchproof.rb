@@ -10,6 +10,7 @@ require_relative "branchproof/project"
 module Branchproof
   class Error < StandardError; end
   autoload :Configuration, "branchproof/configuration"
+  autoload :CoveragePolicy, "branchproof/coverage_policy"
   autoload :CLI, "branchproof/cli"
   autoload :Instrumenter, "branchproof/instrumenter"
   autoload :Loader, "branchproof/loader"

@@ -232,6 +232,8 @@ Branchproof::Report.DECISION_TABLE_STATUS_LABELS,Constant,Branchproof/Report.md#
 Branchproof::Report.condition_coverage_evidence,Method,Branchproof/Report.md#method-i-condition_coverage_evidence
 Branchproof::Report.condition_explanation,Method,Branchproof/Report.md#method-i-condition_explanation
 Branchproof::Report.coverage_ladder_lines,Method,Branchproof/Report.md#method-i-coverage_ladder_lines
+Branchproof::Report.coverage_policy,Method,Branchproof/Report.md#method-i-coverage_policy
+Branchproof::Report.coverage_policy_lines,Method,Branchproof/Report.md#method-i-coverage_policy_lines
 Branchproof::Report.coverage_status_label,Method,Branchproof/Report.md#method-i-coverage_status_label
 Branchproof::Report.decision_table_expected_heading,Method,Branchproof/Report.md#method-i-decision_table_expected_heading
 Branchproof::Report.decision_table_reachability,Method,Branchproof/Report.md#method-i-decision_table_reachability
