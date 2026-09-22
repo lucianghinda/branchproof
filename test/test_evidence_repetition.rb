@@ -49,6 +49,16 @@ class TestEvidenceRepetition < Minitest::Test
     assert_equal 1, evidence.instance_variable_get(:@repetition_cache).size
   end
 
+  def test_reregistering_canonical_phase_counts_does_not_double_count_local_observations
+    evidence = Branchproof::Evidence.new(inventory: @inventory, limits: @limits, run_id: "run")
+    evidence.register_test(test: { id: "test", name: "test", adapter: "test" })
+    evidence.record(execution: execution)
+
+    evidence.register_test(test: { id: "test", name: "test", adapter: "test", phase_counts: { body: 1 } })
+
+    assert_equal({ "body" => 1 }, evidence.snapshot.dig(:tests, 0, :phase_counts))
+  end
+
   def test_cache_key_includes_phase_test_outcome_and_run_and_abort_is_not_cached
     evidence = Branchproof::Evidence.new(inventory: @inventory, limits: @limits, run_id: "run")
     %w[test other].each { |id| evidence.register_test(test: { id: id, name: id, adapter: "test" }) }

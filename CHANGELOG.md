@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+- Preserve setup, body, and teardown phase totals when independent evidence runs
+  are merged, keeping phase attribution complete in combined snapshots.
 ## [0.10.0] - 2026-09-21
 
 - Add the first-release RSpec execution path for plain Ruby and Rails projects.

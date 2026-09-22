@@ -44,6 +44,66 @@ class TestEvidence < Minitest::Test
     assert_empty evidence.snapshot[:vectors]
   end
 
+  def test_merging_two_compatible_snapshots_sums_shared_test_phase_counts
+    first = evidence_for_run("first", test_id: "shared", repetitions: 2)
+    second = evidence_for_run("second", test_id: "shared", repetitions: 2)
+    target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")
+
+    assert_equal "merged", target.merge(snapshot: first.snapshot)[:status]
+    assert_equal "merged", target.merge(snapshot: second.snapshot)[:status]
+    assert_equal 4, target.snapshot.dig(:vectors, 0, :count)
+    assert_equal({ "body" => 4 }, target.snapshot.dig(:tests, 0, :phase_counts))
+  end
+
+  def test_merging_snapshot_sums_with_local_test_phase_counts
+    target = evidence_for_run("target", test_id: "shared", repetitions: 2)
+    source = evidence_for_run("source", test_id: "shared", repetitions: 2)
+
+    assert_equal "merged", target.merge(snapshot: source.snapshot)[:status]
+    assert_equal 4, target.snapshot.dig(:vectors, 0, :count)
+    assert_equal({ "body" => 4 }, target.snapshot.dig(:tests, 0, :phase_counts))
+  end
+
+  def test_merging_json_roundtrip_sums_shared_test_phase_counts
+    source = evidence_for_run("source", test_id: "shared", repetitions: 2)
+    target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")
+
+    snapshot = JSON.parse(JSON.generate(source.snapshot))
+    assert_equal "merged", target.merge(snapshot: snapshot)[:status]
+    assert_equal({ "body" => 2 }, target.snapshot.dig(:tests, 0, :phase_counts))
+  end
+
+  def test_merging_identical_snapshot_twice_does_not_double_count_test_phases
+    source = evidence_for_run("source", test_id: "shared", repetitions: 2)
+    target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")
+
+    assert_equal "merged", target.merge(snapshot: source.snapshot)[:status]
+    assert_equal "merged", target.merge(snapshot: source.snapshot)[:status]
+    assert_equal 2, target.snapshot.dig(:vectors, 0, :count)
+    assert_equal({ "body" => 2 }, target.snapshot.dig(:tests, 0, :phase_counts))
+  end
+
+  def test_conflicting_snapshot_for_existing_run_id_does_not_mutate_test_phases
+    source = evidence_for_run("source", test_id: "shared", repetitions: 2)
+    target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")
+    assert_equal "merged", target.merge(snapshot: source.snapshot)[:status]
+    before = target.snapshot
+    conflicting = source.snapshot.merge(tests: [source.snapshot[:tests].first.merge(phase_counts: { "body" => 99 })])
+
+    assert_equal "rejected", target.merge(snapshot: conflicting)[:status]
+    assert_equal before, target.snapshot
+  end
+
+  def test_merging_snapshot_sums_each_normalized_lifecycle_phase_independently
+    first = evidence_for_run("first", test_id: "shared", phase_counts: { setup: 2, body: 2, teardown: 2 })
+    second = evidence_for_run("second", test_id: "shared", phase_counts: { setup: 2, body: 2, teardown: 2 })
+    target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")
+
+    assert_equal "merged", target.merge(snapshot: first.snapshot)[:status]
+    assert_equal "merged", target.merge(snapshot: second.snapshot)[:status]
+    assert_equal({ "setup" => 4, "body" => 4, "teardown" => 4 }, target.snapshot.dig(:tests, 0, :phase_counts))
+  end
+
   def test_snapshot_is_an_immutable_deep_copy
     evidence = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "run")
     evidence.record(execution: { run_id: "run", execution_id: "e", decision_id: "d", test_id: nil, phase: "body",
@@ -191,5 +251,20 @@ class TestEvidence < Minitest::Test
     result = evidence.merge(snapshot: snapshot.merge(vectors: [vector]))
     assert_equal "rejected", result[:status]
     assert_empty evidence.snapshot[:vectors]
+  end
+
+  private
+
+  def evidence_for_run(run_id, test_id:, repetitions: 1, phase_counts: nil)
+    evidence = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: run_id)
+    evidence.register_test(test: { id: test_id, name: test_id, adapter: "fake", phase_counts: phase_counts || {} })
+    if phase_counts.nil?
+      repetitions.times do |index|
+        evidence.record(execution: { run_id: run_id, execution_id: "#{run_id}-#{index}", decision_id: "d",
+                                     test_id: test_id, phase: "body", owner: {}, observations: [[0, true], [1, false]],
+                                     outcome: false, status: "completed" })
+      end
+    end
+    evidence
   end
 end
