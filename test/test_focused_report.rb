@@ -165,16 +165,104 @@ class TestFocusedReport < Minitest::Test
     assert_equal before, Marshal.dump(snapshot)
   end
 
-  def test_policy_summary_renders_in_each_focused_view
-    snapshot = document
-    snapshot[:analysis][:coverage] = { mcdc: { proven_conditions: 1, supported_conditions: 1 } }
+  def test_top_conditions_counts_condition_and_alternative_rows_and_reports_hidden_rows
+    io = StringIO.new
+    Branchproof::Report.from_document(document: document, view: :conditions, level: 2, top: 1)
+                       .write(io: io, format: :terminal)
+    output = io.string
 
-    %i[conditions tests decision_tables].each do |view|
-      output = StringIO.new
-      Branchproof::Report.from_document(document: snapshot, view: view, level: 2, minimum: { mcdc: 100 })
-                         .write(io: output, format: :terminal)
-      assert_includes output.string, "Coverage policy: PASSED"
-      assert_includes output.string, "mcdc: 1/1, threshold 100, PASSED"
+    assert_includes output, "Display limit: top 1 condition/alternative row"
+    assert_includes output, "hidden 1 condition/alternative row"
+    assert_includes output, "not risk-ranked"
+  end
+
+  def test_focus_with_no_match_is_distinct_from_no_missing_coverage
+    io = StringIO.new
+    Branchproof::Report.from_document(document: document, view: :conditions, level: 2,
+                                      focus: "lib/missing.rb:10", missing_only: true)
+                       .write(io: io, format: :terminal)
+    output = io.string
+
+    assert_includes output, "Focus: no matching decisions for lib/missing.rb:10"
+    refute_includes output, "No missing conditions"
+  end
+
+  def test_focus_with_no_match_stays_distinct_when_every_condition_is_proven
+    snapshot = document
+    snapshot[:analysis][:decisions].first[:condition_results].each { |result| result[:status] = "PROVEN" }
+    io = StringIO.new
+    Branchproof::Report.from_document(document: snapshot, view: :conditions, level: 2,
+                                      focus: "lib/missing.rb", missing_only: true)
+                       .write(io: io, format: :terminal)
+
+    assert_includes io.string, "Focus: no matching decisions for lib/missing.rb"
+    refute_includes io.string, "No missing conditions"
+  end
+
+  def test_focus_keeps_unsupported_conditions_visible_in_focused_views
+    snapshot = document
+    snapshot[:source_inventory][:decisions] << {
+      id: "unsupported", source_id: "s", support_status: "UNSUPPORTED", expression: "unsupported", line: 9,
+      conditions: [{ id: "unsupported-condition", index: 0, expression: "unsupported", line: 9 }]
+    }
+    io = StringIO.new
+    Branchproof::Report.from_document(document: snapshot, view: :conditions, level: 2,
+                                      focus: "lib/decision.rb:2").write(io: io, format: :terminal)
+
+    assert_includes io.string, "Unsupported conditions (MC/DC unavailable): 1 decision (run-wide)"
+    refute_includes io.string, "unsupported ("
+  end
+
+  def test_filtered_supplemental_sections_keep_counts_without_out_of_scope_details
+    snapshot = document
+    snapshot[:source_inventory][:decisions] << {
+      id: "unexecuted", source_id: "s", support_status: "SUPPORTED", expression: "unexecuted", line: 12,
+      conditions: [{ id: "unexecuted-condition", index: 0, expression: "unexecuted", line: 12 }]
+    }
+    snapshot[:source_inventory][:decisions] << {
+      id: "unsupported", source_id: "s", support_status: "UNSUPPORTED", expression: "out_of_focus", line: 14,
+      conditions: [{ id: "unsupported-condition", index: 0, expression: "out_of_focus", line: 14 }]
+    }
+    [{ focus: "lib/decision.rb:2" }, { top: 1 }].each do |selection|
+      io = StringIO.new
+      Branchproof::Report.from_document(document: snapshot, view: :conditions, level: 2, **selection)
+                         .write(io: io, format: :terminal)
+      output = io.string
+
+      assert_includes output, "Unexecuted conditions: 1 (run-wide)"
+      assert_includes output, "Unsupported conditions (MC/DC unavailable): 1 decision (run-wide)"
+      refute_includes output, "unexecuted"
+      refute_includes output, "out_of_focus"
+      refute_includes output, "lib/decision.rb:12"
+      refute_includes output, "lib/decision.rb:14"
     end
+  end
+
+  def test_test_view_top_counts_tests_even_when_a_test_has_no_observations
+    io = StringIO.new
+    Branchproof::Report.from_document(document: document, view: :tests, level: 2, top: 1)
+                       .write(io: io, format: :terminal)
+
+    assert_includes io.string, "Display limit: top 1 test"
+    assert_includes io.string, "hidden 2 tests"
+    refute_includes io.string, "Test: DecisionTest#test_skip"
+  end
+
+  def test_test_view_top_uses_source_path_order_when_display_filtered
+    snapshot = document
+    snapshot[:observations][:tests] = [
+      { id: "z", class_name: "T", method_name: "z_test", source: { relative_path: "z_test.rb", line: 30 }, status: "passed" },
+      { id: "a", class_name: "T", method_name: "a_test", source: { relative_path: "a_test.rb", line: 10 }, status: "passed" }
+    ]
+    snapshot[:observations][:vectors] = [
+      { id: "vz", decision_id: "d", values: [true, true], outcome: true, test_ids: ["z"], count: 1 },
+      { id: "va", decision_id: "d", values: [true, false], outcome: false, test_ids: ["a"], count: 1 }
+    ]
+    io = StringIO.new
+    Branchproof::Report.from_document(document: snapshot, view: :tests, level: 2, top: 1)
+                       .write(io: io, format: :terminal)
+
+    assert_includes io.string, "Test: T#a_test"
+    refute_includes io.string, "Test: T#z_test"
   end
 end

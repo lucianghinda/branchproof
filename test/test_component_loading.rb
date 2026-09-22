@@ -8,6 +8,18 @@ require "rbconfig"
 class TestComponentLoading < Minitest::Test
   LIB = File.expand_path("../lib", __dir__)
 
+  def test_main_entrypoint_exposes_report_selection_via_autoload
+    stdout, stderr, status = run_script(<<~RUBY)
+      require "branchproof"
+      selection = Branchproof::ReportSelection.new(top: 1)
+      abort "missing selection" unless selection.top == 1
+      puts "ok"
+    RUBY
+
+    assert status.success?, stderr
+    assert_equal "ok\n", stdout
+  end
+
   def test_report_loads_policy_when_required_as_a_standalone_component
     stdout, stderr, status = run_script(<<~RUBY)
       require "json"

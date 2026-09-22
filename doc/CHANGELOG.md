@@ -8,6 +8,12 @@
 - Persist policy decisions in live schema `1.4` reports while keeping saved
   schemas `1.0` through `1.3` readable; offline policy overrides do not load
   project configuration or mutate snapshots.
+- Add terminal-only `--focus PATH[:LINE]` and `--top N` selection for analyze
+  and report views. Selection uses captured source spans and deterministic source
+  order while leaving global summaries, gates, diagnostics, and exit status
+  unchanged.
+- Document a GitHub Actions artifact workflow that creates the output directory
+  and uploads reports after gate failures.
 - Preserve setup, body, and teardown phase totals when independent evidence runs
   are merged, keeping phase attribution complete in combined snapshots.
 - Add declarative `.branchproof.json` project configuration with CLI precedence,

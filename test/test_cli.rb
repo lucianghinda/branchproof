@@ -23,6 +23,8 @@ class TestCLI < Minitest::Test
     assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "mcdc=80", "--minimum", "mcdc=90"]) }
     assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "unknown=80"]) }
     assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "mcdc=NaN"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--format", "json", "--focus", "lib/a.rb"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--top"]) }
   end
 
   def test_primary_help_lists_offline_commands

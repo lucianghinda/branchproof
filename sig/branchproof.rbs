@@ -211,8 +211,8 @@ module Branchproof
     SCHEMA_VERSION: String
     CRITERION_VERSION: String
     VIEWS: Array[Symbol]
-    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?minimum: document?) -> void
-    def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool, ?minimum: document?) -> Report
+    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> void
+    def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> Report
     def diagnostic_message: (Hash[Symbol | String, untyped] diagnostic) -> String
     def condition_explanation: (decision_id: String, condition_id: String) -> String
     def decision_table_requirement: (untyped value) -> String?
@@ -234,8 +234,21 @@ module Branchproof
   end
 
   class FocusedReport
-    def initialize: (document: document, view: Symbol, level: Integer, ?missing_only: bool, ?coordinator: Report?) -> void
+    def initialize: (document: document, view: Symbol, level: Integer, ?missing_only: bool, ?coordinator: Report?, ?focus: String?, ?top: (Integer | String)?, ?selection: ReportSelection?) -> void
     def render: () -> String
+  end
+
+  class ReportSelection
+    attr_reader focus: record?
+    attr_reader top: Integer?
+    def initialize: (?focus: String?, ?top: (Integer | String)?) -> void
+    def active?: () -> bool
+    def focus_active?: () -> bool
+    def focus_label: () -> String?
+    def matching_decision_ids: (document: document) -> Array[String]
+    def filter_decisions: (Array[record] decisions, ?inventory: document) -> Array[record]
+    def limit: (Array[record] items) -> [Array[record], Integer]
+    def sort_key: (record decision, ?inventory: document) -> [String, Integer, Integer, String]
   end
 
   class SavedReport

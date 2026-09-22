@@ -5,6 +5,7 @@
 require "json"
 require "pathname"
 require_relative "coverage_policy"
+require_relative "report_selection"
 
 module Branchproof
   # Renders versioned terminal and JSON analysis reports.
@@ -17,7 +18,7 @@ module Branchproof
                                      "excluded" => "EXCLUDED" }.freeze
 
     def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false,
-                   view: :decisions, run_metadata: {}, saved_document: nil, minimum: nil)
+                   view: :decisions, run_metadata: {}, saved_document: nil, focus: nil, top: nil, minimum: nil)
       raise ArgumentError, "level must be 1, 2, or 3" unless [1, 2, 3].include?(level.to_i)
       unless VIEWS.include?(view.to_sym)
         raise ArgumentError, "view must be :decisions, :conditions, :tests, or :decision_tables"
@@ -38,21 +39,25 @@ module Branchproof
 
       @minimum_override = minimum.is_a?(Hash) && !minimum.empty? ? CoveragePolicy.normalize(minimum) : nil
       @minimum = effective_minimum
+      @selection = ReportSelection.new(focus: focus, top: top)
     end
 
-    def self.from_document(document:, level: nil, view: :decisions, missing_only: false, minimum: nil)
+    def self.from_document(document:, level: nil, view: :decisions, missing_only: false, focus: nil, top: nil,
+                           minimum: nil)
       data = document || {}
       new(inventory: data[:source_inventory] || data["source_inventory"],
           evidence: data[:observations] || data["observations"],
           analysis: data[:analysis] || data["analysis"], minima: data[:minima] || data["minima"],
           baseline: data[:baseline] || data["baseline"], diagnostics: data[:diagnostics] || data["diagnostics"],
           level: level || (data[:analysis] || data["analysis"] ? 3 : 1), view: view, missing_only: missing_only,
+          focus: focus, top: top,
           run_metadata: data[:run_metadata] || data["run_metadata"], saved_document: data, minimum: minimum)
     end
 
     def write(io:, format:)
       format = format.to_sym
       raise ArgumentError, "format must be :terminal or :json" unless %i[terminal json].include?(format)
+      raise ArgumentError, "focus and top filters are terminal-only" if format == :json && @selection.active?
 
       io.write(format == :json ? JSON.generate(json_document) : terminal_document)
       nil
@@ -159,7 +164,8 @@ module Branchproof
     def terminal_document
       unless @view == :decisions
         return FocusedReport.new(document: json_document, view: @view, level: @level,
-                                 missing_only: @missing_only, coordinator: self).render
+                                 missing_only: @missing_only, coordinator: self,
+                                 selection: @selection).render
       end
 
       @terminal_ids = terminal_ids
@@ -176,9 +182,11 @@ module Branchproof
       lines.concat(coverage_ladder_lines)
       lines.concat(coverage_policy_lines)
       lines << missing_summary_line if @missing_only
+      selected_decisions, hidden = selected_decisions_for_display
+      append_selection_lines(lines, hidden, "decision")
       lines << "Scope: supported decisions, conditions, and alternatives"
       lines << ""
-      decisions_to_render.each { |decision| render_decision(lines, decision) }
+      selected_decisions.each { |decision| render_decision(lines, decision) }
       render_minima(lines) unless @missing_only
       unless @diagnostics.empty?
         lines << "Diagnostics:"
@@ -944,6 +952,33 @@ module Branchproof
         end
     end
 
+    def selected_decisions_for_display
+      decisions = decisions_to_render
+      return [decisions, 0] unless @selection.active?
+
+      inventory = value(@inventory, :source_units) ? @inventory : { source_units: [], decisions: inventory_decisions }
+      decisions = @selection.filter_decisions(decisions, inventory: inventory)
+      decisions = decisions.sort_by { |decision| @selection.sort_key(decision, inventory: inventory) }
+      @selection.limit(decisions)
+    end
+
+    def append_selection_lines(lines, hidden, unit)
+      if @selection.focus_active?
+        matching = @selection.matching_decision_ids(json_document)
+        lines << if matching.empty?
+                   "Focus: no matching decisions for #{@selection.focus_label}"
+                 else
+                   "Focus: #{@selection.focus_label}"
+                 end
+      end
+      return unless @selection.top
+
+      noun = hidden == 1 ? unit : "#{unit}s"
+      hidden_noun = hidden == 1 ? unit : "#{unit}s"
+      lines << "Display limit: top #{@selection.top} #{noun}; hidden #{hidden} #{hidden_noun} " \
+               "(not risk-ranked)"
+    end
+
     def alternatives_to_render(decision)
       alternatives = Array(value(decision, :alternatives))
       return alternatives unless @missing_only && analysis_available?
@@ -974,10 +1009,6 @@ module Branchproof
 
     def analysis_available?
       !@analysis.nil?
-    end
-
-    def coverage_available?
-      analysis_available? && !value(@analysis, :coverage).nil?
     end
 
     def coverage_policy
@@ -1016,6 +1047,10 @@ module Branchproof
       inherited = value(value(@saved_document, :coverage_policy), :minimum)
       base = inherited.is_a?(Hash) ? CoveragePolicy.normalize(inherited) : {}
       base.merge(@minimum_override || {})
+    end
+
+    def coverage_available?
+      analysis_available? && !value(@analysis, :coverage).nil?
     end
 
     # Render the shared ladder in every terminal view.

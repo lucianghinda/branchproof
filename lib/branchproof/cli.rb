@@ -77,7 +77,8 @@ module Branchproof
       report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || snapshot,
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
                           level: options[:level], missing_only: options[:missing_only], view: options[:view],
-                          run_metadata: run_metadata(options, baseline), minimum: options[:minimum])
+                          run_metadata: run_metadata(options, baseline), minimum: options[:minimum],
+                          focus: options[:focus], top: options[:top])
       output_report(report, options)
       report.exit_code
     rescue ArgumentError => e
@@ -95,10 +96,11 @@ module Branchproof
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
+            [--focus PATH[:LINE]] [--top N]
             [--format terminal|json] [--output PATH] [--limits PATH] [--config PATH|--no-config]
             [--no-reachability] [-- RUNNER_ARGS]
           branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
-            [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
+            [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--focus PATH[:LINE]] [--top N]
             [--format terminal|json] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
@@ -144,7 +146,8 @@ module Branchproof
         end
 
         report = Report.from_document(document: document, level: options[:level], view: options[:view],
-                                      missing_only: options[:missing_only], minimum: options[:minimum_overrides])
+                                      missing_only: options[:missing_only], minimum: options[:minimum_overrides],
+                                      focus: options[:focus], top: options[:top])
         output_report(report, options)
         report.exit_code
       end
@@ -168,7 +171,7 @@ module Branchproof
           raise ArgumentError, "--fail-on-regression requires compare" unless command == "compare"
 
           options[:fail_on_regression] = true
-        when "--view", "--level", "--missing-only", "--minimum"
+        when "--view", "--level", "--missing-only", "--minimum", "--focus", "--top"
           raise ArgumentError, "#{token} requires report" unless command == "report"
 
           case token
@@ -180,6 +183,12 @@ module Branchproof
             raise ArgumentError, "level must be 1, 2, or 3" unless (1..3).cover?(options[:level])
           when "--minimum"
             add_minimum_override!(options, args.shift)
+          when "--focus"
+            options[:focus] = args.shift
+            raise ArgumentError, "--focus requires PATH or PATH:LINE" if options[:focus].nil? || options[:focus].start_with?("-")
+          when "--top"
+            options[:top] = args.shift
+            raise ArgumentError, "--top requires a positive integer" if options[:top].nil?
           else options[:missing_only] = true
           end
         else
@@ -192,6 +201,7 @@ module Branchproof
       raise ArgumentError, "#{command} requires #{expected} saved report #{expected == 1 ? "path" : "paths"}" unless paths.length == expected
 
       validate_view!(options)
+      validate_selection!(options)
       [options, paths]
     end
 
@@ -268,6 +278,12 @@ module Branchproof
           options[:missing_only] = true
         when "--minimum"
           add_minimum_override!(options, args.shift)
+        when "--focus"
+          options[:focus] = args.shift
+          raise ArgumentError, "--focus requires PATH or PATH:LINE" if options[:focus].nil? || options[:focus].start_with?("-")
+        when "--top"
+          options[:top] = args.shift
+          raise ArgumentError, "--top requires a positive integer" if options[:top].nil?
         when "--no-reachability"
           options[:reachability] = false
         when "--level"
@@ -345,6 +361,7 @@ module Branchproof
       end
       options[:project] = Project.new(root: root, mode: options[:project_mode], framework: options[:framework]).to_h
       validate_view!(options)
+      validate_selection!(options)
       if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
         raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
       end
@@ -374,6 +391,13 @@ module Branchproof
       raise
     rescue TypeError
       raise ArgumentError, "minimum threshold must be a finite number from 0 to 100"
+    end
+
+    def validate_selection!(options)
+      return unless options[:focus] || options[:top]
+      raise ArgumentError, "focus and top filters are terminal-only" if options[:format] == :json
+
+      ReportSelection.new(focus: options[:focus], top: options[:top])
     end
 
     def build_inventory(options)

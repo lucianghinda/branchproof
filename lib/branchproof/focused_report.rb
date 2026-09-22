@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/BlockLength, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+# rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/BlockLength, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/ParameterLists, Metrics/PerceivedComplexity
 require "pathname"
+require_relative "coverage_index"
+require_relative "report_selection"
 
 module Branchproof
   # Terminal renderings grouped around conditions or tests.
   class FocusedReport
     DECISION_TABLE_LABELS = { "true" => "T", "false" => "F", "dont_care" => "-" }.freeze
 
-    def initialize(document:, view:, level:, missing_only: false, coordinator: nil)
+    def initialize(document:, view:, level:, missing_only: false, coordinator: nil, focus: nil, top: nil,
+                   selection: nil)
       @document = document || {}
       @view = view.to_sym
       unless (Report::VIEWS - [:decisions]).include?(@view)
@@ -17,12 +20,14 @@ module Branchproof
 
       @level = level.to_i
       @missing_only = missing_only ? true : false
+      @selection = selection || ReportSelection.new(focus: focus, top: top)
       @index = CoverageIndex.new(document: @document)
       @tests = @index.tests.to_h { |test| [test[:id].to_s, test] }
       @test_name_counts = @index.tests.each_with_object(Hash.new(0)) do |test, counts|
         counts[[test[:name], test[:relative_path], test[:line]]] += 1
       end
       @coordinator = coordinator || Report.from_document(document: @document, level: @level)
+      @matching_decision_ids = @selection.focus_active? ? @selection.matching_decision_ids(@document) : nil
     end
 
     def render
@@ -45,21 +50,19 @@ module Branchproof
       end
       lines << "Empty groups mean no recorded completed observation."
       lines << ""
+      render_focus_notice(lines)
       lines.concat(@coordinator.coverage_ladder_lines)
       lines.concat(@coordinator.coverage_policy_lines)
       case @view
       when :conditions
         render_conditions(lines)
-        render_alternatives(lines)
       when :decision_tables
         render_decision_tables(lines)
       else
         render_tests(lines)
       end
-      unless @view == :decision_tables
-        render_unowned(lines)
-        render_unsupported(lines)
-      end
+      render_unowned(lines)
+      render_unsupported(lines)
       Array(fetch(@document, :diagnostics)).each do |diagnostic|
         lines << "Diagnostic: #{@coordinator.diagnostic_message(diagnostic)}"
       end
@@ -69,8 +72,8 @@ module Branchproof
     private
 
     def render_conditions(lines)
-      rows = @index.conditions
-      rows = rows.reject { |row| row[:status].to_s.upcase == "PROVEN" } if @missing_only && @level > 1
+      rows, alternatives, hidden = condition_rows_for_display
+      append_limit_summary(lines, hidden, "condition/alternative row")
       rows.each do |row|
         lines << "Condition: #{row[:expression]}"
         lines << "Location: #{location(row[:relative_path], row[:line], unavailable: "condition line unavailable")}"
@@ -109,7 +112,8 @@ module Branchproof
         end
         lines << ""
       end
-      lines << "No missing conditions" if @missing_only && rows.empty?
+      lines << "No missing conditions" if @missing_only && rows.empty? && focus_match_exists?
+      render_alternatives(lines, alternatives)
     end
 
     def coverage_available?
@@ -134,11 +138,12 @@ module Branchproof
     # --missing-only only uncovered, non-impossible rules remain: a rule proven
     # impossible is not a missing obligation.
     def render_decision_tables(lines)
-      rows = @index.decision_tables
+      all_rows = filtered_decision_tables
+      rows, hidden = limit_rows(all_rows)
+      append_limit_summary(lines, hidden, "decision")
       rendered = 0
-      impossible = 0
+      impossible = @index.decision_tables.sum { |row| row[:impossible_rules].to_i }
       rows.each do |row|
-        impossible += row[:impossible_rules].to_i
         rules = @missing_only ? row[:rules].select { |rule| rule[:coverage].to_s == "missing" } : row[:rules]
         next if @missing_only && rules.empty? && row[:status].to_s == "calculated"
 
@@ -188,9 +193,8 @@ module Branchproof
       lines << "    Reason: #{Constraints.message(rule[:reachability_reason])}"
     end
 
-    def render_alternatives(lines)
-      rows = @index.alternatives
-      rows = rows.select { |row| row[:missing] || row[:status].to_s != "covered" } if @missing_only && @level > 1
+    def render_alternatives(lines, rows = nil)
+      rows ||= filtered_alternatives
       rows.each do |row|
         lines << "Alternative #{row[:index]}: #{row[:expression]}"
         lines << "Location: #{location(row[:relative_path], row[:line],
@@ -209,7 +213,7 @@ module Branchproof
         end
         lines << ""
       end
-      lines << "No missing alternatives" if @missing_only && rows.empty?
+      lines << "No missing alternatives" if @missing_only && rows.empty? && focus_match_exists?
     end
 
     def render_alternative_group(lines, heading, evidence)
@@ -220,22 +224,22 @@ module Branchproof
     end
 
     def render_tests(lines)
-      rows = @index.tests
+      rows = filtered_tests
       missing_ids = @index.conditions.reject { |row| row[:status].to_s.upcase == "PROVEN" }.map { |row| row[:id] }
       missing_alternative_ids = @index.alternatives.select { |row| row[:missing] || row[:status].to_s != "covered" }
                                       .map { |row| row[:alternative_id] }
+      rows = rows.select do |row|
+        !@missing_only || test_observations(row, missing_ids, missing_alternative_ids).any?
+      end
+      rows, hidden = limit_rows(rows)
+      append_limit_summary(lines, hidden, "test")
       rows.each { |row| render_test_row(lines, row, missing_ids, missing_alternative_ids) }
     end
 
     def render_test_row(lines, row, missing_ids, missing_alternative_ids = [])
-      observations = row[:observations]
-      if @missing_only
-        observations = observations.select do |observation|
-          missing_ids.include?(observation[:condition_id]) ||
-            missing_alternative_ids.include?(observation[:alternative_id])
-        end
-        return if observations.empty?
-      end
+      observations = test_observations(row, missing_ids, missing_alternative_ids)
+      return if @missing_only && observations.empty?
+
       lines << "Test: #{row[:name]}"
       lines << "Location: #{location(row[:relative_path], row[:line], unavailable: "location unavailable")}"
       lines << "Status: #{row[:status] || "unknown"}"
@@ -292,6 +296,11 @@ module Branchproof
       groups.each do |heading, conditions|
         next if conditions.empty?
 
+        if @selection.active?
+          lines << "#{heading}: #{conditions.length} (run-wide)"
+          next
+        end
+
         lines << "#{heading}:"
         conditions.each do |row|
           unavailable = row[:alternative_id] ? "alternative location unavailable" : "condition line unavailable"
@@ -308,6 +317,12 @@ module Branchproof
       end
       return if excluded.empty?
 
+      if @selection.active?
+        noun = excluded.length == 1 ? "decision" : "decisions"
+        lines << "Unsupported conditions (MC/DC unavailable): #{excluded.length} #{noun} (run-wide)"
+        return
+      end
+
       lines << "Unsupported conditions (MC/DC unavailable):"
       excluded.each do |decision|
         source = sources[fetch(decision, :source_id)] || {}
@@ -319,6 +334,107 @@ module Branchproof
           label = location(path, fetch(condition, :line), unavailable: "condition line unavailable")
           lines << "  #{fetch(condition, :expression)} (#{label})"
         end
+      end
+    end
+
+    def render_focus_notice(lines)
+      return unless @selection.focus_active?
+
+      lines << if @matching_decision_ids.empty?
+                 "Focus: no matching decisions for #{@selection.focus_label}"
+               else
+                 "Focus: #{@selection.focus_label}"
+               end
+    end
+
+    def append_limit_summary(lines, hidden, unit)
+      return unless @selection.top
+
+      noun = hidden == 1 ? unit : "#{unit}s"
+      hidden_noun = hidden == 1 ? unit : "#{unit}s"
+      lines << "Display limit: top #{@selection.top} #{noun}; hidden #{hidden} #{hidden_noun} " \
+               "(not risk-ranked)"
+    end
+
+    def focus_match_exists?
+      !@selection.focus_active? || !@matching_decision_ids.empty?
+    end
+
+    def filtered_conditions
+      rows = @index.conditions
+      rows = rows.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) } if @selection.focus_active?
+      rows = rows.reject { |row| row[:status].to_s.upcase == "PROVEN" } if @missing_only && @level > 1
+      rows.sort_by do |row|
+        [row[:relative_path].to_s, row[:line].to_i, row[:column].to_i,
+         row[:decision_id].to_s, row[:index].to_i]
+      end
+    end
+
+    def filtered_alternatives
+      rows = @index.alternatives
+      rows = rows.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) } if @selection.focus_active?
+      rows = rows.select { |row| row[:missing] || row[:status].to_s != "covered" } if @missing_only && @level > 1
+      rows.sort_by do |row|
+        [row[:relative_path].to_s, row[:line].to_i, row[:column].to_i,
+         row[:decision_id].to_s, row[:index].to_i]
+      end
+    end
+
+    def condition_rows_for_display
+      conditions = filtered_conditions
+      alternatives = filtered_alternatives
+      return [conditions, alternatives, 0] unless @selection.top
+
+      combined = (conditions.map { |row| [:condition, row] } + alternatives.map { |row| [:alternative, row] })
+                 .sort_by do |kind, row|
+        [row[:relative_path].to_s, row[:line].to_i, row[:column].to_i, kind == :condition ? 0 : 1,
+         row[:decision_id].to_s, row[:index].to_i]
+      end
+      visible, hidden = @selection.limit(combined)
+      [visible.filter_map { |kind, row| row if kind == :condition },
+       visible.filter_map { |kind, row| row if kind == :alternative }, hidden]
+    end
+
+    def filtered_decision_tables
+      rows = @index.decision_tables
+      rows = rows.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) } if @selection.focus_active?
+      rows = rows.select do |row|
+        !@missing_only || row[:status].to_s != "calculated" || row[:rules].any? do |rule|
+          rule[:coverage].to_s == "missing"
+        end
+      end
+      rows.sort_by { |row| [row[:relative_path].to_s, row[:line].to_i, row[:decision_id].to_s] }
+    end
+
+    def filtered_tests
+      rows = @index.tests
+      return rows unless @selection.active?
+
+      if @selection.focus_active?
+        condition_ids = @index.conditions.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) }
+                              .map { |row| row[:id].to_s }
+        alternative_ids = @index.alternatives.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) }
+                                .map { |row| row[:alternative_id].to_s }
+        rows = rows.select do |row|
+          row[:observations].any? do |observation|
+            condition_ids.include?(observation[:condition_id].to_s) ||
+              alternative_ids.include?(observation[:alternative_id].to_s)
+          end
+        end
+      end
+      rows.sort_by { |row| [row[:relative_path].to_s, row[:line].to_i, row[:name].to_s, row[:id].to_s] }
+    end
+
+    def limit_rows(rows)
+      @selection.limit(rows)
+    end
+
+    def test_observations(row, missing_ids, missing_alternative_ids)
+      return row[:observations] unless @missing_only
+
+      row[:observations].select do |observation|
+        missing_ids.include?(observation[:condition_id]) ||
+          missing_alternative_ids.include?(observation[:alternative_id])
       end
     end
 
@@ -357,4 +473,4 @@ module Branchproof
   end
 end
 
-# rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/BlockLength, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+# rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/BlockLength, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/ParameterLists, Metrics/PerceivedComplexity

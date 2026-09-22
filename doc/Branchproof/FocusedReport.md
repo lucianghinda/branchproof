@@ -12,7 +12,7 @@ Terminal renderings grouped around conditions or tests.
 Not documented.
 
 ## Public Instance Methods
-### `initialize(document:, view:, level:, missing_only: = false, coordinator: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(document:, view:, level:, missing_only: = false, coordinator: = nil, focus: = nil, top: = nil, selection: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [FocusedReport] a new instance of FocusedReport
 
 ### `render()` <a id="method-i-render"></a> <a id="render-instance_method"></a>

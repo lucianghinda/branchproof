@@ -24,7 +24,7 @@ Not documented.
 Not documented.
 
 ## Public Class Methods
-### `from_document(document:, level: = nil, view: = :decisions, missing_only: = false, minimum: = nil)` <a id="method-c-from_document"></a> <a id="from_document-class_method"></a>
+### `from_document(document:, level: = nil, view: = :decisions, missing_only: = false, focus: = nil, top: = nil, minimum: = nil)` <a id="method-c-from_document"></a> <a id="from_document-class_method"></a>
 Not documented.
 
 ## Public Instance Methods
@@ -62,7 +62,7 @@ Formats source context consistently in live and saved terminal views.
 ### `exit_code()` <a id="method-i-exit_code"></a> <a id="exit_code-instance_method"></a>
 Not documented.
 
-### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil, minimum: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil, focus: = nil, top: = nil, minimum: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@raise** [ArgumentError]
 - **@return** [Report] a new instance of Report
 

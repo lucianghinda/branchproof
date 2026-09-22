@@ -94,6 +94,26 @@ class TestUtilityAcceptance < Minitest::Test
     end
   end
 
+  def test_focus_and_top_keep_policy_metrics_and_exit_unchanged
+    with_minitest_project do |root|
+      saved = run_cli(root, ["analyze", "--format", "json", "--minimum", "mcdc=100", "--output", "saved.json"],
+                      source: minitest_source(:partial))
+      assert_equal 1, saved.fetch(:status).exitstatus, saved.fetch(:stderr)
+      baseline = saved.fetch(:json)
+
+      unfiltered = run_cli(root, ["report", "saved.json"])
+      assert_equal 1, unfiltered.fetch(:status).exitstatus, unfiltered.fetch(:stderr)
+      focused = run_cli(root, ["report", "saved.json", "--focus", "lib/missing.rb", "--top", "1"])
+      assert_equal 1, focused.fetch(:status).exitstatus, focused.fetch(:stderr)
+      assert_includes focused.fetch(:stdout), "Focus: no matching decisions"
+      assert_includes focused.fetch(:stdout), "Coverage policy: FAILED"
+      assert_includes focused.fetch(:stdout), "mcdc:"
+      global_lines = unfiltered.fetch(:stdout).lines.grep(%r{^(MC/DC:|Coverage ladder:|Coverage policy:|  mcdc:)})
+      assert_equal global_lines, focused.fetch(:stdout).lines.grep(%r{^(MC/DC:|Coverage ladder:|Coverage policy:|  mcdc:)})
+      assert_equal baseline.fetch("coverage_policy"), JSON.parse(File.read(File.join(root, "saved.json"))).fetch("coverage_policy")
+    end
+  end
+
   def test_offline_report_survives_source_deletion_without_mutating_input_and_honors_saved_override
     with_minitest_project do |root|
       below = run_cli(root, ["analyze", "--format", "json", "--minimum", "mcdc=100", "--minimum", "decision=0",
@@ -147,6 +167,24 @@ class TestUtilityAcceptance < Minitest::Test
         assert_equal 0, reloaded.fetch(:status).exitstatus, "#{schema} overlay: #{reloaded.fetch(:stderr)}"
         assert_equal schema, reloaded.dig(:json, "schema_version")
         assert_equal 0, reloaded.dig(:json, "coverage_policy", "minimum", "mcdc")
+      end
+    end
+  end
+
+  def test_invalid_json_filters_and_thresholds_fail_before_worker_execution
+    with_minitest_project do |root|
+      marker = File.join(root, "worker-ran")
+      File.write(File.join(root, "test/decision_test.rb"), minitest_source(:marked, marker: marker))
+      [
+        ["--format", "json", "--focus", "lib/decision.rb"],
+        ["--minimum", "mcdc=NaN"],
+        ["--minimum", "mcdc=80", "--minimum", "mcdc=90"]
+      ].each do |arguments|
+        result = run_cli(root, ["analyze", "--test", "test/decision_test.rb", *arguments])
+
+        assert_equal 2, result.fetch(:status).exitstatus, arguments.inspect
+        assert_empty result.fetch(:stdout), arguments.inspect
+        refute File.exist?(marker), arguments.inspect
       end
     end
   end

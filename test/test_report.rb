@@ -101,6 +101,68 @@ class TestReport < Minitest::Test
     refute document.key?("coverage_policy")
   end
 
+  def test_focus_selects_a_multiline_decision_by_captured_expression_span
+    inventory = {
+      source_units: [
+        { source_id: "one", relative_path: "lib/one.rb" },
+        { source_id: "two", relative_path: "lib/two.rb" }
+      ],
+      decisions: [
+        { id: "one-decision", source_id: "one", line: 2, expression: "left &&\nright", conditions: [] },
+        { id: "two-decision", source_id: "two", line: 4, expression: "other", conditions: [] }
+      ]
+    }
+    report = base_report(inventory: inventory, focus: "./lib/one.rb:3")
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+
+    assert_includes output.string, "Decision one-deci"
+    refute_includes output.string, "Decision two-deci"
+  end
+
+  def test_focus_and_top_are_terminal_only_filters_and_do_not_change_json_or_exit
+    diagnostics = [{ code: "unsupported_source", message: "unsupported syntax", source_id: "source" }]
+    full = base_report(diagnostics: diagnostics)
+    filtered = base_report(focus: "lib/decision.rb", top: 1, diagnostics: diagnostics)
+    before = StringIO.new
+    full_json = StringIO.new
+    filtered_json = StringIO.new
+    full.write(io: before, format: :json)
+    full.write(io: full_json, format: :json)
+    terminal = StringIO.new
+    filtered.write(io: terminal, format: :terminal)
+    after = StringIO.new
+    full.write(io: after, format: :json)
+
+    assert_raises(ArgumentError) { filtered.write(io: filtered_json, format: :json) }
+    assert_includes terminal.string, "unsupported syntax"
+    assert_equal full.exit_code, filtered.exit_code
+    assert_equal before.string, after.string
+    assert_equal JSON.parse(full_json.string), JSON.parse(after.string)
+    assert_equal diagnostics.map { |item| item.transform_keys(&:to_s) }, JSON.parse(before.string).fetch("diagnostics")
+    assert_equal JSON.parse(before.string).fetch("metrics"), JSON.parse(after.string).fetch("metrics")
+    assert_equal JSON.parse(before.string).fetch("completeness"), JSON.parse(after.string).fetch("completeness")
+  end
+
+  def test_top_only_uses_deterministic_source_order
+    inventory = {
+      source_units: [{ source_id: "z", relative_path: "lib/z.rb" }, { source_id: "a", relative_path: "lib/a.rb" }],
+      decisions: [{ id: "z-decision", source_id: "z", line: 1, conditions: [] },
+                  { id: "a-decision", source_id: "a", line: 1, conditions: [] }]
+    }
+    output = StringIO.new
+    base_report(inventory: inventory, top: 1).write(io: output, format: :terminal)
+
+    assert_includes output.string, "lib/a.rb"
+    refute_includes output.string, "lib/z.rb"
+  end
+
+  def test_focus_rejects_absolute_upward_empty_and_nonpositive_lines
+    ["/tmp/project.rb", "../lib/project.rb", "", ":42", "lib/project.rb:0", "lib/project.rb:nope"].each do |focus|
+      assert_raises(ArgumentError, focus) { base_report(focus: focus) }
+    end
+  end
+
   def test_rspec_baseline_uses_example_counts_in_terminal_header
     report = base_report(run_metadata: { framework: "rspec" },
                          baseline: { status: "PASSED", executed_tests: 3,

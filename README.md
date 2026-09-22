@@ -576,6 +576,34 @@ execution. JSON output always contains the complete evidence document, so an
 explicit view cannot be combined with `--format json`. The `mcdc` executable
 accepts the same arguments for existing scripts.
 
+Terminal reports can be narrowed with `--focus PATH[:LINE]` and bounded with
+`--top N`, where `N` is a positive integer. These options are accepted by
+`analyze` and `report`, and are terminal-only. Focus matches the source spans
+captured in the report; rendering does not reopen or need the original source
+file. `--focus` and `--top` affect displayed detail only: the coverage summary,
+policy gates, diagnostics, exit status, and global counts remain unchanged.
+
+The default view limits decisions. In `--view decision-tables`, the units are
+decision tables; in `--view conditions`, condition and alternative rows; and
+in `--view tests`, test rows. Rows are ordered deterministically by project-
+relative path and source line, with deterministic tie-breakers for each view:
+decisions use column and stable ID; decision tables use decision ID; conditions
+and alternatives use column, decision ID, and condition or alternative index;
+tests use test name and ID. `--top` follows that source order; it does not rank
+rows by risk or coverage. For example:
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' --focus lib/access.rb:12 --top 5
+bundle exec branchproof report .branchproof/current.json --view conditions \
+  --focus lib/access.rb --top 10
+```
+
+Focus and top selections never create a new test run or alter policy scope.
+They also do not generate tests. RSpec rerun labels remain the existing
+recorded selectors and commands. The main finding rows respect the selection;
+supplemental unexecuted, unattributed, and unsupported sections retain their
+run-wide counts rather than expanding into all detail rows.
+
 ### Saved reports and offline comparison
 
 Reports are saved only when requested. Create a local artifact directory and
