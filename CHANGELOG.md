@@ -18,6 +18,9 @@
   are merged, keeping phase attribution complete in combined snapshots.
 - Add declarative `.branchproof.json` project configuration with CLI precedence,
   source exclusions, and comparison metadata for repeatable coverage runs.
+- Add a pipeline benchmark harness that exposes timing dimensions for future
+  measurements of coverage feedback costs.
+
 ## [0.10.0] - 2026-09-21
 
 - Add the first-release RSpec execution path for plain Ruby and Rails projects.
