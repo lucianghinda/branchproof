@@ -95,7 +95,8 @@ module Branchproof
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only]
-            [--format terminal|json] [--output PATH] [--limits PATH] [--no-reachability] [-- RUNNER_ARGS]
+            [--format terminal|json] [--output PATH] [--limits PATH] [--config PATH|--no-config]
+            [--no-reachability] [-- RUNNER_ARGS]
           branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
             [--level 1|2|3] [--missing-only] [--format terminal|json] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
@@ -211,11 +212,18 @@ module Branchproof
       metadata = {
         captured_at: Time.now.utc.iso8601, requested_level: options[:level], project_kind: options[:project][:kind],
         project_root: root, source_patterns: options[:source_patterns].map { |path| relative_path(path, root) },
+        exclude_patterns: Array(options[:exclude]).map { |path| relative_pattern(path, root) },
         test_patterns: options[:test_patterns].map { |path| relative_path(path, root) },
         test_files: Array(test_files).map { |path| relative_path(path, root) }, runner_args: options[:runner_args],
         seed: value(baseline, :seed), limits: options[:limits], test_locations: locations,
         reachability: options[:reachability]
       }
+      if options[:configuration]
+        metadata[:excluded_files] = Array(options[:excluded_files]).map { |path| relative_path(path, root) }
+        metadata[:selected_source_files] = Array(options[:selected_source_files]).map do |path|
+          relative_path(path, root)
+        end
+      end
       %i[selected_test_files selected_example_ids].each do |key|
         metadata[key] = value(baseline, key) if value(baseline, key)
       end
@@ -231,6 +239,10 @@ module Branchproof
       Pathname.new(File.expand_path(path, root)).relative_path_from(Pathname.new(root)).to_s
     end
 
+    def relative_pattern(path, root)
+      path.to_s.empty? ? path.to_s : relative_path(path, root)
+    end
+
     def parse(argv)
       return nil if argv.empty? || argv.first != "analyze"
 
@@ -240,7 +252,9 @@ module Branchproof
       args = args[0...delimiter] if delimiter
       options = { level: 3, format: :terminal, output: nil, tests: [], source_paths: [], limits: Limits.default,
                   runner_args: runner_args, project: nil, missing_only: false, view: :decisions,
-                  reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false }
+                  reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false,
+                  explicit_project: false, explicit_framework: false, explicit_sources: false,
+                  config_path: nil, config_disabled: false }
       until args.empty?
         token = args.shift
         case token
@@ -272,9 +286,20 @@ module Branchproof
         when "--framework"
           options[:framework] = args.shift
           raise ArgumentError, "--framework requires auto, minitest, or rspec" if options[:framework].nil? || options[:framework].empty?
+
+          options[:explicit_framework] = true
         when "--project"
           options[:project_mode] = args.shift
           raise ArgumentError, "--project requires auto, ruby, or rails" if options[:project_mode].nil? || options[:project_mode].empty?
+
+          options[:explicit_project] = true
+        when "--config"
+          options[:config_path] = args.shift
+          raise ArgumentError, "--config requires a readable JSON path" if options[:config_path].nil? || options[:config_path].empty?
+        when "--no-config"
+          raise ArgumentError, "--config and --no-config are mutually exclusive" if options[:config_path]
+
+          options[:config_disabled] = true
         when "--limits"
           limits_path = args.shift
           raise ArgumentError, "--limits requires a readable JSON path" unless limits_path && File.file?(limits_path)
@@ -286,9 +311,34 @@ module Branchproof
           raise ArgumentError, "unknown option: #{token}" if token.start_with?("-")
 
           options[:source_paths] << token
+          options[:explicit_sources] = true
         end
       end
-      options[:project] = Project.new(root: Dir.pwd, mode: options[:project_mode], framework: options[:framework]).to_h
+      root = Dir.pwd
+      if options[:config_path] && options[:config_disabled]
+        raise ArgumentError, "--config and --no-config are mutually exclusive"
+      end
+
+      configuration = Configuration.load(path: options[:config_path] || ".branchproof.json", root: root,
+                                         explicit: !options[:config_path].nil?, disabled: options[:config_disabled])
+      options[:configuration] = configuration
+      if configuration
+        options[:project_mode] = configuration[:project] if !options[:explicit_project] && configuration.key?(:project)
+        options[:framework] = configuration[:framework] if !options[:explicit_framework] && configuration.key?(:framework)
+        if !options[:explicit_sources] && configuration.key?(:sources)
+          options[:source_paths] = configuration[:sources].dup
+        end
+        if !options[:explicit_tests] && configuration.key?(:tests)
+          options[:tests] = configuration[:tests].dup
+          options[:explicit_tests] = true
+        end
+        options[:exclude] = Array(configuration[:exclude]).dup
+        options[:minimum] = configuration.fetch(:minimum, {}).dup
+      else
+        options[:exclude] = []
+        options[:minimum] = {}
+      end
+      options[:project] = Project.new(root: root, mode: options[:project_mode], framework: options[:framework]).to_h
       validate_view!(options)
       if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
         raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
@@ -303,6 +353,7 @@ module Branchproof
     end
 
     def build_inventory(options)
+      root = options[:project][:root]
       test_paths = options[:tests].filter_map do |path|
         File.realpath(path)
       rescue StandardError
@@ -313,13 +364,21 @@ module Branchproof
       rescue StandardError
         nil
       end
-      selected = expand_paths(options[:source_paths]).reject do |path|
-        relative = Pathname.new(path).relative_path_from(Pathname.new(Dir.pwd)).to_s
+      excluded = expand_paths(Array(options[:exclude]).reject(&:empty?), root: root)
+      excluded_paths = excluded.filter_map do |path|
+        File.realpath(path)
+      rescue StandardError
+        nil
+      end
+      selected = expand_paths(options[:source_paths], root: root).reject do |path|
+        relative = Pathname.new(path).relative_path_from(Pathname.new(root)).to_s
         canonical = File.realpath(path)
         relative.match?(%r{\A(?:test|spec|tool|vendor)(?:/|\z)}) ||
-          test_paths.include?(canonical) || loaded_paths.include?(canonical)
+          test_paths.include?(canonical) || loaded_paths.include?(canonical) || excluded_paths.include?(canonical)
       end
-      Source.new(root: Dir.pwd, limits: options[:limits]).inventory(paths: selected)
+      options[:excluded_files] = excluded
+      options[:selected_source_files] = selected
+      Source.new(root: root, limits: options[:limits]).inventory(paths: selected)
     end
 
     def empty_evidence(inventory, options)

@@ -304,6 +304,13 @@ Branchproof::SavedReport.COMPLETENESS_FIELDS,Constant,Branchproof/SavedReport.md
 Branchproof::SavedReport.initialize,Method,Branchproof/SavedReport.md#method-i-initialize
 Branchproof::SavedReport.validate!,Method,Branchproof/SavedReport.md#method-i-validate-21
 Branchproof::SavedReport.read,Method,Branchproof/SavedReport.md#method-c-read
+Branchproof::Configuration,Class,Branchproof/Configuration.md
+Branchproof::Configuration.SCHEMA_VERSION,Constant,Branchproof/Configuration.md#constant-SCHEMA_VERSION
+Branchproof::Configuration.PROJECTS,Constant,Branchproof/Configuration.md#constant-PROJECTS
+Branchproof::Configuration.FRAMEWORKS,Constant,Branchproof/Configuration.md#constant-FRAMEWORKS
+Branchproof::Configuration.MINIMUM_CRITERIA,Constant,Branchproof/Configuration.md#constant-MINIMUM_CRITERIA
+Branchproof::Configuration.FIELDS,Constant,Branchproof/Configuration.md#constant-FIELDS
+Branchproof::Configuration.load,Method,Branchproof/Configuration.md#method-c-load
 Branchproof::RailsSupport::Error,Class,Branchproof/RailsSupport/Error.md
 Branchproof::RSpecAdapter,Class,Branchproof/RSpecAdapter.md
 Branchproof::RSpecAdapter.FORBIDDEN_OPTIONS,Constant,Branchproof/RSpecAdapter.md#constant-FORBIDDEN_OPTIONS

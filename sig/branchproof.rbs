@@ -40,6 +40,15 @@ module Branchproof
     def to_h: () -> record
   end
 
+  class Configuration
+    SCHEMA_VERSION: Integer
+    PROJECTS: Array[String]
+    FRAMEWORKS: Array[String]
+    MINIMUM_CRITERIA: Array[String]
+    FIELDS: Array[String]
+    def self.load: (path: String, root: String, ?explicit: bool, ?disabled: bool) -> record?
+  end
+
   module RailsSupport
     def self.boot: (project: record) -> record
     def self.validate_rspec!: (project: record) -> record?

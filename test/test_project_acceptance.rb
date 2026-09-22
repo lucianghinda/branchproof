@@ -179,6 +179,43 @@ class ProjectAcceptanceTest < Minitest::Test
     end
   end
 
+  def test_configured_selection_and_exclusion_match_equivalent_cli_selection
+    project = build_project
+    write_project_files(project, <<~RUBY)
+      class ConfiguredProjectTest < Minitest::Test
+        def test_configured_selection
+          assert_equal :yes, branchproof_value(true)
+        end
+      end
+    RUBY
+    write_file(project, "lib/generated.rb", <<~RUBY)
+      def generated_decision(value)
+        value && value
+      end
+    RUBY
+    write_file(project, "config/policy.json", JSON.generate(
+                                                schema_version: 1,
+                                                sources: ["lib/**/*.rb"],
+                                                tests: ["test/project_test.rb"],
+                                                exclude: ["lib/generated.rb"]
+                                              ))
+
+    configured = run_project(project, args: ["--config", "config/policy.json"], source_args: [])
+    explicit = run_project(project, args: ["--test", "test/project_test.rb"], source_args: ["lib/decision.rb"])
+
+    assert_equal 0, configured[:status].exitstatus, configured[:stderr]
+    assert_equal 0, explicit[:status].exitstatus, explicit[:stderr]
+    configured_sources = configured[:json].fetch("source_inventory").fetch("source_units").map { |unit| unit.fetch("relative_path") }
+    assert_equal ["lib/decision.rb"], configured_sources
+    assert_equal ["lib/**/*.rb"], configured[:json].dig("run_metadata", "source_patterns")
+    assert_equal ["lib/generated.rb"], configured[:json].dig("run_metadata", "excluded_files")
+    assert_equal ["lib/decision.rb"], configured[:json].dig("run_metadata", "selected_source_files")
+    assert_equal explicit[:json].fetch("source_inventory").fetch("source_units").map { |unit| unit.fetch("relative_path") },
+                 configured_sources
+  ensure
+    cleanup_project(project)
+  end
+
   private
 
   def build_project
@@ -217,9 +254,10 @@ class ProjectAcceptanceTest < Minitest::Test
     File.binwrite(path, content)
   end
 
-  def run_project(project, args: [], tests: nil, runner_args: [])
+  def run_project(project, args: [], tests: nil, runner_args: [], source_args: nil)
     test_args = tests || []
-    cli_args = ["analyze", File.join(project.fetch(:root), "lib", "decision.rb"), "--format", "json"]
+    source_args ||= [File.join(project.fetch(:root), "lib", "decision.rb")]
+    cli_args = ["analyze", *source_args, "--format", "json"]
     test_args.each { |path| cli_args.push("--test", File.join(project.fetch(:root), path)) } unless test_args.empty?
     cli_args.concat(args)
     cli_args.push("--", *runner_args) unless runner_args.empty?

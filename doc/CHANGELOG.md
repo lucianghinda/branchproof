@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+- Add declarative `.branchproof.json` project configuration with CLI precedence,
+  source exclusions, and comparison metadata for repeatable coverage runs.
 - Preserve setup, body, and teardown phase totals when independent evidence runs
   are merged, keeping phase attribution complete in combined snapshots.
 ## [0.10.0] - 2026-09-21

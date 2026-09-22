@@ -107,6 +107,31 @@ files are selected explicitly. The worker prepends the project's `lib` and
 `test` directories (`lib` and `spec` for RSpec) to its child load path, so application `require` calls
 resolve without changing the parent process.
 
+Project defaults can be checked into `.branchproof.json` at the project root:
+
+```json
+{
+  "schema_version": 1,
+  "project": "rails",
+  "framework": "minitest",
+  "sources": ["app/**/*.rb"],
+  "tests": ["test/**/*_test.rb"],
+  "exclude": ["app/generated/**/*.rb"]
+}
+```
+
+`project` accepts `auto`, `ruby`, or `rails`; `framework` accepts `auto`,
+`minitest`, or `rspec`. `sources` and `tests` replace their corresponding
+defaults, while `exclude` removes matching source files before inventory. A
+configuration file may live elsewhere when passed with `--config PATH`; its
+patterns are still resolved from the project root. Use `--no-config` to disable
+the default file. Command-line project, framework, source, and test selections
+take precedence over the file. Configured `exclude` patterns are applied
+before source inventory and are recorded in run metadata for comparison.
+`--config` and `--no-config` cannot be used together. RSpec configuration
+selectors continue to conflict with an explicit test selection, including one
+supplied by this file.
+
 Rails analysis boots the application inside the isolated worker after
 Branchproof's loader and the selected framework hooks are installed. The
 application's `rails_helper` owns requiring and configuring `rspec/rails` after
