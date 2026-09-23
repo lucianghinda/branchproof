@@ -77,7 +77,8 @@ module Branchproof
       report = Report.new(inventory: inventory, evidence: value(baseline, :evidence) || snapshot,
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
                           level: options[:level], missing_only: options[:missing_only], view: options[:view],
-                          run_metadata: run_metadata(options, baseline))
+                          run_metadata: run_metadata(options, baseline), minimum: options[:minimum],
+                          focus: options[:focus], top: options[:top])
       output_report(report, options)
       report.exit_code
     rescue ArgumentError => e
@@ -94,10 +95,13 @@ module Branchproof
       @stdout.write(<<~HELP)
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
-            [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only]
-            [--format terminal|json] [--output PATH] [--limits PATH] [--no-reachability] [-- RUNNER_ARGS]
+            [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
+            [--focus PATH[:LINE]] [--top N]
+            [--format terminal|json] [--output PATH] [--limits PATH] [--config PATH|--no-config]
+            [--no-reachability] [-- RUNNER_ARGS]
           branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
-            [--level 1|2|3] [--missing-only] [--format terminal|json] [--output PATH]
+            [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--focus PATH[:LINE]] [--top N]
+            [--format terminal|json] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
         JSON always contains full evidence; --view requires terminal output.
@@ -142,14 +146,15 @@ module Branchproof
         end
 
         report = Report.from_document(document: document, level: options[:level], view: options[:view],
-                                      missing_only: options[:missing_only])
+                                      missing_only: options[:missing_only], minimum: options[:minimum_overrides],
+                                      focus: options[:focus], top: options[:top])
         output_report(report, options)
         report.exit_code
       end
     end
 
     def parse_offline(command, args)
-      options = { format: :terminal, view: :decisions, missing_only: false }
+      options = { format: :terminal, view: :decisions, missing_only: false, minimum_overrides: {} }
       paths = []
       until args.empty?
         token = args.shift
@@ -166,7 +171,7 @@ module Branchproof
           raise ArgumentError, "--fail-on-regression requires compare" unless command == "compare"
 
           options[:fail_on_regression] = true
-        when "--view", "--level", "--missing-only"
+        when "--view", "--level", "--missing-only", "--minimum", "--focus", "--top"
           raise ArgumentError, "#{token} requires report" unless command == "report"
 
           case token
@@ -176,6 +181,14 @@ module Branchproof
           when "--level"
             options[:level] = Integer(args.shift.to_s, 10)
             raise ArgumentError, "level must be 1, 2, or 3" unless (1..3).cover?(options[:level])
+          when "--minimum"
+            add_minimum_override!(options, args.shift)
+          when "--focus"
+            options[:focus] = args.shift
+            raise ArgumentError, "--focus requires PATH or PATH:LINE" if options[:focus].nil? || options[:focus].start_with?("-")
+          when "--top"
+            options[:top] = args.shift
+            raise ArgumentError, "--top requires a positive integer" if options[:top].nil?
           else options[:missing_only] = true
           end
         else
@@ -188,6 +201,7 @@ module Branchproof
       raise ArgumentError, "#{command} requires #{expected} saved report #{expected == 1 ? "path" : "paths"}" unless paths.length == expected
 
       validate_view!(options)
+      validate_selection!(options)
       [options, paths]
     end
 
@@ -211,11 +225,18 @@ module Branchproof
       metadata = {
         captured_at: Time.now.utc.iso8601, requested_level: options[:level], project_kind: options[:project][:kind],
         project_root: root, source_patterns: options[:source_patterns].map { |path| relative_path(path, root) },
+        exclude_patterns: Array(options[:exclude]).map { |path| relative_pattern(path, root) },
         test_patterns: options[:test_patterns].map { |path| relative_path(path, root) },
         test_files: Array(test_files).map { |path| relative_path(path, root) }, runner_args: options[:runner_args],
         seed: value(baseline, :seed), limits: options[:limits], test_locations: locations,
         reachability: options[:reachability]
       }
+      if options[:configuration]
+        metadata[:excluded_files] = Array(options[:excluded_files]).map { |path| relative_path(path, root) }
+        metadata[:selected_source_files] = Array(options[:selected_source_files]).map do |path|
+          relative_path(path, root)
+        end
+      end
       %i[selected_test_files selected_example_ids].each do |key|
         metadata[key] = value(baseline, key) if value(baseline, key)
       end
@@ -231,6 +252,10 @@ module Branchproof
       Pathname.new(File.expand_path(path, root)).relative_path_from(Pathname.new(root)).to_s
     end
 
+    def relative_pattern(path, root)
+      path.to_s.empty? ? path.to_s : relative_path(path, root)
+    end
+
     def parse(argv)
       return nil if argv.empty? || argv.first != "analyze"
 
@@ -240,7 +265,9 @@ module Branchproof
       args = args[0...delimiter] if delimiter
       options = { level: 3, format: :terminal, output: nil, tests: [], source_paths: [], limits: Limits.default,
                   runner_args: runner_args, project: nil, missing_only: false, view: :decisions,
-                  reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false }
+                  reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false,
+                  explicit_project: false, explicit_framework: false, explicit_sources: false,
+                  config_path: nil, config_disabled: false, minimum_overrides: {} }
       until args.empty?
         token = args.shift
         case token
@@ -249,6 +276,14 @@ module Branchproof
           options[:explicit_view] = true
         when "--missing-only"
           options[:missing_only] = true
+        when "--minimum"
+          add_minimum_override!(options, args.shift)
+        when "--focus"
+          options[:focus] = args.shift
+          raise ArgumentError, "--focus requires PATH or PATH:LINE" if options[:focus].nil? || options[:focus].start_with?("-")
+        when "--top"
+          options[:top] = args.shift
+          raise ArgumentError, "--top requires a positive integer" if options[:top].nil?
         when "--no-reachability"
           options[:reachability] = false
         when "--level"
@@ -272,9 +307,20 @@ module Branchproof
         when "--framework"
           options[:framework] = args.shift
           raise ArgumentError, "--framework requires auto, minitest, or rspec" if options[:framework].nil? || options[:framework].empty?
+
+          options[:explicit_framework] = true
         when "--project"
           options[:project_mode] = args.shift
           raise ArgumentError, "--project requires auto, ruby, or rails" if options[:project_mode].nil? || options[:project_mode].empty?
+
+          options[:explicit_project] = true
+        when "--config"
+          options[:config_path] = args.shift
+          raise ArgumentError, "--config requires a readable JSON path" if options[:config_path].nil? || options[:config_path].empty?
+        when "--no-config"
+          raise ArgumentError, "--config and --no-config are mutually exclusive" if options[:config_path]
+
+          options[:config_disabled] = true
         when "--limits"
           limits_path = args.shift
           raise ArgumentError, "--limits requires a readable JSON path" unless limits_path && File.file?(limits_path)
@@ -286,10 +332,36 @@ module Branchproof
           raise ArgumentError, "unknown option: #{token}" if token.start_with?("-")
 
           options[:source_paths] << token
+          options[:explicit_sources] = true
         end
       end
-      options[:project] = Project.new(root: Dir.pwd, mode: options[:project_mode], framework: options[:framework]).to_h
+      root = Dir.pwd
+      if options[:config_path] && options[:config_disabled]
+        raise ArgumentError, "--config and --no-config are mutually exclusive"
+      end
+
+      configuration = Configuration.load(path: options[:config_path] || ".branchproof.json", root: root,
+                                         explicit: !options[:config_path].nil?, disabled: options[:config_disabled])
+      options[:configuration] = configuration
+      if configuration
+        options[:project_mode] = configuration[:project] if !options[:explicit_project] && configuration.key?(:project)
+        options[:framework] = configuration[:framework] if !options[:explicit_framework] && configuration.key?(:framework)
+        if !options[:explicit_sources] && configuration.key?(:sources)
+          options[:source_paths] = configuration[:sources].dup
+        end
+        if !options[:explicit_tests] && configuration.key?(:tests)
+          options[:tests] = configuration[:tests].dup
+          options[:explicit_tests] = true
+        end
+        options[:exclude] = Array(configuration[:exclude]).dup
+        options[:minimum] = configuration.fetch(:minimum, {}).dup.merge(options[:minimum_overrides])
+      else
+        options[:exclude] = []
+        options[:minimum] = options[:minimum_overrides].dup
+      end
+      options[:project] = Project.new(root: root, mode: options[:project_mode], framework: options[:framework]).to_h
       validate_view!(options)
+      validate_selection!(options)
       if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
         raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
       end
@@ -302,7 +374,34 @@ module Branchproof
       options
     end
 
+    def add_minimum_override!(options, argument)
+      text = argument.to_s
+      match = text.match(/\A([a-z_]+)=([0-9]+(?:\.[0-9]+)?)\z/)
+      raise ArgumentError, "minimum must be CRITERION=THRESHOLD" unless match
+
+      criterion = match[1]
+      threshold_text = match[2]
+      threshold = threshold_text.include?(".") ? Float(threshold_text) : Integer(threshold_text, 10)
+      normalized = CoveragePolicy.normalize(criterion => threshold)
+      criterion = normalized.keys.first
+      raise ArgumentError, "duplicate coverage criterion: #{criterion}" if options[:minimum_overrides].key?(criterion)
+
+      options[:minimum_overrides][criterion] = normalized.fetch(criterion)
+    rescue ArgumentError
+      raise
+    rescue TypeError
+      raise ArgumentError, "minimum threshold must be a finite number from 0 to 100"
+    end
+
+    def validate_selection!(options)
+      return unless options[:focus] || options[:top]
+      raise ArgumentError, "focus and top filters are terminal-only" if options[:format] == :json
+
+      ReportSelection.new(focus: options[:focus], top: options[:top])
+    end
+
     def build_inventory(options)
+      root = options[:project][:root]
       test_paths = options[:tests].filter_map do |path|
         File.realpath(path)
       rescue StandardError
@@ -313,13 +412,21 @@ module Branchproof
       rescue StandardError
         nil
       end
-      selected = expand_paths(options[:source_paths]).reject do |path|
-        relative = Pathname.new(path).relative_path_from(Pathname.new(Dir.pwd)).to_s
+      excluded = expand_paths(Array(options[:exclude]).reject(&:empty?), root: root)
+      excluded_paths = excluded.filter_map do |path|
+        File.realpath(path)
+      rescue StandardError
+        nil
+      end
+      selected = expand_paths(options[:source_paths], root: root).reject do |path|
+        relative = Pathname.new(path).relative_path_from(Pathname.new(root)).to_s
         canonical = File.realpath(path)
         relative.match?(%r{\A(?:test|spec|tool|vendor)(?:/|\z)}) ||
-          test_paths.include?(canonical) || loaded_paths.include?(canonical)
+          test_paths.include?(canonical) || loaded_paths.include?(canonical) || excluded_paths.include?(canonical)
       end
-      Source.new(root: Dir.pwd, limits: options[:limits]).inventory(paths: selected)
+      options[:excluded_files] = excluded
+      options[:selected_source_files] = selected
+      Source.new(root: root, limits: options[:limits]).inventory(paths: selected)
     end
 
     def empty_evidence(inventory, options)

@@ -24,7 +24,7 @@ Not documented.
 Not documented.
 
 ## Public Class Methods
-### `from_document(document:, level: = nil, view: = :decisions, missing_only: = false)` <a id="method-c-from_document"></a> <a id="from_document-class_method"></a>
+### `from_document(document:, level: = nil, view: = :decisions, missing_only: = false, focus: = nil, top: = nil, minimum: = nil)` <a id="method-c-from_document"></a> <a id="from_document-class_method"></a>
 Not documented.
 
 ## Public Instance Methods
@@ -37,6 +37,12 @@ Shares the existing missing-case wording with focused terminal views.
 
 ### `coverage_ladder_lines()` <a id="method-i-coverage_ladder_lines"></a> <a id="coverage_ladder_lines-instance_method"></a>
 Render the shared ladder in every terminal view.
+
+### `coverage_policy()` <a id="method-i-coverage_policy"></a> <a id="coverage_policy-instance_method"></a>
+Not documented.
+
+### `coverage_policy_lines()` <a id="method-i-coverage_policy_lines"></a> <a id="coverage_policy_lines-instance_method"></a>
+Not documented.
 
 ### `coverage_status_label(status)` <a id="method-i-coverage_status_label"></a> <a id="coverage_status_label-instance_method"></a>
 Not documented.
@@ -56,7 +62,7 @@ Formats source context consistently in live and saved terminal views.
 ### `exit_code()` <a id="method-i-exit_code"></a> <a id="exit_code-instance_method"></a>
 Not documented.
 
-### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil, focus: = nil, top: = nil, minimum: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@raise** [ArgumentError]
 - **@return** [Report] a new instance of Report
 

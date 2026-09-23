@@ -8,7 +8,7 @@ module Branchproof
   # Compares two complete report documents without loading or executing the project.
   class Comparison
     SCHEMA_VERSION = "1.0"
-    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1 1.2 1.3].freeze
+    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4].freeze
     CRITERION_VERSION = "masking_occurrence_v1"
 
     def initialize(before:, after:)
@@ -481,6 +481,7 @@ module Branchproof
         reasons << "#{key} differs" if !left.nil? && !right.nil? && left != right
       end
       reasons << "source selection differs" if source_selection(@before) != source_selection(@after)
+      reasons << "source exclusion scope differs" if exclusion_scope(@before) != exclusion_scope(@after)
       reasons
     end
 
@@ -515,6 +516,10 @@ module Branchproof
 
     def source_selection(document)
       value(value(document, :run_metadata), :source_patterns)
+    end
+
+    def exclusion_scope(document)
+      Array(value(value(document, :run_metadata), :exclude_patterns))
     end
 
     def metadata_requirements

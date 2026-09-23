@@ -50,7 +50,9 @@ module Branchproof
       current = @tests[id] || { id: id, adapter: "unknown", name: id, source: nil, class_name: nil,
                                 method_name: nil, status: "unknown", phase_counts: {} }
       merged = current.merge(value).merge(id: id)
-      merged[:phase_counts] = (current[:phase_counts] || {}).merge(value[:phase_counts] || {})
+      merged[:phase_counts] = normalize_phase_counts(current[:phase_counts]).merge(
+        normalize_phase_counts(value[:phase_counts])
+      )
       @tests[id] = deep_dup(merged)
       status("registered", nil)
     end
@@ -172,7 +174,7 @@ module Branchproof
         @run_payloads[id] = Branchproof::Records.id(payload)
       end
       @run_ids |= incoming_runs
-      incoming.fetch(:tests, []).each { register_test(test: _1) }
+      incoming.fetch(:tests, []).each { merge_test(_1) }
       incoming.fetch(:vectors, []).each { merge_vector(_1) }
       @diagnostics.concat(incoming.fetch(:diagnostics, []))
       @abort_counts.merge!(incoming.fetch(:abort_counts, {})) { |_k, a, b| a.to_i + b.to_i }
@@ -334,6 +336,39 @@ module Branchproof
         @vector_counts_by_decision[decision_id] += 1
         @owner_associations_count += test_ids.length
         @owner_associations_count += 1 if unattributed_count.positive?
+      end
+    end
+
+    def merge_test(raw)
+      value = symbolize(raw)
+      value[:phase_counts] = normalize_phase_counts(value[:phase_counts])
+      id = (value[:id] || test_id(value)).to_s
+      unless @tests.key?(id)
+        register_test(test: value)
+        return unless @tests.key?(id)
+
+        return
+      end
+
+      current = @tests.fetch(id)
+      merged = current.merge(value).merge(id: id)
+      merged[:phase_counts] = sum_phase_counts(current[:phase_counts], value[:phase_counts])
+      @tests[id] = deep_dup(merged)
+    end
+
+    def normalize_phase_counts(value)
+      (value || {}).each_with_object({}) do |(phase, count), result|
+        key = phase.to_s
+        result[key] = result.fetch(key, 0) + count
+      end
+    end
+
+    def sum_phase_counts(*counts)
+      counts.each_with_object({}) do |phase_counts, result|
+        normalize_phase_counts(phase_counts).each do |phase, count|
+          result[phase] = result.fetch(phase, 0) + count
+        end
+        result
       end
     end
 

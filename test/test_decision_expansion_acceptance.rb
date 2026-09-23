@@ -42,7 +42,7 @@ class TestDecisionExpansionAcceptance < Minitest::Test
       stdout, stderr, status = command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "report.json")
       assert_equal 0, status, "#{stderr}\n#{stdout}"
       document = Branchproof::SavedReport.read(File.join(root, "report.json"))
-      assert_equal "1.3", document["schema_version"]
+      assert_equal "1.4", document["schema_version"]
       inventory = document.fetch("source_inventory").fetch("decisions")
       contexts = inventory.map { |decision| decision.fetch("context") }
       assert_equal %w[case or_assignment pattern_in safe_navigation short_circuit while], contexts.sort

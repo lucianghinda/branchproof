@@ -79,3 +79,55 @@ evidence of suite scalability or directly comparable to the expanded fixture.
 Rails, browser drivers, application boot, complex decisions, and broad corpus
 performance require their own integration measurements. Synthetic suite results
 must not be generalized to those workloads.
+
+## Pipeline phase benchmark
+
+`benchmark/pipeline.rb` measures the same synthetic ordinary and shared RSpec
+fixtures, plus the ordinary Minitest fixture, in fresh subprocesses. Each run
+records monotonic wall time and allocated objects for inventory, the worker,
+analysis, minimization, and report rendering. The worker phase is the parent
+CLI's `run_worker` interval, including child-process startup and test execution.
+Rendering is measured at `Report#write`; the surrounding `CLI#output_report`
+call is counted but has no second timer, so nested phase times are not
+double-counted. Startup, parsing, evidence merging, report setup, and other
+orchestration are the unmeasured remainder.
+Minitest is intentionally measured only with the ordinary fixture; shared
+suite measurements are RSpec-only. A shared-only Minitest selection is rejected.
+
+Select Ruby 3.4.7 using your Ruby version manager, then run the bounded smoke
+benchmark from the gem directory with its development bundle:
+
+```sh
+SMOKE=1 bundle exec ruby benchmark/pipeline.rb
+```
+
+The smoke run uses two examples, one decision, one repetition, levels 1 and 3,
+ordinary/shared RSpec, and ordinary Minitest. Level 3 executes the native CLI
+minimization path in full: two calls per decision plus one aggregate call;
+coverage, evidence, and report output are unchanged. Every JSON-lines run record includes the
+verified report status, decision/vector/test counts, per-phase measurements,
+per-process allocations, largest individual process peak RSS, phase total, and
+the explicit elapsed-time remainder. The remainder includes startup, parsing,
+evidence merging, report setup, process exit, and any other unmeasured work;
+phase totals are disjoint and do not include the surrounding `output_report`
+wrapper. Peak RSS is not the simultaneous process-tree footprint. The Fiddle
+probe is the same 64-bit macOS/Linux `getrusage` probe used by the RSpec adapter
+benchmark.
+
+Configuration is bounded with `EXAMPLES`, `DECISIONS`, `REPEATS`,
+`LEVELS=1,3`, `FRAMEWORKS=rspec,minitest`, and `SUITES=ordinary,shared`.
+`MATRIX=1` runs the five requested scenarios: 100, 500, and 2,000 examples at
+100 decisions, then 2,000 examples at 10, 50, and 100 decisions. The exact
+full matrix command is:
+
+```sh
+MATRIX=1 REPEATS=3 LEVELS=1,3 bundle exec ruby benchmark/pipeline.rb
+```
+
+This harness has no external Rails application trial. Rails, external gem, and
+real application measurements require separate fixtures and are not claimed by
+these synthetic results.
+
+The [2026-09-22 measurement report](developer-utility-2026-09-22.md) records the
+three-repeat ordinary/shared RSpec matrix, an external Minitest gem trial, and
+an internal Rails fixture trial, with phase breakdowns and compact per-run data.

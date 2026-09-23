@@ -69,6 +69,24 @@ class TestComparison < Minitest::Test
     refute_includes Branchproof::Comparison.new(before: before, after: after).call.fetch("reasons"), "runner_args differs"
   end
 
+  def test_missing_exclusion_metadata_is_equivalent_to_empty_scope
+    before = document(status: "PROVEN")
+    after = document(status: "PROVEN", run_metadata: { exclude_patterns: [] })
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    refute_includes result.fetch("reasons"), "source exclusion scope differs"
+  end
+
+  def test_changed_exclusion_scope_is_reported_as_a_comparability_reason
+    before = document(status: "PROVEN", run_metadata: { exclude_patterns: ["app/generated/**/*.rb"] })
+    after = document(status: "PROVEN", run_metadata: { exclude_patterns: ["app/legacy/**/*.rb"] })
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_includes result.fetch("reasons"), "source exclusion scope differs"
+  end
+
   def test_missing_metadata_and_nested_incompleteness_are_incomplete
     missing = document(status: "PROVEN").dup
     missing.delete(:run_metadata)

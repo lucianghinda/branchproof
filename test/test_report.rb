@@ -56,8 +56,111 @@ class TestReport < Minitest::Test
     output = StringIO.new
     base_report(inventory: { decisions: [] }).write(io: output, format: :json)
     document = JSON.parse(output.string)
-    assert_equal "1.3", document.fetch("schema_version")
+    assert_equal "1.4", document.fetch("schema_version")
     assert_nil document.fetch("metrics").fetch("percentage")
+  end
+
+  def test_report_persists_separate_policy_and_uses_policy_exit_status
+    report = base_report(inventory: { decisions: [{ id: "d", conditions: [{ id: "c", index: 0 }] }] },
+                         evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: true } },
+                         analysis: { coverage: { mcdc: { proven_conditions: 0, supported_conditions: 1 } },
+                                     completeness: { observation: true, attribution: true, analysis: true } },
+                         baseline: { status: "PASSED", finalized: true }, minimum: { mcdc: 100 })
+    output = StringIO.new
+    report.write(io: output, format: :json)
+    document = JSON.parse(output.string)
+
+    assert_equal "1.4", document.fetch("schema_version")
+    assert_equal "failed", document.dig("coverage_policy", "status")
+    assert_equal 0, document.dig("coverage_policy", "gates", 0, "numerator")
+    assert_equal 1, document.dig("coverage_policy", "gates", 0, "denominator")
+    assert_equal 1, report.exit_code
+  end
+
+  def test_saved_report_policy_override_preserves_input_schema_and_top_level_completeness
+    document = JSON.parse(base_report(
+      inventory: { decisions: [{ id: "d", conditions: [{ id: "c", index: 0 }] }] },
+      evidence: { vectors: [], completeness: { observation: true, attribution: true, analysis: true } },
+      analysis: { coverage: { mcdc: { proven_conditions: 1, supported_conditions: 1 } },
+                  completeness: { observation: true, attribution: true, analysis: true } },
+      baseline: { status: "PASSED", finalized: true }
+    ).then { |report| StringIO.new.tap { |io| report.write(io: io, format: :json) }.string })
+    document["schema_version"] = "1.3"
+    document.delete("coverage_policy")
+    document["completeness"]["analysis"] = false
+
+    report = Branchproof::Report.from_document(document: document, minimum: { mcdc: 100 })
+    output = StringIO.new
+    report.write(io: output, format: :json)
+    overridden = JSON.parse(output.string)
+
+    assert_equal "1.3", overridden.fetch("schema_version")
+    assert_equal "unavailable", overridden.dig("coverage_policy", "status")
+    assert_equal 2, report.exit_code
+    assert_equal "1.3", document.fetch("schema_version")
+    refute document.key?("coverage_policy")
+  end
+
+  def test_focus_selects_a_multiline_decision_by_captured_expression_span
+    inventory = {
+      source_units: [
+        { source_id: "one", relative_path: "lib/one.rb" },
+        { source_id: "two", relative_path: "lib/two.rb" }
+      ],
+      decisions: [
+        { id: "one-decision", source_id: "one", line: 2, expression: "left &&\nright", conditions: [] },
+        { id: "two-decision", source_id: "two", line: 4, expression: "other", conditions: [] }
+      ]
+    }
+    report = base_report(inventory: inventory, focus: "./lib/one.rb:3")
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+
+    assert_includes output.string, "Decision one-deci"
+    refute_includes output.string, "Decision two-deci"
+  end
+
+  def test_focus_and_top_are_terminal_only_filters_and_do_not_change_json_or_exit
+    diagnostics = [{ code: "unsupported_source", message: "unsupported syntax", source_id: "source" }]
+    full = base_report(diagnostics: diagnostics)
+    filtered = base_report(focus: "lib/decision.rb", top: 1, diagnostics: diagnostics)
+    before = StringIO.new
+    full_json = StringIO.new
+    filtered_json = StringIO.new
+    full.write(io: before, format: :json)
+    full.write(io: full_json, format: :json)
+    terminal = StringIO.new
+    filtered.write(io: terminal, format: :terminal)
+    after = StringIO.new
+    full.write(io: after, format: :json)
+
+    assert_raises(ArgumentError) { filtered.write(io: filtered_json, format: :json) }
+    assert_includes terminal.string, "unsupported syntax"
+    assert_equal full.exit_code, filtered.exit_code
+    assert_equal before.string, after.string
+    assert_equal JSON.parse(full_json.string), JSON.parse(after.string)
+    assert_equal diagnostics.map { |item| item.transform_keys(&:to_s) }, JSON.parse(before.string).fetch("diagnostics")
+    assert_equal JSON.parse(before.string).fetch("metrics"), JSON.parse(after.string).fetch("metrics")
+    assert_equal JSON.parse(before.string).fetch("completeness"), JSON.parse(after.string).fetch("completeness")
+  end
+
+  def test_top_only_uses_deterministic_source_order
+    inventory = {
+      source_units: [{ source_id: "z", relative_path: "lib/z.rb" }, { source_id: "a", relative_path: "lib/a.rb" }],
+      decisions: [{ id: "z-decision", source_id: "z", line: 1, conditions: [] },
+                  { id: "a-decision", source_id: "a", line: 1, conditions: [] }]
+    }
+    output = StringIO.new
+    base_report(inventory: inventory, top: 1).write(io: output, format: :terminal)
+
+    assert_includes output.string, "lib/a.rb"
+    refute_includes output.string, "lib/z.rb"
+  end
+
+  def test_focus_rejects_absolute_upward_empty_and_nonpositive_lines
+    ["/tmp/project.rb", "../lib/project.rb", "", ":42", "lib/project.rb:0", "lib/project.rb:nope"].each do |focus|
+      assert_raises(ArgumentError, focus) { base_report(focus: focus) }
+    end
   end
 
   def test_rspec_baseline_uses_example_counts_in_terminal_header

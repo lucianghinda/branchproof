@@ -16,6 +16,17 @@ class TestCLI < Minitest::Test
     assert_equal false, cli.send(:value, { finalized: false }, :finalized)
   end
 
+  def test_minimum_flags_are_normalized_merged_and_rejected_before_execution
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    options = cli.send(:parse, ["analyze", "--minimum", "mcdc=66.67", "--minimum", "decision=80"])
+    assert_equal({ "mcdc" => 66.67, "decision" => 80 }, options[:minimum])
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "mcdc=80", "--minimum", "mcdc=90"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "unknown=80"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum", "mcdc=NaN"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--format", "json", "--focus", "lib/a.rb"]) }
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--top"]) }
+  end
+
   def test_primary_help_lists_offline_commands
     stdout = StringIO.new
     status = Branchproof::CLI.new(stdout: stdout, stderr: StringIO.new).call(["--help"])
@@ -225,5 +236,79 @@ class TestCLI < Minitest::Test
     assert_equal true, payload[:test_selection_explicit]
     options[:explicit_tests] = false
     assert_equal false, cli.send(:worker_payload, options, {}, evidence, "/tmp/branchproof-test")[:test_selection_explicit]
+  end
+
+  def test_config_options_are_parsed_before_runner_delimiter
+    Dir.mktmpdir do |root|
+      File.write(File.join(root, ".branchproof.json"), JSON.generate(schema_version: 1, project: "ruby",
+                                                                     framework: "minitest",
+                                                                     sources: ["configured/**/*.rb"],
+                                                                     tests: ["configured_test.rb"]))
+      FileUtils.touch(File.join(root, "configured_test.rb"))
+      Dir.chdir(root) do
+        cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+        options = cli.send(:parse, ["analyze", "--config", ".branchproof.json", "--", "--config", "runner.json"])
+
+        assert_equal ["--config", "runner.json"], options[:runner_args]
+        assert_equal "ruby", options[:project_mode]
+        assert_equal "minitest", options[:framework]
+        assert_equal [File.realpath(File.join(root, "configured_test.rb"))], options[:tests]
+        assert_equal true, options[:explicit_tests]
+      end
+    end
+  end
+
+  def test_cli_minimum_overrides_one_config_criterion_and_retains_the_rest
+    Dir.mktmpdir do |root|
+      File.write(File.join(root, ".branchproof.json"), JSON.generate(schema_version: 1,
+                                                                     minimum: { mcdc: 70, decision: 80 }))
+      Dir.chdir(root) do
+        cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+        options = cli.send(:parse, ["analyze", "--minimum", "mcdc=90"])
+
+        assert_equal({ "mcdc" => 90, "decision" => 80 }, options[:minimum])
+      end
+    end
+  end
+
+  def test_cli_sources_and_tests_replace_configured_selections_and_cli_project_values_win
+    Dir.mktmpdir do |root|
+      File.write(File.join(root, ".branchproof.json"), JSON.generate(schema_version: 1, project: "rails",
+                                                                     framework: "rspec",
+                                                                     sources: ["configured/**/*.rb"],
+                                                                     tests: ["configured/**/*_spec.rb"]))
+      Dir.chdir(root) do
+        cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+        options = cli.send(:parse, ["analyze", "cli/**/*.rb", "--test", "cli/**/*_test.rb", "--project", "ruby",
+                                    "--framework", "minitest"])
+
+        assert_equal "ruby", options[:project_mode]
+        assert_equal "minitest", options[:framework]
+        assert_equal ["cli/**/*.rb"], options[:source_patterns]
+        assert_equal ["cli/**/*_test.rb"], options[:test_patterns]
+        assert_equal true, options[:explicit_tests]
+      end
+    end
+  end
+
+  def test_config_and_no_config_are_mutually_exclusive
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--config", "policy.json", "--no-config"]) }
+  end
+
+  def test_disabled_config_keeps_default_discovery
+    Dir.mktmpdir do |root|
+      File.write(File.join(root, ".branchproof.json"), JSON.generate(schema_version: 1, sources: ["configured/**/*.rb"],
+                                                                     tests: ["configured_test.rb"]))
+      FileUtils.mkdir_p(File.join(root, "test"))
+      FileUtils.touch(File.join(root, "test", "default_test.rb"))
+      Dir.chdir(root) do
+        cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+        options = cli.send(:parse, ["analyze", "--no-config"])
+
+        assert_equal [File.realpath(File.join(root, "test/default_test.rb"))], options[:tests]
+        assert_equal %w[lib/**/*.rb app/**/*.rb], options[:source_patterns]
+      end
+    end
   end
 end

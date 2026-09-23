@@ -40,6 +40,15 @@ module Branchproof
     def to_h: () -> record
   end
 
+  class Configuration
+    SCHEMA_VERSION: Integer
+    PROJECTS: Array[String]
+    FRAMEWORKS: Array[String]
+    MINIMUM_CRITERIA: Array[String]
+    FIELDS: Array[String]
+    def self.load: (path: String, root: String, ?explicit: bool, ?disabled: bool) -> record?
+  end
+
   module RailsSupport
     def self.boot: (project: record) -> record
     def self.validate_rspec!: (project: record) -> record?
@@ -115,6 +124,14 @@ module Branchproof
     def call: () -> record
     def pair?: (decision_id: String, condition_index: Integer, left: record, right: record) -> bool
     def missing: (decision_id: String, condition_index: Integer) -> record?
+  end
+
+  class CoveragePolicy
+    CRITERIA: Hash[String, Hash[Symbol, String]]
+    COMPLETENESS_FIELDS: Array[String]
+    def self.normalize: (Hash[String | Symbol, untyped] minimum) -> Hash[String, Integer | Float]
+    def initialize: (minimum: Hash[String | Symbol, untyped]) -> void
+    def call: (document: document?) -> record
   end
 
   module Constraints
@@ -194,13 +211,15 @@ module Branchproof
     SCHEMA_VERSION: String
     CRITERION_VERSION: String
     VIEWS: Array[Symbol]
-    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?) -> void
-    def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool) -> Report
+    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> void
+    def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> Report
     def diagnostic_message: (Hash[Symbol | String, untyped] diagnostic) -> String
     def condition_explanation: (decision_id: String, condition_id: String) -> String
     def decision_table_requirement: (untyped value) -> String?
     def decision_table_reachability: (document rule) -> String
     def decision_table_expected_heading: (document decision) -> String
+    def coverage_policy: () -> record
+    def coverage_policy_lines: () -> Array[String]
     def rerun_command: (String test_id) -> String?
     def write: (io: _WriteIO, format: Symbol | String) -> nil
     def exit_code: () -> Integer
@@ -215,8 +234,21 @@ module Branchproof
   end
 
   class FocusedReport
-    def initialize: (document: document, view: Symbol, level: Integer, ?missing_only: bool) -> void
+    def initialize: (document: document, view: Symbol, level: Integer, ?missing_only: bool, ?coordinator: Report?, ?focus: String?, ?top: (Integer | String)?, ?selection: ReportSelection?) -> void
     def render: () -> String
+  end
+
+  class ReportSelection
+    attr_reader focus: record?
+    attr_reader top: Integer?
+    def initialize: (?focus: String?, ?top: (Integer | String)?) -> void
+    def active?: () -> bool
+    def focus_active?: () -> bool
+    def focus_label: () -> String?
+    def matching_decision_ids: (document: document) -> Array[String]
+    def filter_decisions: (Array[record] decisions, ?inventory: document) -> Array[record]
+    def limit: (Array[record] items) -> [Array[record], Integer]
+    def sort_key: (record decision, ?inventory: document) -> [String, Integer, Integer, String]
   end
 
   class SavedReport

@@ -9,6 +9,9 @@ require_relative "branchproof/project"
 # Public namespace for source inventory and one-run MC/DC reporting.
 module Branchproof
   class Error < StandardError; end
+  autoload :Configuration, "branchproof/configuration"
+  autoload :CoveragePolicy, "branchproof/coverage_policy"
+  autoload :ReportSelection, "branchproof/report_selection"
   autoload :CLI, "branchproof/cli"
   autoload :Instrumenter, "branchproof/instrumenter"
   autoload :Loader, "branchproof/loader"
