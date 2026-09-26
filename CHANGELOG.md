@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-25
+
 - Add validated coverage policies for Decision, Condition, Condition/Decision,
   MC/DC, and Decision Table criteria. Repeatable `--minimum criterion=threshold`
   options override matching project or saved-report policy entries, compare
