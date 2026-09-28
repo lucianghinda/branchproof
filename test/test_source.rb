@@ -226,6 +226,33 @@ class TestSource < Minitest::Test
     end
   end
 
+  def test_always_truthy_literals_record_true_literal_truth
+    Dir.mktmpdir do |root|
+      path = File.join(root, "fallbacks.rb")
+      File.write(path, <<~RUBY)
+        def label(name, id)
+          name || "" || "Item #\#{id}" || :fallback || :"sym_\#{id}" || 0 || 1.5 || 2r || 3i
+        end
+      RUBY
+      decision = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default)
+                                    .inventory(paths: [path])[:decisions].first
+
+      assert_equal([nil, true, true, true, true, true, true, true, true],
+                   decision[:conditions].map { |c| c[:literal_truth] })
+    end
+  end
+
+  def test_regular_expression_literal_is_not_a_static_truth
+    Dir.mktmpdir do |root|
+      path = File.join(root, "regexp.rb")
+      File.write(path, "if ready || /done/\nend\n")
+      decision = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default)
+                                    .inventory(paths: [path])[:decisions].first
+
+      assert_equal([nil, nil], decision[:conditions].map { |c| c[:literal_truth] })
+    end
+  end
+
   def test_paths_require_strings_and_ambiguous_parentheses_are_unsupported
     source = Branchproof::Source.new(root: Dir.pwd, limits: Branchproof::Limits.default)
     assert_raises(ArgumentError) { source.inventory(paths: [nil]) }

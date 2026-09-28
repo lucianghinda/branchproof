@@ -22,6 +22,15 @@ module Branchproof
     prepend DefaultSyntax
     prepend ValueSyntax
 
+    # Strings, symbols, and numbers are always truthy. A regexp literal in a
+    # condition matches against $_, so its truth is not static.
+    ALWAYS_TRUTHY_LITERALS = [
+      Prism::TrueNode, Prism::StringNode, Prism::InterpolatedStringNode,
+      Prism::SymbolNode, Prism::InterpolatedSymbolNode, Prism::IntegerNode,
+      Prism::FloatNode, Prism::RationalNode, Prism::ImaginaryNode
+    ].freeze
+    private_constant :ALWAYS_TRUTHY_LITERALS
+
     attr_reader :root, :limits
 
     def initialize(root:, limits:)
@@ -410,7 +419,7 @@ module Branchproof
     end
 
     def literal_truth(node)
-      return true if node.is_a?(Prism::TrueNode)
+      return true if ALWAYS_TRUTHY_LITERALS.any? { |type| node.is_a?(type) }
       return false if node.is_a?(Prism::FalseNode) || node.is_a?(Prism::NilNode)
 
       nil
