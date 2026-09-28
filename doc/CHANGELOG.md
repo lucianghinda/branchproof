@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [0.11.1] - 2026-09-28
+
+- Treat string, interpolated string, symbol, and numeric literal conditions as
+  always truthy. Rules that need such a literal to be falsey, as in
+  `name || "Item #{id}"`, are now excluded as statically impossible instead of
+  being reported as missing with unknown reachability.
+
 ## [0.11.0] - 2026-09-25
 
 - Add validated coverage policies for Decision, Condition, Condition/Decision,

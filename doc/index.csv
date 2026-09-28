@@ -245,6 +245,7 @@ Branchproof::Report.rerun_command,Method,Branchproof/Report.md#method-i-rerun_co
 Branchproof::Report.write,Method,Branchproof/Report.md#method-i-write
 Branchproof::Report.from_document,Method,Branchproof/Report.md#method-c-from_document
 Branchproof::Source,Class,Branchproof/Source.md
+Branchproof::Source.ALWAYS_TRUTHY_LITERALS,Constant,Branchproof/Source.md#constant-ALWAYS_TRUTHY_LITERALS
 Branchproof::Source.initialize,Method,Branchproof/Source.md#method-i-initialize
 Branchproof::Source.inventory,Method,Branchproof/Source.md#method-i-inventory
 Branchproof::Source.value_decisions_for,Method,Branchproof/Source.md#method-i-value_decisions_for

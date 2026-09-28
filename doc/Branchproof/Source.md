@@ -8,6 +8,11 @@
 
 Inventories supported condition and decision occurrences from Ruby files.
 
+## Constants
+### `ALWAYS_TRUTHY_LITERALS` <a id="constant-ALWAYS_TRUTHY_LITERALS"></a> <a id="ALWAYS_TRUTHY_LITERALS-constant"></a>
+Strings, symbols, and numbers are always truthy. A regexp literal in a
+condition matches against $_, so its truth is not static.
+
 ## Attributes
 ### `limits` [R] <a id="attribute-i-limits"></a> <a id="limits-instance_method"></a>
 Returns the value of attribute limits.
