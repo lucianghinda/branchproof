@@ -333,6 +333,38 @@ class TestFlowBehavior < Minitest::Test
     assert_equal [[true]], vectors
   end
 
+  def test_fallback_records_the_first_truthy_operand_and_keeps_evaluation_order
+    source = <<~APP
+      def self.exercise(value)
+        events = []
+        first = value == :first ? "first" : nil
+        second = value == :second ? "second" : false
+        result = (events << :a; first) || (events << :b; second) || "fallback"
+        [result, events]
+      end
+    APP
+    inventory, evidence = compare(source, %i[first second neither])
+    decision = inventory[:decisions].find { |entry| entry[:context] == "fallback" }
+    vectors = evidence[:vectors].select { |vector| vector[:decision_id] == decision[:id] }
+
+    assert_equal([[true, nil, nil], [false, true, nil], [false, false, true]],
+                 vectors.map { |vector| vector[:values] }.sort_by { |values| values.index(true) })
+    assert(vectors.all? { |vector| vector[:test_ids] == ["FlowTest#exercise"] })
+  end
+
+  def test_two_operand_fallback_records_implicit_paths
+    source = <<~APP
+      def self.exercise(value)
+        value || "fallback"
+      end
+    APP
+    inventory, evidence = compare(source, ["given", nil, false])
+    decision = inventory[:decisions].find { |entry| entry[:context] == "fallback" }
+    values = evidence[:vectors].select { |vector| vector[:decision_id] == decision[:id] }.map { |v| v[:values] }
+
+    assert_equal([[true, false], [false, true]], values.sort_by { |pair| pair.index(true) })
+  end
+
   private
 
   def rewrite_source(source)

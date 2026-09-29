@@ -3,6 +3,7 @@
 require_relative "flow_instrumentation"
 require_relative "iteration_instrumentation"
 require_relative "exception_instrumentation"
+require_relative "fallback_instrumentation"
 require_relative "default_instrumentation"
 require_relative "value_instrumentation"
 
@@ -14,6 +15,7 @@ module Branchproof
     include FlowInstrumentation
     include IterationInstrumentation
     include ExceptionInstrumentation
+    include FallbackInstrumentation
     prepend DefaultInstrumentation
     prepend ValueInstrumentation
 
