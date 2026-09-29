@@ -338,6 +338,41 @@ module Branchproof
     def exit_code: (?fail_on_regression: bool) -> Integer
   end
 
+  class RakeTask < Rake::TaskLib
+    OPTIONS: Array[Symbol]
+    REPEATED_FLAGS: Hash[Symbol, String]
+    DEFAULTS: Hash[Symbol, untyped]
+    attr_reader name: Symbol
+    attr_accessor description: String
+    attr_reader sources: Array[String]
+    attr_reader tests: Array[String]
+    attr_reader project: String
+    attr_reader framework: String
+    attr_reader view: String
+    attr_reader level: Integer
+    attr_reader missing_only: bool
+    attr_reader minimum: Array[String]
+    attr_reader format: String
+    attr_reader output: String?
+    attr_reader runner_args: Array[String]
+    def initialize: (?Symbol | String name) ?{ (RakeTask) -> void } -> void
+    def sources=: (Array[String] | String value) -> Array[String]
+    def tests=: (Array[String] value) -> Array[String]
+    def project=: (String value) -> String
+    def framework=: (String value) -> String
+    def view=: (String value) -> String
+    def level=: (Integer value) -> Integer
+    def missing_only=: (bool value) -> bool
+    def minimum=: (Array[String] value) -> Array[String]
+    def format=: (String value) -> String
+    def output=: (String? value) -> String?
+    def runner_args=: (Array[String] | String value) -> Array[String]
+    def argv: () -> Array[String]
+    def command: () -> Array[String]
+    def executable: () -> String
+    def run: () -> void
+  end
+
   interface _Env
     def []: (String) -> String?
   end

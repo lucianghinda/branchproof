@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+- Add `Branchproof::RakeTask`. `require "branchproof/rake_task"` defines a
+  Rake task that runs `branchproof analyze` in a subprocess with the options
+  set in the Rakefile. Unset options keep the CLI and `.branchproof.json`
+  defaults, and a non-zero CLI exit status fails the Rake process with the
+  same status.
+
 ## [0.11.1] - 2026-09-28
 
 - Treat string, interpolated string, symbol, and numeric literal conditions as

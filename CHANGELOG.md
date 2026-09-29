@@ -13,6 +13,11 @@
   and unmet policy gates, and a final coverage notice. Annotation paths are
   made repository-relative with `GITHUB_WORKSPACE`. When `GITHUB_STEP_SUMMARY` is set, it
   also appends a Markdown job summary with the ladder, gates, and ranked gaps.
+- Add `Branchproof::RakeTask`. `require "branchproof/rake_task"` defines a
+  Rake task that runs `branchproof analyze` in a subprocess with the options
+  set in the Rakefile. Unset options keep the CLI and `.branchproof.json`
+  defaults, and a non-zero CLI exit status fails the Rake process with the
+  same status.
 
 ## [0.12.0] - 2026-09-29
 
