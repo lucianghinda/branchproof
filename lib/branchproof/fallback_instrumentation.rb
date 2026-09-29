@@ -17,6 +17,8 @@ module Branchproof
           "#{self.class::RUNTIME}.fallback_operand(#{identifier}, #{index}, #{implicit}, (#{expression}))"
         end
       end
+      # No default_path: fallback_chain? guarantees the last operand is a truthy
+      # literal, so the frame always finishes through fallback_operand above.
       flow_frame(decision[:id], flow_fragments(bytes, decision, nested, replacements, encloses))
     end
   end

@@ -5,6 +5,11 @@ module Branchproof
   # the first truthy operand and is never false. It is inventoried as
   # alternatives (which operand supplied the value), not as a Boolean decision.
   module FallbackSyntax
+    # A jump never supplies a value, so it cannot be a fallback operand.
+    JUMP_NODES = [Prism::ReturnNode, Prism::BreakNode, Prism::NextNode, Prism::RedoNode,
+                  Prism::RetryNode].freeze
+    private_constant :JUMP_NODES
+
     private
 
     def fallback_chain?(node)
@@ -13,7 +18,7 @@ module Branchproof
       operands = fallback_operands(node)
       last = operands.last
       literal_truth(last) == true && !last.is_a?(Prism::TrueNode) &&
-        operands[0...-1].none? { |operand| logical_operand?(operand) }
+        operands[0...-1].none? { |operand| logical_operand?(operand) || jump_operand?(operand) }
     end
 
     # Only reached for OrNodes already gated by fallback_chain? in Source#decisions_for phase two.
@@ -45,6 +50,11 @@ module Branchproof
     def logical_operand?(operand)
       operand = unwrap_predicate(operand)
       boolean_node?(operand) || unary_not?(operand)
+    end
+
+    def jump_operand?(operand)
+      operand = unwrap_predicate(operand)
+      JUMP_NODES.any? { |type| operand.is_a?(type) }
     end
   end
 end

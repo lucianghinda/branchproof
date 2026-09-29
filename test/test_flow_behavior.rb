@@ -365,6 +365,19 @@ class TestFlowBehavior < Minitest::Test
     assert_equal([[true, false], [false, true]], values.sort_by { |pair| pair.index(true) })
   end
 
+  def test_chain_with_a_jump_operand_stays_short_circuit_and_rewrites_safely
+    source = <<~APP
+      def self.exercise(values)
+        values.map { |value| value || next || "fallback" }
+      end
+    APP
+    inventory, = compare(source, [["a", nil], [false]])
+
+    refute(inventory[:decisions].any? { |entry| entry[:context] == "fallback" })
+    chain = inventory[:decisions].find { |entry| entry[:context] == "short_circuit" }
+    assert chain
+  end
+
   private
 
   def rewrite_source(source)

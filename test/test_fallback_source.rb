@@ -67,6 +67,19 @@ class TestFallbackSource < Minitest::Test
     end
   end
 
+  def test_chains_with_a_jump_operand_stay_short_circuit
+    [
+      "def pick(flag)\n  flag || return || \"z\"\nend\n",
+      "items.each { |value| value || next || \"x\" }\n",
+      "items.each { |value| value || break || \"x\" }\n"
+    ].each do |source|
+      decisions = inventory(source)
+      chain = decisions.find { |decision| %w[fallback short_circuit].include?(decision[:context]) }
+
+      assert_equal "short_circuit", chain[:context], source
+    end
+  end
+
   private
 
   def inventory(source)
