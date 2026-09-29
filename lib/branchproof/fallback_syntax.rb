@@ -53,8 +53,24 @@ module Branchproof
     end
 
     def jump_operand?(operand)
-      operand = unwrap_predicate(operand)
-      JUMP_NODES.any? { |type| operand.is_a?(type) }
+      tail = tail_statement(operand)
+      JUMP_NODES.any? { |type| tail.is_a?(type) }
+    end
+
+    # A `(...)` or `begin...end` operand evaluates to its last statement, so a
+    # trailing jump there ends the operand too. Only the last statement
+    # matters: an earlier jump would already end evaluation inside its own
+    # construct (such as `if`), which is fine as an operand.
+    def tail_statement(node)
+      loop do
+        body = case node
+               when Prism::ParenthesesNode then node.body&.body
+               when Prism::BeginNode then node.statements&.body
+               end
+        return node if body.nil? || body.empty?
+
+        node = body.last
+      end
     end
   end
 end

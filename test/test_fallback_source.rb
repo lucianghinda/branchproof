@@ -71,7 +71,10 @@ class TestFallbackSource < Minitest::Test
     [
       "def pick(flag)\n  flag || return || \"z\"\nend\n",
       "items.each { |value| value || next || \"x\" }\n",
-      "items.each { |value| value || break || \"x\" }\n"
+      "items.each { |value| value || break || \"x\" }\n",
+      "def pick(flag)\n  flag || (return) || \"z\"\nend\n",
+      "def pick(flag)\n  flag || (Kernel.puts(:probe); return) || \"z\"\nend\n",
+      "def pick(flag)\n  flag || begin\n    Kernel.puts(:probe)\n    return\n  end || \"z\"\nend\n"
     ].each do |source|
       decisions = inventory(source)
       chain = decisions.find { |decision| %w[fallback short_circuit].include?(decision[:context]) }
