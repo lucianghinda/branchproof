@@ -311,4 +311,75 @@ class TestCLI < Minitest::Test
       end
     end
   end
+
+  def test_summary_view_and_github_format_parse_with_their_restrictions
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    assert_equal :summary, cli.send(:parse, ["analyze", "--view", "summary"])[:view]
+    assert_equal :github, cli.send(:parse, ["analyze", "--format", "github", "--top", "5"])[:format]
+    error = assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--format", "github", "--view", "summary"]) }
+    assert_includes error.message, "GitHub output uses the summary ranking"
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--format", "github", "--missing-only"]) }
+  end
+
+  def test_github_format_writes_annotations_and_appends_step_summary
+    Dir.mktmpdir do |root|
+      snapshot = File.join(root, "current.json")
+      summary = File.join(root, "summary.md")
+      File.write(summary, "previous step\n")
+      source = File.join(root, "decision.rb")
+      File.binwrite(source, File.binread(File.join(FIXTURE_ROOT, "decision.rb")))
+      test_file = File.join(root, "test_decision.rb")
+      File.write(test_file, <<~TEST)
+        require #{source.inspect}
+        require "minitest/autorun"
+        class GithubFormatTest < Minitest::Test
+          def test_yes
+            assert_equal :yes, CliFixture.decide(true, true)
+          end
+        end
+      TEST
+      status = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new).call(
+        ["analyze", source, "--test", test_file, "--no-config", "--format", "json", "--output", snapshot]
+      )
+      assert_equal 0, status
+
+      stdout = StringIO.new
+      stderr = StringIO.new
+      env = { "GITHUB_STEP_SUMMARY" => summary }
+      status = Branchproof::CLI.new(stdout: stdout, stderr: stderr, env: env)
+                               .call(["report", snapshot, "--format", "github", "--minimum", "mcdc=100"])
+
+      assert_equal 1, status, stderr.string
+      assert_match(/^::warning file=\S*decision\.rb,line=7,title=Branchproof #1/, stdout.string)
+      assert_match(%r{^::error title=Branchproof coverage policy::mcdc: 0/2, threshold 100}, stdout.string)
+      assert_match(/^::notice title=Branchproof coverage::/, stdout.string.lines.last)
+      markdown = File.read(summary)
+      assert markdown.start_with?("previous step\n## Branchproof coverage")
+      assert_includes markdown, "### Where to start"
+
+      quiet = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new, env: {})
+      assert_equal 0, quiet.call(["report", snapshot, "--format", "github"])
+      assert_equal markdown, File.read(summary)
+
+      stderr = StringIO.new
+      unwritable = Branchproof::CLI.new(stdout: StringIO.new, stderr: stderr, env: { "GITHUB_STEP_SUMMARY" => root })
+      assert_equal 0, unwritable.call(["report", snapshot, "--format", "github"])
+      assert_includes stderr.string, "could not write GITHUB_STEP_SUMMARY"
+
+      stdout = StringIO.new
+      workspace = { "GITHUB_WORKSPACE" => File.dirname(Dir.pwd) }
+      Branchproof::CLI.new(stdout: stdout, stderr: StringIO.new, env: workspace)
+                      .call(["report", snapshot, "--format", "github"])
+      assert_includes stdout.string, "::warning file=#{File.basename(Dir.pwd)}/"
+    end
+  end
+
+  def test_compare_rejects_github_format
+    stderr = StringIO.new
+    status = Branchproof::CLI.new(stdout: StringIO.new, stderr: stderr)
+                             .call(["compare", "a.json", "b.json", "--format", "github"])
+
+    assert_equal 2, status
+    assert_includes stderr.string, "format must be terminal or json"
+  end
 end

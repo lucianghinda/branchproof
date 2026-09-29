@@ -212,6 +212,7 @@ module Branchproof
     SCHEMA_VERSION: String
     CRITERION_VERSION: String
     VIEWS: Array[Symbol]
+    FORMATS: Array[Symbol]
     def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> void
     def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> Report
     def diagnostic_message: (Hash[Symbol | String, untyped] diagnostic) -> String
@@ -222,7 +223,8 @@ module Branchproof
     def coverage_policy: () -> record
     def coverage_policy_lines: () -> Array[String]
     def rerun_command: (String test_id) -> String?
-    def write: (io: _WriteIO, format: Symbol | String) -> nil
+    def write: (io: _WriteIO, format: Symbol | String, ?path_prefix: String?) -> nil
+    def step_summary: () -> String
     def exit_code: () -> Integer
   end
 
@@ -237,6 +239,75 @@ module Branchproof
   class FocusedReport
     def initialize: (document: document, view: Symbol, level: Integer, ?missing_only: bool, ?coordinator: Report?, ?focus: String?, ?top: (Integer | String)?, ?selection: ReportSelection?) -> void
     def render: () -> String
+  end
+
+  class SummaryRanking
+    class Decision
+      attr_reader id: String
+      attr_reader relative_path: String?
+      attr_reader line: Integer?
+      attr_reader column: Integer?
+      attr_reader expression: String
+      attr_reader kind: String
+      attr_reader context: String?
+      attr_reader unexecuted: bool
+      attr_reader missing_rules: Array[record]
+      attr_reader required_rules: Integer
+      attr_reader table_calculated: bool
+      attr_reader unproven_conditions: Array[record]
+      attr_reader conditions: Array[record]
+      attr_reader missing_alternatives: Array[record]
+      attr_reader alternatives: Array[record]
+      attr_reader test_ids: Array[String]
+      def missing_total: () -> Integer
+      def gap?: () -> bool
+      def cases_to_test: () -> Integer
+      def rule_cases?: () -> bool
+    end
+
+    class SourceFile
+      attr_reader relative_path: String?
+      attr_reader decisions: Array[Decision]
+      def gaps: () -> Integer
+      def unexecuted: () -> Integer
+      def missing_rules: () -> Integer
+      def required_rules: () -> Integer
+      def unproven_conditions: () -> Integer
+      def conditions: () -> Integer
+      def missing_alternatives: () -> Integer
+      def alternatives: () -> Integer
+      def missing_total: () -> Integer
+    end
+
+    attr_reader index: CoverageIndex
+    def initialize: (document: document, ?selection: ReportSelection) -> void
+    def available?: () -> bool
+    def decisions: () -> Array[Decision]
+    def gaps: () -> Array[Decision]
+    def files: () -> Array[SourceFile]
+    def unsupported_count: () -> Integer
+  end
+
+  class SummaryReport
+    ORDER_NOTE: String
+    def initialize: (document: document, level: Integer, coordinator: Report, ?missing_only: bool, ?selection: ReportSelection) -> void
+    def render: () -> String
+    def self.gap_summary: (SummaryRanking::Decision decision) -> String
+    def self.case_lines: (SummaryRanking::Decision decision, Report coordinator) -> Array[String]
+    def self.one_line: (String text, ?Integer width) -> String
+    def self.rule_text: (record rule, Array[String] expressions, Report coordinator) -> String
+  end
+
+  class GithubReport
+    MARKDOWN_ROWS: Integer
+    def initialize: (document: document, level: Integer, coordinator: Report, ?selection: ReportSelection, ?path_prefix: String?) -> void
+    def annotations: () -> String
+    def step_summary: () -> String
+  end
+
+  class CLI
+    def initialize: (stdout: _WriteIO, stderr: _WriteIO, ?env: _Env) -> void
+    def call: (Array[String] argv) -> Integer
   end
 
   class ReportSelection
@@ -265,6 +336,10 @@ module Branchproof
     def initialize: (document: document) -> void
     def write: (io: _WriteIO, format: Symbol | String) -> nil
     def exit_code: (?fail_on_regression: bool) -> Integer
+  end
+
+  interface _Env
+    def []: (String) -> String?
   end
 
   interface _WriteIO

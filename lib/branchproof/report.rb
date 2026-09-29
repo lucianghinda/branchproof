@@ -6,13 +6,16 @@ require "json"
 require "pathname"
 require_relative "coverage_policy"
 require_relative "report_selection"
+require_relative "summary_report"
+require_relative "github_report"
 
 module Branchproof
   # Renders versioned terminal and JSON analysis reports.
   class Report
     SCHEMA_VERSION = "1.4"
     CRITERION_VERSION = "masking_occurrence_v1"
-    VIEWS = %i[decisions conditions tests decision_tables].freeze
+    VIEWS = %i[decisions conditions tests decision_tables summary].freeze
+    FORMATS = %i[terminal json github].freeze
     DECISION_TABLE_LABELS = { "true" => "T", "false" => "F", "dont_care" => "-" }.freeze
     DECISION_TABLE_STATUS_LABELS = { "covered" => "COVERED", "missing" => "MISSING",
                                      "excluded" => "EXCLUDED" }.freeze
@@ -21,7 +24,7 @@ module Branchproof
                    view: :decisions, run_metadata: {}, saved_document: nil, focus: nil, top: nil, minimum: nil)
       raise ArgumentError, "level must be 1, 2, or 3" unless [1, 2, 3].include?(level.to_i)
       unless VIEWS.include?(view.to_sym)
-        raise ArgumentError, "view must be :decisions, :conditions, :tests, or :decision_tables"
+        raise ArgumentError, "view must be :decisions, :conditions, :tests, :decision_tables, or :summary"
       end
 
       @inventory = inventory || {}
@@ -54,13 +57,23 @@ module Branchproof
           run_metadata: data[:run_metadata] || data["run_metadata"], saved_document: data, minimum: minimum)
     end
 
-    def write(io:, format:)
+    # path_prefix is only used by :github, to make annotation paths repository-relative.
+    def write(io:, format:, path_prefix: nil)
       format = format.to_sym
-      raise ArgumentError, "format must be :terminal or :json" unless %i[terminal json].include?(format)
+      raise ArgumentError, "format must be :terminal, :json, or :github" unless FORMATS.include?(format)
       raise ArgumentError, "focus and top filters are terminal-only" if format == :json && @selection.active?
 
-      io.write(format == :json ? JSON.generate(json_document) : terminal_document)
+      io.write(case format
+               when :json then JSON.generate(json_document)
+               when :github then github_report(path_prefix: path_prefix).annotations
+               else terminal_document
+               end)
       nil
+    end
+
+    # Markdown job summary for GitHub Actions ($GITHUB_STEP_SUMMARY).
+    def step_summary
+      github_report.step_summary
     end
 
     # Shares the existing missing-case wording with focused terminal views.
@@ -161,7 +174,16 @@ module Branchproof
                 run_metadata: @run_metadata)
     end
 
+    def github_report(path_prefix: nil)
+      GithubReport.new(document: json_document, level: @level, coordinator: self, selection: @selection,
+                       path_prefix: path_prefix)
+    end
+
     def terminal_document
+      if @view == :summary
+        return SummaryReport.new(document: json_document, level: @level, coordinator: self,
+                                 missing_only: @missing_only, selection: @selection).render
+      end
       unless @view == :decisions
         return FocusedReport.new(document: json_document, view: @view, level: @level,
                                  missing_only: @missing_only, coordinator: self,

@@ -18,9 +18,10 @@ module Branchproof
     VIEWS = Report::VIEWS.to_h { |view| [view.to_s.tr("_", "-"), view] }
                          .merge("decision_tables" => :decision_tables).freeze
 
-    def initialize(stdout:, stderr:)
+    def initialize(stdout:, stderr:, env: ENV)
       @stdout = stdout
       @stderr = stderr
+      @env = env
     end
 
     def call(argv)
@@ -80,6 +81,7 @@ module Branchproof
                           run_metadata: run_metadata(options, baseline), minimum: options[:minimum],
                           focus: options[:focus], top: options[:top])
       output_report(report, options)
+      write_step_summary(report, options)
       report.exit_code
     rescue ArgumentError => e
       usage_error(e.message)
@@ -95,16 +97,17 @@ module Branchproof
       @stdout.write(<<~HELP)
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
-            [--view decisions|conditions|tests|decision-tables] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
+            [--view decisions|conditions|tests|decision-tables|summary] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
             [--focus PATH[:LINE]] [--top N]
-            [--format terminal|json] [--output PATH] [--limits PATH] [--config PATH|--no-config]
+            [--format terminal|json|github] [--output PATH] [--limits PATH] [--config PATH|--no-config]
             [--no-reachability] [-- RUNNER_ARGS]
-          branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables]
+          branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables|summary]
             [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--focus PATH[:LINE]] [--top N]
-            [--format terminal|json] [--output PATH]
+            [--format terminal|json|github] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
         JSON always contains full evidence; --view requires terminal output.
+        github prints Actions annotations for the summary ranking and appends Markdown to $GITHUB_STEP_SUMMARY.
         decision_tables is also accepted as an alias for the decision-tables view.
         --no-reachability keeps every generated decision-table rule as a coverage obligation.
       HELP
@@ -113,15 +116,17 @@ module Branchproof
 
     def parse_view(view)
       resolved = VIEWS[view.to_s]
-      raise ArgumentError, "view must be decisions, conditions, tests, or decision-tables" unless resolved
+      raise ArgumentError, "view must be decisions, conditions, tests, decision-tables, or summary" unless resolved
 
       resolved
     end
 
     def validate_view!(options)
-      return unless options[:explicit_view] && options[:format] == :json
+      return unless options[:explicit_view]
+      raise ArgumentError, "--view requires terminal format; JSON contains full evidence" if options[:format] == :json
+      return unless options[:format] == :github
 
-      raise ArgumentError, "--view requires terminal format; JSON contains full evidence"
+      raise ArgumentError, "--view requires terminal format; GitHub output uses the summary ranking"
     end
 
     def offline(argv)
@@ -149,6 +154,7 @@ module Branchproof
                                       missing_only: options[:missing_only], minimum: options[:minimum_overrides],
                                       focus: options[:focus], top: options[:top])
         output_report(report, options)
+        write_step_summary(report, options)
         report.exit_code
       end
     end
@@ -161,7 +167,11 @@ module Branchproof
         case token
         when "--format"
           format = args.shift
-          raise ArgumentError, "format must be terminal or json" unless %w[terminal json].include?(format)
+          if command == "compare"
+            raise ArgumentError, "format must be terminal or json" unless %w[terminal json].include?(format)
+          else
+            raise ArgumentError, "format must be terminal, json, or github" unless %w[terminal json github].include?(format)
+          end
 
           options[:format] = format.to_sym
         when "--output"
@@ -293,7 +303,7 @@ module Branchproof
           options[:level] = level
         when "--format"
           format = args.shift.to_s
-          raise ArgumentError, "format must be terminal or json" unless %w[terminal json].include?(format)
+          raise ArgumentError, "format must be terminal, json, or github" unless %w[terminal json github].include?(format)
 
           options[:format] = format.to_sym
         when "--output"
@@ -500,6 +510,28 @@ module Branchproof
       File.unlink(temporary) if created && temporary && File.file?(temporary)
     end
 
+    # GitHub Actions reads Markdown appended to this file into the job summary.
+    def write_step_summary(report, options)
+      path = @env["GITHUB_STEP_SUMMARY"].to_s
+      return unless options[:format] == :github && !path.empty?
+
+      File.open(path, "a") { |file| file.write(report.step_summary) }
+    rescue SystemCallError, IOError => e
+      @stderr.write("branchproof: could not write GITHUB_STEP_SUMMARY: #{e.message}\n")
+    end
+
+    # Annotation paths must be relative to the repository (GITHUB_WORKSPACE),
+    # but report paths are relative to the project root (the current directory).
+    def github_path_prefix
+      workspace = @env["GITHUB_WORKSPACE"].to_s
+      return nil if workspace.empty?
+
+      relative = Pathname.new(File.realpath(Dir.pwd)).relative_path_from(Pathname.new(File.realpath(workspace))).to_s
+      relative == "." || relative.start_with?("..") ? nil : relative
+    rescue SystemCallError, ArgumentError
+      nil
+    end
+
     def run_worker?(options)
       !options[:tests].empty? || options[:project][:framework].to_s == "rspec"
     end
@@ -515,7 +547,11 @@ module Branchproof
 
     def report_string(report, format)
       buffer = StringIO.new
-      report.write(io: buffer, format: format)
+      if format == :github
+        report.write(io: buffer, format: format, path_prefix: github_path_prefix)
+      else
+        report.write(io: buffer, format: format)
+      end
       buffer.string
     end
 

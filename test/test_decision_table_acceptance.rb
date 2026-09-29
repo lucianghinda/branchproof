@@ -125,7 +125,7 @@ class DecisionTableAcceptanceTest < Minitest::Test
     result = run_project(format: "terminal", extra: ["--view", "rules"])
 
     assert_equal 2, result[:status].exitstatus
-    assert_includes result.fetch(:stderr), "view must be decisions, conditions, tests, or decision-tables"
+    assert_includes result.fetch(:stderr), "view must be decisions, conditions, tests, decision-tables, or summary"
   end
 
   def test_condition_limit_marks_the_table_not_calculated

@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+- Add `--view summary` for `analyze` and `report`. It ranks source files and
+  decisions with gaps: unexecuted decisions first, then the most missing
+  decision-table rules, unproven MC/DC conditions, and missing alternatives.
+  Each row shows its location, counts with denominators, the cases to test
+  (level 2+), and the tests that already reach the decision (level 3).
+  `--top`, `--focus`, and `--missing-only` apply; global summaries, gates,
+  and exit status are unchanged.
+- Add `--format github` for `analyze` and `report`. It prints GitHub Actions
+  annotations in summary-view order, errors for failed or incomplete runs
+  and unmet policy gates, and a final coverage notice. Annotation paths are
+  made repository-relative with `GITHUB_WORKSPACE`. When `GITHUB_STEP_SUMMARY` is set, it
+  also appends a Markdown job summary with the ladder, gates, and ranked gaps.
+
 ## [0.12.0] - 2026-09-29
 
 - Report value-context `||` chains that end in a string, symbol, or numeric
