@@ -96,8 +96,10 @@ class TestRSpecRailsIntegration < Minitest::Test
         assert_equal "PASSED", report.dig("baseline", "status"), stderr
         assert_equal 14, report.dig("baseline", "executed_tests")
         assert_equal "rails", report.dig("baseline", "project", "kind")
-        assert_equal "8.1.3.1", report.dig("baseline", "project", "rails_version")
-        assert_equal "8.0.4", report.dig("baseline", "project", "rspec_rails_version")
+        # CI resolves the newest allowed patch, so compare with the bundled gems.
+        assert_equal Gem.loaded_specs.fetch("rails").version.to_s, report.dig("baseline", "project", "rails_version")
+        assert_equal Gem.loaded_specs.fetch("rspec-rails").version.to_s,
+                     report.dig("baseline", "project", "rspec_rails_version")
         assert_equal 1, File.readlines(File.join(root, "tmp", "environment_loads")).length
         assert_equal 1, File.readlines(File.join(root, "tmp", "rails_helper_loads")).length
         refute_includes File.read(File.join(root, "spec", "rails_helper.rb")), "rails/test_help"
