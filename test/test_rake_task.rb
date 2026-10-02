@@ -70,6 +70,20 @@ class RakeTaskTest < Minitest::Test
     assert_equal ["analyze", "--test", "test/**/*_test.rb", "--test", "test/**/test_*.rb"], task.argv
   end
 
+  def test_mutating_repeated_option_arrays_emits_flags
+    task = define_task do |t|
+      extra_tests = ["test/second_test.rb"]
+      extra_minimums = ["decision=90"]
+      t.tests << "test/first_test.rb"
+      t.tests.concat(extra_tests)
+      t.minimum << "mcdc=100"
+      t.minimum.concat(extra_minimums)
+    end
+
+    assert_equal ["analyze", "--test", "test/first_test.rb", "--test", "test/second_test.rb",
+                  "--minimum", "mcdc=100", "--minimum", "decision=90"], task.argv
+  end
+
   def test_project_flag
     task = define_task { |t| t.project = "rails" }
 
@@ -206,6 +220,23 @@ class RakeTaskTest < Minitest::Test
 
     assert_equal 2, @error.status
     assert_includes error.last, "branchproof exited with status 2"
+  end
+
+  def test_appending_a_minimum_gate_exits_with_the_cli_status_when_gate_fails
+    define_task(:fixture_gate) do |t|
+      t.sources = ["decision.rb"]
+      t.tests = ["test_decision_test.rb"]
+      t.minimum << "mcdc=100"
+      t.format = "json"
+      t.runner_args = ["-n", "/test_true_true_vector/"]
+    end
+
+    error = capture_subprocess_io do
+      @error = assert_raises(SystemExit) { with_fixture_environment { Rake::Task[:fixture_gate].invoke } }
+    end
+
+    assert_equal 1, @error.status, error.last
+    assert_includes error.last, "branchproof exited with status 1"
   end
 
   private

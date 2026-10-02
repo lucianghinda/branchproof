@@ -126,7 +126,12 @@ module Branchproof
     # @return [Array<String>] arguments for `branchproof analyze`
     def argv
       args = ["analyze", *sources]
-      OPTIONS.each { |option| args.concat(flags_for(option)) if @explicit[option] }
+      OPTIONS.each do |option|
+        value = instance_variable_get(:"@#{option}")
+        next unless @explicit[option] || (REPEATED_FLAGS.key?(option) && !Array(value).empty?)
+
+        args.concat(flags_for(option))
+      end
       args.push("--", *runner_args) unless runner_args.empty?
       args.map(&:to_s)
     end
