@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+- Add `analyze --changed-since REF` for informational coverage of current
+  decisions affected by tracked staged and unstaged worktree changes. Tests,
+  whole-run coverage, and minimum gates retain their existing scope; captured
+  changed-scope reports use JSON schema `1.5` and remain available offline.
 - Speed up level-3 supporting-set minimization by avoiding repeated Set
   differences in greedy selection. Large synthetic RSpec and Minitest runs
   take 70–77% less end-to-end time on Ruby 4.0.1; selected sets, search

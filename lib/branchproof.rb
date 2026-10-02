@@ -11,6 +11,7 @@ module Branchproof
   class Error < StandardError; end
   autoload :Configuration, "branchproof/configuration"
   autoload :CoveragePolicy, "branchproof/coverage_policy"
+  autoload :CoverageSummary, "branchproof/coverage_summary"
   autoload :ReportSelection, "branchproof/report_selection"
   autoload :CLI, "branchproof/cli"
   autoload :Instrumenter, "branchproof/instrumenter"
@@ -32,6 +33,10 @@ module Branchproof
   autoload :SavedReport, "branchproof/saved_report"
   autoload :Comparison, "branchproof/comparison"
   autoload :ComparisonReport, "branchproof/comparison_report"
+  autoload :ChangedScope, "branchproof/changed_scope"
+  autoload :GitChanges, "branchproof/git_changes"
+  autoload :ChangedDecisionMap, "branchproof/changed_decision_map"
+  autoload :ChangedCoverage, "branchproof/changed_coverage"
   autoload :Worker, "branchproof/worker"
 end
 

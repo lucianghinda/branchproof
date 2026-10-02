@@ -174,16 +174,28 @@ counts still show their own availability.
 Ownership: CLI, core autoloads, RBS, README and both changelogs; new subprocess
 acceptance tests. Integrate the already-reviewed scope/report APIs.
 
-- [ ] Add CLI failing tests for --changed-since, missing/ref errors, offline
+- [x] Add CLI failing tests for --changed-since, missing/ref errors, offline
       flag rejection, preserved full-suite execution (including an unchanged
       test that fails), whole-run gate failure outside changed scope, JSON
       metadata and saved offline rendering after the checkout is removed.
-- [ ] Parse/resolve scope after full inventory and before the worker; pass it
+- [x] Parse/resolve scope after full inventory and before the worker; pass it
       into Report without altering source paths, selected tests or payload.
       Document direct base comparison, tracked scope, rename policy, unchanged
       thresholds and schema 1.5 reader requirements. Add signatures/autoloads.
-- [ ] Run focused acceptance, packaging and lint. Obtain Luna spec then quality
-      approval, then a final independent review of the integrated diff.
+- [x] Run focused acceptance, packaging and lint. Obtain Luna spec then quality
+      approval.
+- [ ] Obtain a final independent review of the integrated diff.
+
+Task 3 evidence: independent Luna spec and quality reviews approved CLI,
+signatures and documentation. The new CLI acceptance suite passes (10 tests /
+70 assertions), including separate staged/unstaged semantic edits, pre-worker
+errors, offline rendering after checkout removal, unchanged selected failure
+and a whole-run minimum failure outside the changed scope. Existing CLI/config,
+focused, saved-report and policy checks pass. Packaging passes with the project
+bundle (7 tests / 96 assertions); an extracted-gem consumer loads new helpers,
+validates scoped JSON and checks CLI help. Ruby syntax passes for 57 library
+files. RBS validates with a temporary external Rake::TaskLib declaration;
+repository dependencies were not changed. Focused lint and diff checks pass.
 
 ## Final verification and delivery
 

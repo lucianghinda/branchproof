@@ -34,6 +34,10 @@ module Branchproof
       return usage_error("expected analyze, report, or compare; use branchproof --help") unless options
 
       inventory = build_inventory(options)
+      changed_scope = if options[:changed_since]
+                        ChangedScope.new(root: options[:project][:root], ref: options[:changed_since])
+                                    .call(inventory: inventory)
+                      end
       evidence = empty_evidence(inventory, options)
       baseline = if run_worker?(options)
                    run_worker(options, inventory, evidence)
@@ -80,7 +84,7 @@ module Branchproof
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
                           level: options[:level], missing_only: options[:missing_only], view: options[:view],
                           run_metadata: run_metadata(options, baseline), minimum: options[:minimum],
-                          focus: options[:focus], top: options[:top])
+                          focus: options[:focus], top: options[:top], changed_scope: changed_scope)
       output_report(report, options)
       write_step_summary(report, options)
       report.exit_code
@@ -99,6 +103,7 @@ module Branchproof
         Usage:
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--view decisions|conditions|tests|decision-tables|summary] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
+            [--changed-since REF]
             [--focus PATH[:LINE]] [--top N]
             [--format terminal|json|github] [--output PATH] [--limits PATH] [--config PATH|--no-config]
             [--no-reachability] [-- RUNNER_ARGS]
@@ -111,6 +116,7 @@ module Branchproof
         github prints Actions annotations for the summary ranking and appends Markdown to $GITHUB_STEP_SUMMARY.
         decision_tables is also accepted as an alias for the decision-tables view.
         --no-reachability keeps every generated decision-table rule as a coverage obligation.
+        --changed-since REF reports informational coverage for tracked changes from a commit to the current worktree; tests and gates remain whole-run.
       HELP
       0
     end
@@ -166,6 +172,8 @@ module Branchproof
       until args.empty?
         token = args.shift
         case token
+        when "--changed-since"
+          raise ArgumentError, "--changed-since is available only for analyze"
         when "--format"
           format = args.shift
           if command == "compare"
@@ -289,6 +297,11 @@ module Branchproof
           options[:missing_only] = true
         when "--minimum"
           add_minimum_override!(options, args.shift)
+        when "--changed-since"
+          ref = args.shift
+          raise ArgumentError, "--changed-since requires a non-option REF" if ref.to_s.empty? || ref.start_with?("-")
+
+          options[:changed_since] = ref
         when "--focus"
           options[:focus] = args.shift
           raise ArgumentError, "--focus requires PATH or PATH:LINE" if options[:focus].nil? || options[:focus].start_with?("-")
