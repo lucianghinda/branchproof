@@ -970,6 +970,54 @@ Rails system/browser tests, custom Rails test commands, generated tests, and
 reloading configurations are explicitly unsupported and produce diagnostics
 rather than a passing analysis.
 
+### Rake task
+
+`require "branchproof/rake_task"` in a Rakefile defines a task that runs
+`branchproof analyze` in a subprocess. The gem does not depend on Rake at
+runtime, so the file is not loaded by `require "branchproof"`. Only options
+set in the Rakefile are passed to the CLI; everything else keeps the CLI and
+`.branchproof.json` defaults.
+
+A Minitest project:
+
+```ruby
+require "branchproof/rake_task"
+
+Branchproof::RakeTask.new(:branchproof) do |t|
+  t.sources = ["lib/**/*.rb"]
+  t.tests = ["test/**/*_test.rb"]
+end
+```
+
+An RSpec project in a Rails application:
+
+```ruby
+Branchproof::RakeTask.new(:branchproof) do |t|
+  t.sources = ["app/**/*.rb"]
+  t.project = "rails"
+  t.framework = "rspec"
+  t.runner_args = ["--seed", "1234"]
+end
+```
+
+Then run `bundle exec rake branchproof`. The task accepts `sources`, `tests`,
+`project`, `framework`, `view`, `level`, `missing_only`, `minimum`, `format`,
+`output`, `runner_args`, and `description`. `RakeTask#argv` returns the CLI
+arguments the task will pass, which is useful for checking a Rakefile without
+running the analysis.
+
+In CI, the task exits with the CLI status, so a failed test run, a coverage
+gate failure, or a usage error fails the job:
+
+```ruby
+Branchproof::RakeTask.new(:branchproof) do |t|
+  t.sources = ["lib/**/*.rb"]
+  t.format = "json"
+  t.output = ".branchproof/coverage.json"
+  t.minimum = ["mcdc=80", "decision_table=75"]
+end
+```
+
 ## Library entry points
 
 ```ruby
