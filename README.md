@@ -22,11 +22,9 @@ Or add it to a bundle:
 bundle add branchproof
 ```
 
-Branchproof targets CRuby 3.3 and 3.4, Minitest 5.x, RSpec 3.13, and Prism 1.x. The
-published core runtime matrix is the CI matrix. Rails/RSpec execution is limited
-to Rails 8.1.x, rspec-rails 8.x, RSpec 3.13.x, and CRuby 3.4.x; passing core
-tests on Ruby 4.0 does not imply Rails/RSpec support. Integration has been checked
-with Rails 8.1.3.1, rspec-rails 8.0.4, RSpec Core 3.13.6, and CRuby 3.4.7.
+Branchproof requires CRuby 4.0 or newer, Minitest 5.x, RSpec 3.13, and Prism 1.x.
+CI tests CRuby 4.0, including Rails 8.1.x and rspec-rails 8.x integrations.
+Newer Ruby versions are allowed by the gem requirement but are not yet tested in CI.
 Rails and RSpec are optional dependencies supplied by the application.
 Minitest 5.x remains a runtime dependency of this gem.
 Unsupported syntax and incomplete observations remain visible in the report
@@ -90,7 +88,7 @@ an unexpectedly passing pending example remains a failure.
 
 RSpec support is serial: dry-run, bisect, DRb, custom runners, nested runs, and
 repeated example attempts are rejected. Rails/RSpec supports Rails 8.1.x with
-rspec-rails 8.x on CRuby 3.4.x. Feature and system specs use the in-process
+rspec-rails 8.x on CRuby 4.0. Feature and system specs use the in-process
 Capybara `rack_test` driver; browser drivers require execution-context support
 outside this release. Capybara is optional for apps that do not use those specs.
 
@@ -1017,9 +1015,10 @@ the core suite does not require Rails. Bootsnap is disabled for the child
 Rails process so its compilation cache cannot own the load path during an
 analysis.
 
-Run the commands with the Ruby executable you intend to validate. The checked
-release environments are CRuby 3.3.6 and 3.4.5. Each runtime
-must provide the declared Minitest 5.x and Prism 1.x dependencies.
+Run the commands with CRuby 4.0 or newer and the declared Minitest 5.x and Prism 1.x
+dependencies. CI runs five jobs on CRuby 4.0: the core suite, RSpec Core 3.13.0
+and 3.13.6 compatibility, Rails 8.1 integration, and rspec-rails integration.
+Lint runs once in the core job. Pull requests and pushes to main trigger CI.
 
 The repeatable native-versus-instrumented adapter benchmark and its captured
 Ruby 3.4.7 result are in

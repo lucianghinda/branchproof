@@ -9,6 +9,11 @@ AllCops:
     # test_ruby_construct_examples.rb checks syntax and behavior instead.
     - "test/fixtures/ruby_constructs/**/*.rb"
 
+# Keep the existing syntax style independently of the supported runtime floor.
+# Packaging tests enforce the gem's Ruby 4.0 minimum.
+Gemspec/RequiredRubyVersion:
+  Enabled: false
+
 Layout/LineLength:
   Max: 120
   Exclude:

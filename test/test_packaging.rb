@@ -36,6 +36,8 @@ class TestPackaging < Minitest::Test
 
     assert_equal "branchproof", spec.name
     assert_equal Branchproof::VERSION, spec.version.to_s
+    refute spec.required_ruby_version.satisfied_by?(Gem::Version.new("3.4.9"))
+    assert spec.required_ruby_version.satisfied_by?(Gem::Version.new("4.0.0"))
     assert_includes spec.files, "README.md"
     assert_includes spec.files, "CHANGELOG.md"
     assert_includes spec.files, "LICENSE.txt"
@@ -79,15 +81,18 @@ class TestPackaging < Minitest::Test
     refute(spec.runtime_dependencies.any? { |dependency| %w[rails railties].include?(dependency.name) })
   end
 
-  def test_rbs_and_ci_cover_the_candidate_runtime_matrix
+  def test_rbs_and_ci_cover_the_supported_runtime
     rbs = File.read(File.join(ROOT, "sig/branchproof.rbs"))
     workflow = File.read(File.join(ROOT, ".github/workflows/main.yml"))
     workflow_document = YAML.safe_load(workflow, aliases: true)
-    runtime_matrix = workflow_document.fetch("jobs").fetch("test").fetch("strategy").fetch("matrix").fetch("ruby")
+    ruby_steps = workflow_document.fetch("jobs").values.flat_map { |job| job.fetch("steps") }.select do |step|
+      step["uses"] == "ruby/setup-ruby@v1"
+    end
 
     assert_includes rbs, "class Source"
     assert_includes rbs, "class Report"
-    %w[3.3 3.4 4.0].each { |version| assert_includes runtime_matrix, version }
+    refute_empty ruby_steps
+    ruby_steps.each { |step| assert_equal "4.0", step.fetch("with").fetch("ruby-version") }
     assert_includes workflow, "bundle exec rake"
     assert_includes workflow, "BRANCHPROOF_RAILS_INTEGRATION: \"1\""
     assert_includes workflow, "Rails 8.1"
