@@ -123,12 +123,12 @@ module Branchproof
       ruby_version = Gem::Version.new(rails_metadata.fetch(:ruby_version).to_s)
       rspec_version = Gem::Version.new(rails_metadata.fetch(:rspec_rails_version).to_s)
       return true if rails_version.segments.first(2) == SUPPORTED_RAILS.segments.first(2) &&
-                     ruby_version.segments.first(2) == [3, 4] &&
+                     ruby_version >= Gem::Version.new("4.0") &&
                      rspec_version.segments.first == SUPPORTED_RSPEC_RAILS_MAJOR
 
       raise Error,
             "unsupported Rails/Ruby/RSpec Rails tuple: Rails #{rails_version}, Ruby #{ruby_version}, " \
-            "RSpec Rails #{rspec_version} (supported Rails 8.1, Ruby 3.4.x, RSpec Rails 8.x)"
+            "RSpec Rails #{rspec_version} (supported Rails 8.1, Ruby 4.0+, RSpec Rails 8.x)"
     end
 
     def rspec_rails_version

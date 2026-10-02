@@ -2,27 +2,23 @@ name: Main
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
   test:
-    name: Core Ruby ${{ matrix.ruby }}
+    name: Core Ruby 4.0
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        ruby: ["3.3", "3.4", "4.0"]
-
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
+          ruby-version: "4.0"
           bundler-cache: true
       - run: bundle exec rake
 
   rspec-compatibility:
-    name: RSpec core ${{ matrix.rspec_core }} on Ruby 3.4
+    name: RSpec core ${{ matrix.rspec_core }} on Ruby 4.0
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -35,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.4"
+          ruby-version: "4.0"
           bundler-cache: false
       - run: bundle update rspec rspec-core
       - name: Verify resolved RSpec Core version
@@ -43,10 +39,10 @@ jobs:
           EXPECTED_RSPEC_CORE_VERSION: ${{ matrix.rspec_core }}
         run: >-
           bundle exec ruby -rrspec/core/version -e 'abort "unexpected RSpec core #{RSpec::Core::Version::STRING}" unless RSpec::Core::Version::STRING == ENV.fetch("EXPECTED_RSPEC_CORE_VERSION")'
-      - run: bundle exec rake
+      - run: bundle exec rake test
 
   rails-integration:
-    name: Rails 8.1 on Ruby 3.4
+    name: Rails 8.1 on Ruby 4.0
     runs-on: ubuntu-latest
     env:
       BRANCHPROOF_RAILS_INTEGRATION: "1"
@@ -56,13 +52,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.4"
+          ruby-version: "4.0"
           bundler-cache: true
           cache-version: rails-integration
-      - run: bundle exec rake
+      - run: bundle exec rake test
 
   rspec-rails-integration:
-    name: RSpec Rails 8.1 on Ruby 3.4
+    name: RSpec Rails 8.1 on Ruby 4.0
     runs-on: ubuntu-latest
     env:
       BRANCHPROOF_RSPEC_RAILS_INTEGRATION: "1"
@@ -71,7 +67,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.4"
+          ruby-version: "4.0"
           bundler-cache: true
           cache-version: rspec-rails-integration
-      - run: bundle exec rake
+      - run: bundle exec rake test

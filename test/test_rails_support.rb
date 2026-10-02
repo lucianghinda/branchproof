@@ -5,6 +5,16 @@ require "tmpdir"
 require "branchproof/rails_support"
 
 class TestRailsSupport < Minitest::Test
+  def test_rspec_rails_runtime_requires_ruby_4_or_newer
+    metadata = { rails_version: "8.1.0", rspec_rails_version: "8.0.0" }
+    %w[4.0.0 4.1.0].each do |version|
+      assert Branchproof::RailsSupport.validate_version_tuple!(metadata.merge(ruby_version: version))
+    end
+    assert_raises(Branchproof::RailsSupport::Error) do
+      Branchproof::RailsSupport.validate_version_tuple!(metadata.merge(ruby_version: "3.4.9"))
+    end
+  end
+
   def test_missing_environment_is_actionable
     Dir.mktmpdir do |root|
       error = assert_raises(Branchproof::RailsSupport::Error) do
