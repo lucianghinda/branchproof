@@ -88,7 +88,7 @@ module Branchproof
       lines << "Whole-run coverage and policy:" if @selection.decision_ids
       lines.concat(@coordinator.coverage_ladder_lines)
       lines.concat(@coordinator.coverage_policy_lines)
-      lines.concat(@coordinator.changed_scope_lines)
+      lines.concat(@coordinator.changed_scope_lines) if @selection.decision_ids
       if @ranking.available?
         render_ranking(lines)
       else
@@ -133,7 +133,11 @@ module Branchproof
         parts << "DT #{file.missing_rules}/#{file.required_rules} rules missing" if file.required_rules.positive?
         parts << "MC/DC #{file.unproven_conditions}/#{file.conditions} conditions unproven" if file.conditions.positive?
         parts << "#{file.missing_alternatives}/#{file.alternatives} alternatives missing" if file.alternatives.positive?
-        path = file.relative_path ? @coordinator.display_scope_path(file.relative_path) : "location unavailable"
+        path = if file.relative_path
+                 @selection.decision_ids ? @coordinator.display_scope_path(file.relative_path) : file.relative_path
+               else
+                 "location unavailable"
+               end
         lines << "  #{position + 1}. #{path}: #{parts.join("; ")}"
       end
       lines << ""
@@ -183,7 +187,7 @@ module Branchproof
 
       label = @selection.focus_label
       no_match = @selection.decision_ids ? "no matching changed decisions" : "no matching decisions"
-      label = @coordinator.display_scope_path(label)
+      label = @coordinator.display_scope_path(label) if @selection.decision_ids
       lines << (focus_match? ? "Focus: #{label}" : "Focus: #{no_match} for #{label}")
     end
 
@@ -203,7 +207,7 @@ module Branchproof
     end
 
     def location(decision)
-      path = @coordinator.display_scope_path(decision.relative_path)
+      path = @selection.decision_ids ? @coordinator.display_scope_path(decision.relative_path) : decision.relative_path
       return "location unavailable" if decision.relative_path.nil?
 
       decision.line ? "#{path}:#{decision.line}" : path

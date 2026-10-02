@@ -55,7 +55,7 @@ module Branchproof
       lines << "Whole-run coverage and policy:" if @selection.decision_ids
       lines.concat(@coordinator.coverage_ladder_lines)
       lines.concat(@coordinator.coverage_policy_lines)
-      lines.concat(@coordinator.changed_scope_lines)
+      lines.concat(@coordinator.changed_scope_lines) if @selection.decision_ids
       case @view
       when :conditions
         render_conditions(lines)
@@ -118,7 +118,8 @@ module Branchproof
         lines << ""
       end
       lines << "No missing conditions" if @missing_only && rows.empty? && focus_match_exists? &&
-                                          !empty_changed_scope? && @coordinator.changed_coverage_available?
+                                          !empty_changed_scope? &&
+                                          (!@selection.decision_ids || @coordinator.changed_coverage_available?)
       render_alternatives(lines, alternatives)
     end
 
@@ -174,7 +175,9 @@ module Branchproof
         lines << ""
       end
       lines << "No missing decision-table rules" if @missing_only && rendered.zero? && focus_match_exists? &&
-                                                    !empty_changed_scope? && @coordinator.changed_coverage_available?
+                                                    !empty_changed_scope? &&
+                                                    (!@selection.decision_ids ||
+                                                     @coordinator.changed_coverage_available?)
       return unless impossible.positive?
 
       lines << "#{impossible} statically impossible rule#{"s" unless impossible == 1} excluded"
@@ -225,7 +228,8 @@ module Branchproof
         lines << ""
       end
       lines << "No missing alternatives" if @missing_only && rows.empty? && focus_match_exists? &&
-                                            !empty_changed_scope? && @coordinator.changed_coverage_available?
+                                            !empty_changed_scope? &&
+                                            (!@selection.decision_ids || @coordinator.changed_coverage_available?)
     end
 
     def render_alternative_group(lines, heading, evidence)
@@ -352,7 +356,11 @@ module Branchproof
     def render_focus_notice(lines)
       return unless @selection.focus_active?
 
-      focus_label = @coordinator.display_scope_path(@selection.focus_label)
+      focus_label = if @selection.decision_ids
+                      @coordinator.display_scope_path(@selection.focus_label)
+                    else
+                      @selection.focus_label
+                    end
       no_match = @selection.decision_ids ? "no matching changed decisions" : "no matching decisions"
       lines << if @matching_decision_ids.empty?
                  "Focus: #{no_match} for #{focus_label}"
@@ -488,7 +496,7 @@ module Branchproof
     end
 
     def location(path, line, unavailable: "location unavailable")
-      path = @coordinator.display_scope_path(path)
+      path = @coordinator.display_scope_path(path) if @selection.decision_ids
       return "location unavailable" if path.to_s.empty?
       return "#{path}: #{unavailable}" if line.nil?
 

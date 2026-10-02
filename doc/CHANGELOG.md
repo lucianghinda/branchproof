@@ -11,11 +11,43 @@
   [performance record](https://github.com/lucianghinda/branchproof/blob/main/docs/benchmarks/supporting-set-performance-2026-10-02.md)
   for measurements and allocation/memory limits.
 
+- Require Ruby 4.0 or newer and run core, RSpec, and Rails CI on Ruby 4.0.
+- `branchproof mutate` now exits with status 2 and says that mutation testing
+  is not supported yet, instead of the generic unknown-command error.
+- Add RBS signatures for `Branchproof::Worker`.
+- Add `--view summary` for `analyze` and `report`. It ranks source files and
+  decisions with gaps: unexecuted decisions first, then the most missing
+  decision-table rules, unproven MC/DC conditions, and missing alternatives.
+  Each row shows its location, counts with denominators, the cases to test
+  (level 2+), and the tests that already reach the decision (level 3).
+  `--top`, `--focus`, and `--missing-only` apply; global summaries, gates,
+  and exit status are unchanged.
+- Add `--format github` for `analyze` and `report`. It prints GitHub Actions
+  annotations in summary-view order, errors for failed or incomplete runs
+  and unmet policy gates, and a final coverage notice. Annotation paths are
+  made repository-relative with `GITHUB_WORKSPACE`. When `GITHUB_STEP_SUMMARY` is set, it
+  also appends a Markdown job summary with the ladder, gates, and ranked gaps.
 - Add `Branchproof::RakeTask`. `require "branchproof/rake_task"` defines a
   Rake task that runs `branchproof analyze` in a subprocess with the options
   set in the Rakefile. Unset options keep the CLI and `.branchproof.json`
   defaults, and a non-zero CLI exit status fails the Rake process with the
   same status.
+
+## [0.12.0] - 2026-09-29
+
+- Report value-context `||` chains that end in a string, symbol, or numeric
+  literal (including interpolated strings and symbols), such as
+  `name.presence || entry&.title || "Item #{id}"`, as `fallback` alternatives:
+  each operand is an alternative, covered when a test makes it the one that
+  supplies the value. These chains are no longer Boolean `short_circuit`
+  decisions, so they leave the MC/DC and decision-table denominators. Chains
+  used as conditions (`if`, `unless`, `while`, `until`, ternary, and
+  `case`/`when`), chains that end in `true`, `false`, or `nil`, keyword `or`,
+  and chains whose operands contain `&&`, `||`, `!`, or a jump (`return`,
+  `break`, `next`, `redo`, `retry`) keep Boolean treatment.
+- Decision IDs for these expressions change because their context changes.
+  Comparisons against reports made with earlier versions show them as removed
+  `short_circuit` decisions and new `fallback` decisions.
 
 ## [0.11.1] - 2026-09-28
 

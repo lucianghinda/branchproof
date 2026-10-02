@@ -3,7 +3,7 @@
 |  |  |
 | --- | --- |
 | **Inherits** | Object |
-| **Includes** | [Branchproof::DecisionSyntax](DecisionSyntax.md), [Branchproof::DefaultSyntax](DefaultSyntax.md), [Branchproof::ExceptionSyntax](ExceptionSyntax.md), [Branchproof::IterationSyntax](IterationSyntax.md), [Branchproof::ValueSyntax](ValueSyntax.md) |
+| **Includes** | [Branchproof::DecisionSyntax](DecisionSyntax.md), [Branchproof::DefaultSyntax](DefaultSyntax.md), [Branchproof::ExceptionSyntax](ExceptionSyntax.md), [Branchproof::FallbackSyntax](FallbackSyntax.md), [Branchproof::IterationSyntax](IterationSyntax.md), [Branchproof::ValueSyntax](ValueSyntax.md) |
 | **Defined in** | lib/branchproof/source.rb |
 
 Inventories supported condition and decision occurrences from Ruby files.

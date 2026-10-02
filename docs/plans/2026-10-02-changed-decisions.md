@@ -184,7 +184,7 @@ acceptance tests. Integrate the already-reviewed scope/report APIs.
       thresholds and schema 1.5 reader requirements. Add signatures/autoloads.
 - [x] Run focused acceptance, packaging and lint. Obtain Luna spec then quality
       approval.
-- [ ] Obtain a final independent review of the integrated diff.
+- [x] Obtain a final independent review of the integrated diff.
 
 Task 3 evidence: independent Luna spec and quality reviews approved CLI,
 signatures and documentation. The new CLI acceptance suite passes (10 tests /
@@ -201,11 +201,30 @@ repository dependencies were not changed. Focused lint and diff checks pass.
 
 - [x] Clean merged-main baseline `bundle exec rake`: 1,703 tests / 241,851
       assertions, zero failures/errors, 13 optional skips; 187 lint files clean.
-- [ ] Final `bundle exec rake`, applicable RBS validation, packaging, Ruby syntax
+- [x] Final `bundle exec rake`, applicable RBS validation, packaging, Ruby syntax
       and `git diff --check`; existing CI framework/Rails lanes run on the PR.
-- [ ] Update this plan with actual results/limitations. Commit in Lore format,
-      push the branch and open a new PR. Preserve the feature worktree and
+- [x] Update this plan with actual results/limitations and prepare the reviewed
+      delivery commit and PR content. Publication is authorized: push the
+      branch and open a new PR against main. Preserve the feature worktree and
       remove temporary Ruby scripts; do not merge the PR.
+
+Final evidence: `bundle exec rake` passes with 1,782 tests / 242,928 assertions,
+zero failures/errors and 13 optional integration skips; RuboCop inspects 198
+files with no offenses. The first integrated run exposed two ordinary-renderer
+coordinator errors; scoped-only helper calls are now guarded, existing
+presentation regressions pass and both Luna review stages approved the fix.
+A fresh Luna integrated review approved the final diff. API docs regenerate
+successfully; RBS parsing and validation, the extracted-gem consumer, syntax
+checks for all 57 library files and diff checks pass. RBS validation uses a
+temporary external Rake::TaskLib declaration because the installed RBS tool
+lacks that dependency's signatures; it is declaration validation, not a full
+implementation type check.
+
+Remaining boundaries: scope is informational and excludes untracked files.
+Additions and renames include all current inventoried decisions. Drift checks
+are not atomic checkout locking, and saved scope consistency does not
+authenticate historical Git membership. Existing PR CI covers the optional
+RSpec compatibility and Rails integration lanes.
 
 All Ruby commands use Ruby 4.0.1, activated through the local version manager.
 Use a writable temporary directory for the RuboCop cache. Utility scripts use

@@ -8,6 +8,12 @@
 Renders versioned terminal and JSON analysis reports.
 
 ## Constants
+### `CHANGED_SCOPE_SCHEMA_VERSION` <a id="constant-CHANGED_SCOPE_SCHEMA_VERSION"></a> <a id="CHANGED_SCOPE_SCHEMA_VERSION-constant"></a>
+Not documented.
+
+### `CRITERIA_LABELS` <a id="constant-CRITERIA_LABELS"></a> <a id="CRITERIA_LABELS-constant"></a>
+Not documented.
+
 ### `CRITERION_VERSION` <a id="constant-CRITERION_VERSION"></a> <a id="CRITERION_VERSION-constant"></a>
 Not documented.
 
@@ -15,6 +21,9 @@ Not documented.
 Not documented.
 
 ### `DECISION_TABLE_STATUS_LABELS` <a id="constant-DECISION_TABLE_STATUS_LABELS"></a> <a id="DECISION_TABLE_STATUS_LABELS-constant"></a>
+Not documented.
+
+### `FORMATS` <a id="constant-FORMATS"></a> <a id="FORMATS-constant"></a>
 Not documented.
 
 ### `SCHEMA_VERSION` <a id="constant-SCHEMA_VERSION"></a> <a id="SCHEMA_VERSION-constant"></a>
@@ -28,6 +37,12 @@ Not documented.
 Not documented.
 
 ## Public Instance Methods
+### `changed_coverage_available?()` <a id="method-i-changed_coverage_available-3F"></a> <a id="changed_coverage_available?-instance_method"></a>
+- **@return** [Boolean]
+
+### `changed_scope_lines()` <a id="method-i-changed_scope_lines"></a> <a id="changed_scope_lines-instance_method"></a>
+Shared informational changed-scope header for all terminal and GitHub views.
+
 ### `condition_coverage_evidence(decision_id:, condition_id:)` <a id="method-i-condition_coverage_evidence"></a> <a id="condition_coverage_evidence-instance_method"></a>
 Returns condition-value evidence for focused renderers without exposing the
 report's internal document traversal or mutating saved records.
@@ -59,15 +74,23 @@ Not documented.
 ### `diagnostic_message(diagnostic)` <a id="method-i-diagnostic_message"></a> <a id="diagnostic_message-instance_method"></a>
 Formats source context consistently in live and saved terminal views.
 
+### `display_scope_path(path)` <a id="method-i-display_scope_path"></a> <a id="display_scope_path-instance_method"></a>
+Not documented.
+
 ### `exit_code()` <a id="method-i-exit_code"></a> <a id="exit_code-instance_method"></a>
 Not documented.
 
-### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil, focus: = nil, top: = nil, minimum: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil, focus: = nil, top: = nil, minimum: = nil, changed_scope: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@raise** [ArgumentError]
 - **@return** [Report] a new instance of Report
 
 ### `rerun_command(test_id)` <a id="method-i-rerun_command"></a> <a id="rerun_command-instance_method"></a>
 Not documented.
 
-### `write(io:, format:)` <a id="method-i-write"></a> <a id="write-instance_method"></a>
+### `step_summary()` <a id="method-i-step_summary"></a> <a id="step_summary-instance_method"></a>
+Markdown job summary for GitHub Actions ($GITHUB_STEP_SUMMARY).
+
+### `write(io:, format:, path_prefix: = nil)` <a id="method-i-write"></a> <a id="write-instance_method"></a>
+path_prefix is only used by :github, to make annotation paths
+repository-relative.
 - **@raise** [ArgumentError]

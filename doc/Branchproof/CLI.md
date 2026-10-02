@@ -15,5 +15,5 @@ Not documented.
 ### `call(argv)` <a id="method-i-call"></a> <a id="call-instance_method"></a>
 Not documented.
 
-### `initialize(stdout:, stderr:)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(stdout:, stderr:, env: = ENV)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [CLI] a new instance of CLI
