@@ -53,6 +53,45 @@ class TestGithubReport < Minitest::Test
     assert_includes annotations(summary_document(status: "FAILED")), "::error title=Branchproof tests::Tests FAILED"
   end
 
+  def test_error_and_warning_diagnostics_become_escaped_annotations
+    document = summary_document(status: "ERROR")
+    document[:diagnostics] = [
+      { code: "unsupported_runner", severity: "error", source_id: "a",
+        message: "parallel test scheduling is unsupported\n::warning file=evil,title=injected::bad" },
+      { code: "runner_notice", severity: "warning", message: "runner used fallback" },
+      { code: "runner_info", severity: "info", message: "runner detected" }
+    ]
+
+    lines = annotations(document)
+    error = lines.find { |line| line.start_with?("::error title=Branchproof diagnostic") }
+    warning = lines.find { |line| line.start_with?("::warning title=Branchproof diagnostic") }
+    notice = lines.find { |line| line.start_with?("::notice title=Branchproof diagnostic") }
+
+    assert_equal "::error title=Branchproof diagnostic (unsupported_runner)::" \
+                 "lib/a.rb: parallel test scheduling is unsupported%0A::warning file=evil,title=injected::bad", error
+    assert_equal "::warning title=Branchproof diagnostic (runner_notice)::runner used fallback", warning
+    assert_equal "::notice title=Branchproof diagnostic (runner_info)::runner detected", notice
+    diagnostic_errors = lines.grep(/\A::error title=Branchproof diagnostic/)
+    assert_equal 1, diagnostic_errors.length
+  end
+
+  def test_step_summary_includes_error_and_warning_diagnostics
+    document = summary_document(status: "ERROR")
+    document[:diagnostics] = [
+      { code: "unsupported_runner", severity: "error", source_id: "a",
+        message: "parallel test scheduling is unsupported" },
+      { code: "runner_notice", severity: "warning", message: "runner used fallback" },
+      { code: "runner_info", severity: "info", message: "runner detected" }
+    ]
+
+    markdown = report(document).step_summary
+
+    assert_includes markdown, "### Diagnostics"
+    assert_includes markdown, "- **ERROR (unsupported_runner):** `lib/a.rb: parallel test scheduling is unsupported`"
+    assert_includes markdown, "- **WARNING (runner_notice):** `runner used fallback`"
+    assert_includes markdown, "- **INFO (runner_info):** `runner detected`"
+  end
+
   def test_failed_policy_gates_become_errors
     lines = annotations(minimum: { "mcdc" => 90 })
 

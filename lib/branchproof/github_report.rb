@@ -42,6 +42,7 @@ module Branchproof
         lines.concat(ladder.map { |line| "- #{line}" })
         lines << ""
       end
+      render_diagnostics(lines)
       render_policy(lines)
       render_gap_table(lines)
       lines.join("\n") << "\n"
@@ -66,7 +67,40 @@ module Branchproof
       if lines.empty? && exit_code.positive?
         lines << command("error", "Exit status #{exit_code}; see the terminal report diagnostics", title: "Branchproof")
       end
+      diagnostics.each do |diagnostic|
+        diagnostic_code = fetch(diagnostic, :code).to_s
+        lines << command(annotation_severity(diagnostic), @coordinator.diagnostic_message(diagnostic),
+                         title: "Branchproof diagnostic (#{diagnostic_code})")
+      end
       lines
+    end
+
+    def diagnostics
+      Array(fetch(@document, :diagnostics))
+    end
+
+    def diagnostic_severity(diagnostic)
+      fetch(diagnostic, :severity).to_s.downcase
+    end
+
+    def annotation_severity(diagnostic)
+      severity = diagnostic_severity(diagnostic)
+      %w[error warning].include?(severity) ? severity : "notice"
+    end
+
+    def render_diagnostics(lines)
+      details = diagnostics
+      return if details.empty?
+
+      lines << "### Diagnostics"
+      lines << ""
+      details.each do |diagnostic|
+        severity = diagnostic_severity(diagnostic).upcase
+        diagnostic_code = fetch(diagnostic, :code).to_s
+        message = @coordinator.diagnostic_message(diagnostic)
+        lines << "- **#{severity} (#{diagnostic_code}):** #{code(message)}"
+      end
+      lines << ""
     end
 
     def annotation_path(path)
