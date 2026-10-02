@@ -24,7 +24,7 @@ class TestRSpecConstructs < Minitest::Test
       framework = report.dig("run_metadata", "framework") || report.dig("baseline", "project", "framework")
       assert_equal "rspec", framework
       assert_equal RSpecConstructs.decision_count, report.dig("metrics", "discovered")
-      assert_equal 143, RSpecConstructs.decision_bearing_count
+      assert_equal 144, RSpecConstructs.decision_bearing_count
       assert_empty RubyConstructs.inventory("PRED-15").fetch(:decisions)
       assert_native_vectors_match(report)
     end

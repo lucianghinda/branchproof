@@ -18,6 +18,7 @@ class TestRubyConstructAcceptance < Minitest::Test
     "IF-05" => { context: "unless", kind: "boolean" },
     "IF-08" => { context: "ternary", kind: "boolean" },
     "LOG-01" => { context: "short_circuit", kind: "boolean" },
+    "FALL-01" => { context: "fallback", kind: "multiway" },
     "LOOP-01" => { context: "while", kind: "boolean" },
     "LOOP-02" => { context: "until", kind: "boolean" },
     "CASE-01" => { context: "case", kind: "multiway" },
