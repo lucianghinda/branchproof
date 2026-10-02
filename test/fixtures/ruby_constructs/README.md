@@ -1,7 +1,7 @@
 # Executable Ruby construct examples
 
 Each `.rb` file is a complete, independent Ruby example for one catalog ID.
-`IF-01` maps to `if_01.rb`, `PAT-03` to `pat_03.rb`, and so on. All 144 IDs
+`IF-01` maps to `if_01.rb`, `PAT-03` to `pat_03.rb`, and so on. All 145 IDs
 have a source file and named test cases in one of the four JSON manifests.
 
 The examples demonstrate ordinary Ruby semantics. As of 0.9.0, 143 fixtures
@@ -98,7 +98,7 @@ The native manifests remain the behavior oracle. Branchproof expectations live
 separately in `expectations/source.json`, so an example can demonstrate valid
 Ruby without claiming that its syntax is instrumentable.
 
-The corpus contains 144 fixtures and 406 native cases. It is exercised through
+The corpus contains 145 fixtures and 409 native cases. It is exercised through
 these test layers:
 
 | Test file | Contract |

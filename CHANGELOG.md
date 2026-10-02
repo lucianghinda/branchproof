@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-29
+
+- Report value-context `||` chains that end in a string, symbol, or numeric
+  literal (including interpolated strings and symbols), such as
+  `name.presence || entry&.title || "Item #{id}"`, as `fallback` alternatives:
+  each operand is an alternative, covered when a test makes it the one that
+  supplies the value. These chains are no longer Boolean `short_circuit`
+  decisions, so they leave the MC/DC and decision-table denominators. Chains
+  used as conditions (`if`, `unless`, `while`, `until`, ternary, and
+  `case`/`when`), chains that end in `true`, `false`, or `nil`, keyword `or`,
+  and chains whose operands contain `&&`, `||`, `!`, or a jump (`return`,
+  `break`, `next`, `redo`, `retry`) keep Boolean treatment.
+- Decision IDs for these expressions change because their context changes.
+  Comparisons against reports made with earlier versions show them as removed
+  `short_circuit` decisions and new `fallback` decisions.
+
 ## [0.11.1] - 2026-09-28
 
 - Treat string, interpolated string, symbol, and numeric literal conditions as

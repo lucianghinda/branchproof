@@ -4,8 +4,8 @@ Branchproof measures decision, condition, modified condition/decision (MC/DC),
 and decision-table coverage from one serial Minitest or RSpec run. It discovers Ruby
 decisions through Prism, records their runtime paths, and attributes evidence
 to tests. Boolean decisions receive the coverage ladder; `case`, pattern
-alternatives, safe navigation, and conditional assignments receive alternative
-coverage.
+alternatives, safe navigation, conditional assignments, and value fallback
+chains such as `name || "untitled"` receive alternative coverage.
 
 The gem and primary command are named `branchproof`. The `mcdc` command and
 `MCDC` namespace remain compatibility aliases with the same behavior.
