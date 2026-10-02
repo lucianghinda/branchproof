@@ -208,6 +208,23 @@ module Branchproof
     def validate_runner!: () -> nil
   end
 
+  module Worker
+    def self.child_process: (String config_path) -> Integer?
+    def self.adapter_for: (record project, untyped runtime) -> (MinitestAdapter | RSpecAdapter)
+    def self.guard_late_rspec_execution: (RSpecAdapter adapter, Hash[String, untyped] payload) -> untyped
+    def self.legacy_project: () -> Hash[String, untyped]
+    def self.prepend_load_paths: (record project) -> nil
+    def self.boot_project: (record project) -> record?
+    def self.project_metadata: (record project, record? rails_metadata) -> record
+    def self.completion_result: (baseline: record, project: record, rails_metadata: record?, evidence: record, tests: Array[record], diagnostics: Array[record]) -> record
+    def self.incomplete_evidence: (record evidence, Array[record] diagnostics) -> record
+    def self.write_completion: (Hash[String, untyped] payload, record result) -> nil
+    def self.write_failure: (Hash[String, untyped] payload, String code, untyped details) -> nil
+    def self.project_metadata_for: (Hash[String, untyped] payload) -> record
+    def self.symbolize: (untyped value) -> untyped
+    def self.normalize: (untyped value) -> untyped
+  end
+
   class Report
     SCHEMA_VERSION: String
     CRITERION_VERSION: String

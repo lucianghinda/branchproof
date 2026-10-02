@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 - Require Ruby 4.0 or newer and run core, RSpec, and Rails CI on Ruby 4.0.
+- Add RBS signatures for `Branchproof::Worker`.
 - Add `--view summary` for `analyze` and `report`. It ranks source files and
   decisions with gaps: unexecuted decisions first, then the most missing
   decision-table rules, unproven MC/DC conditions, and missing alternatives.
