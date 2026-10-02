@@ -78,7 +78,7 @@ module Branchproof
 
     # Shares the existing missing-case wording with focused terminal views.
     def condition_explanation(decision_id:, condition_id:)
-      decision = inventory_decisions.find { |item| value(item, :id).to_s == decision_id.to_s }
+      decision = inventory_decisions_by_id[decision_id.to_s]
       return "" unless decision
 
       condition = Array(value(decision, :conditions)).find { |item| value(item, :id).to_s == condition_id.to_s }
@@ -103,7 +103,7 @@ module Branchproof
     # Returns condition-value evidence for focused renderers without exposing
     # the report's internal document traversal or mutating saved records.
     def condition_coverage_evidence(decision_id:, condition_id:)
-      decision = inventory_decisions.find { |item| value(item, :id).to_s == decision_id.to_s }
+      decision = inventory_decisions_by_id[decision_id.to_s]
       condition = Array(value(decision, :conditions)).find do |item|
         value(item, :id).to_s == condition_id.to_s
       end
@@ -1228,6 +1228,13 @@ module Branchproof
 
     def inventory_decisions
       @inventory_decisions ||= Array(value(@inventory, :decisions)).freeze
+    end
+
+    def inventory_decisions_by_id
+      @inventory_decisions_by_id ||= inventory_decisions.each_with_object({}) do |decision, index|
+        id = value(decision, :id).to_s
+        index[id] = decision unless index.key?(id)
+      end
     end
 
     def vectors
