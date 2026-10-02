@@ -590,7 +590,8 @@ relative path and source line, with deterministic tie-breakers for each view:
 decisions use column and stable ID; decision tables use decision ID; conditions
 and alternatives use column, decision ID, and condition or alternative index;
 tests use test name and ID. `--top` follows that source order; it does not rank
-rows by risk or coverage. For example:
+rows by risk or coverage. Only `--view summary` ranks rows (see
+[Summary view](#summary-view-where-to-start)). For example:
 
 ```sh
 bundle exec branchproof analyze 'lib/**/*.rb' --focus lib/access.rb:12 --top 5
@@ -603,6 +604,77 @@ They also do not generate tests. RSpec rerun labels remain the existing
 recorded selectors and commands. The main finding rows respect the selection;
 supplemental unexecuted, unattributed, and unsupported sections retain their
 run-wide counts rather than expanding into all detail rows.
+
+### Summary view: where to start
+
+Use `--view summary` to see the largest gaps first. It is accepted by
+`analyze` and `report` and is terminal-only.
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' --view summary --top 10
+bundle exec branchproof report .branchproof/current.json --view summary
+```
+
+The view has two ranked lists:
+
+* **Files**: one row per source file, with counts and explicit denominators.
+* **Where to start**: one row per supported decision that still has a gap,
+  with its location, the missing cases, and the tests that already reach it.
+
+Both lists use the same deterministic order:
+
+1. Unexecuted decisions (or files with more of them) come first.
+2. Then more missing obligations: decision-table rules, unproven MC/DC
+   conditions, and missing alternatives.
+3. Ties break by project-relative path, line, column, and decision ID.
+
+The order counts missing obligations. It is not a risk estimate.
+
+```text
+Files:
+  1. lib/access.rb: 3/3 decisions with gaps; 1 unexecuted; DT 8/11 rules missing; MC/DC 7/8 conditions unproven
+  2. lib/pricing.rb: 2/2 decisions with gaps; DT 2/3 rules missing; MC/DC 2/2 conditions unproven; 2/3 alternatives missing
+
+Where to start:
+  1. lib/access.rb:15  a && (b || c)
+     unexecuted; DT 4/4 rules missing; MC/DC 3/3 conditions unproven
+     Cases to test: 4
+     R1 [F--]: a falsey; expected decision false
+     R2 [TT-]: a truthy, b truthy; expected decision true
+     R3 [TFT]: a truthy, b falsey, c truthy; expected decision true
+     R4 [TFF]: a truthy, b falsey, c falsey; expected decision false
+     Tests reaching this decision: none recorded
+
+  2. lib/access.rb:7  user.owner?(doc) || (user.editor? && !doc.locked?)
+     DT 3/4 rules missing; MC/DC 3/3 conditions unproven
+     Cases to test: 3
+     ...
+     Tests reaching this decision:
+       AccessTest#test_owner (test/access_test.rb:19)
+```
+
+`Cases to test` counts the new observations the decision needs. When the
+decision table was calculated, each missing rule is one case, and one
+observation can cover at most one rule. When the table was not calculated,
+or no rule is missing but a condition is still unproven (for example, when
+its pair needs a statically impossible rule), the view lists the unproven
+conditions instead. For decisions with
+alternative coverage, such as `case`/`when` or `case`/`in`, it lists the
+missing alternatives. A case describes truth values, not application inputs.
+
+The level controls detail per row:
+
+* Level 1 shows ranked rows and counts only.
+* Level 2 adds the missing cases.
+* Level 3 (the default) also names up to three tests that already reach the
+  decision, with RSpec rerun commands when recorded. These tests are good
+  places to add the new case.
+
+`--top N` keeps the first `N` rows of each list and reports how many were
+hidden. `--focus PATH[:LINE]` ranks only the matching decisions.
+`--missing-only` hides fully covered files. Unsupported decisions are counted
+but not ranked. As with the other views, the coverage ladder, policy gates,
+diagnostics, and exit status are always global.
 
 ### Saved reports and offline comparison
 
@@ -698,6 +770,52 @@ with `if: always()` so failed gates and failed test runs leave an artifact:
     path: .branchproof/coverage.json
     if-no-files-found: warn
 ```
+
+### GitHub Actions annotations and job summary
+
+`--format github` prints GitHub Actions workflow commands instead of the
+terminal report. `analyze` and `report` accept it; `compare` does not.
+
+* One `::warning` per decision with a gap, in [summary view](#summary-view-where-to-start)
+  order, placed on the decision's file and line. At level 2 or 3 the message
+  lists the cases to test.
+* An `::error` if the test run did not pass or is incomplete, and one per
+  policy gate that did not pass (failed or unavailable, with its reason).
+  Every non-zero exit status has at least one error.
+* A final `::notice` with the coverage ladder and the number of decisions with
+  gaps.
+
+When `GITHUB_STEP_SUMMARY` is set, as it is inside Actions, Branchproof also
+appends a Markdown summary to that file: the ladder, the policy gates, and a
+ranked "Where to start" table. The table shows `--top N` rows, or 20 rows
+when `--top` is not given.
+
+Render both from the saved report, so the tests run only once:
+
+```yaml
+- name: Branchproof coverage
+  run: |
+    mkdir -p .branchproof
+    bundle exec branchproof analyze 'lib/**/*.rb' --test 'test/**/*_test.rb' \
+      --format json --output .branchproof/coverage.json \
+      --minimum mcdc=80 --minimum decision_table=75
+
+- name: Branchproof annotations
+  if: always() && hashFiles('.branchproof/coverage.json') != ''
+  run: bundle exec branchproof report .branchproof/coverage.json --format github --top 10
+```
+
+GitHub shows a limited number of annotations per step (currently 10
+warnings), so `--top 10` keeps the output to the ones that are displayed.
+Annotation paths must be relative to the repository. When the project is in
+a subdirectory (a step with `working-directory: gems/tool`), Branchproof
+prefixes each path with the current directory's location inside
+`GITHUB_WORKSPACE`. Run `report` from the same directory as `analyze`.
+
+`--focus` also applies. `--view` and `--missing-only` are rejected because
+the output always uses the summary ranking of gaps. The exit status is the
+same as for the terminal format, so the report step inherits the saved
+policy and fails with the same gates.
 
 MC/DC has two related questions. Evaluation asks whether a condition was
 observed with a value, including short-circuiting. Independent proof asks

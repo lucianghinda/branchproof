@@ -14,7 +14,7 @@ module Branchproof
                    selection: nil)
       @document = document || {}
       @view = view.to_sym
-      unless (Report::VIEWS - [:decisions]).include?(@view)
+      unless (Report::VIEWS - %i[decisions summary]).include?(@view)
         raise ArgumentError, "view must be :conditions, :tests, or :decision_tables"
       end
 
