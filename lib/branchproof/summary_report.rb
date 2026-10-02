@@ -85,8 +85,10 @@ module Branchproof
       end
       lines << ""
       render_focus_notice(lines)
+      lines << "Whole-run coverage and policy:" if @selection.decision_ids
       lines.concat(@coordinator.coverage_ladder_lines)
       lines.concat(@coordinator.coverage_policy_lines)
+      lines.concat(@coordinator.changed_scope_lines)
       if @ranking.available?
         render_ranking(lines)
       else
@@ -97,7 +99,8 @@ module Branchproof
         lines << "Unsupported decisions: #{unsupported} (not ranked; MC/DC unavailable) (run-wide)"
       end
       Array(fetch(@document, :diagnostics)).each do |diagnostic|
-        lines << "Diagnostic: #{@coordinator.diagnostic_message(diagnostic)}"
+        prefix = @selection.decision_ids ? "Run-wide diagnostic" : "Diagnostic"
+        lines << "#{prefix}: #{@coordinator.diagnostic_message(diagnostic)}"
       end
       lines.join("\n") << "\n"
     end
@@ -130,7 +133,8 @@ module Branchproof
         parts << "DT #{file.missing_rules}/#{file.required_rules} rules missing" if file.required_rules.positive?
         parts << "MC/DC #{file.unproven_conditions}/#{file.conditions} conditions unproven" if file.conditions.positive?
         parts << "#{file.missing_alternatives}/#{file.alternatives} alternatives missing" if file.alternatives.positive?
-        lines << "  #{position + 1}. #{file.relative_path || "location unavailable"}: #{parts.join("; ")}"
+        path = file.relative_path ? @coordinator.display_scope_path(file.relative_path) : "location unavailable"
+        lines << "  #{position + 1}. #{path}: #{parts.join("; ")}"
       end
       lines << ""
     end
@@ -138,7 +142,16 @@ module Branchproof
     def render_gaps(lines, gaps)
       lines << "Where to start:"
       if gaps.empty?
-        lines << (focus_match? ? "  No missing coverage" : "  none")
+        if @selection.decision_ids
+          message = if !focus_match? || empty_changed_scope? || !@coordinator.changed_coverage_available?
+                      "No changed-scope gaps can be reported from the available evidence"
+                    else
+                      "No changed-scope gaps found"
+                    end
+          lines << "  #{message}"
+        else
+          lines << (focus_match? ? "  No missing coverage" : "  none")
+        end
         lines << ""
         return
       end
@@ -169,17 +182,31 @@ module Branchproof
       return unless @selection.focus_active?
 
       label = @selection.focus_label
-      lines << (focus_match? ? "Focus: #{label}" : "Focus: no matching decisions for #{label}")
+      no_match = @selection.decision_ids ? "no matching changed decisions" : "no matching decisions"
+      label = @coordinator.display_scope_path(label)
+      lines << (focus_match? ? "Focus: #{label}" : "Focus: #{no_match} for #{label}")
     end
 
     def focus_match?
-      !@selection.focus_active? || !@selection.matching_decision_ids(@document).empty?
+      return true unless @selection.focus_active?
+
+      ids = if @selection.decision_ids
+              @selection.selected_decision_ids(@document)
+            else
+              @selection.matching_decision_ids(@document)
+            end
+      !ids.empty?
+    end
+
+    def empty_changed_scope?
+      @selection.decision_ids&.empty?
     end
 
     def location(decision)
+      path = @coordinator.display_scope_path(decision.relative_path)
       return "location unavailable" if decision.relative_path.nil?
 
-      decision.line ? "#{decision.relative_path}:#{decision.line}" : decision.relative_path
+      decision.line ? "#{path}:#{decision.line}" : path
     end
 
     def test_label(id)

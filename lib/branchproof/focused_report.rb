@@ -27,7 +27,8 @@ module Branchproof
         counts[[test[:name], test[:relative_path], test[:line]]] += 1
       end
       @coordinator = coordinator || Report.from_document(document: @document, level: @level)
-      @matching_decision_ids = @selection.focus_active? ? @selection.matching_decision_ids(@document) : nil
+      @matching_decision_ids = @selection.decision_filter_active? ? @selection.selected_decision_ids(@document) : nil
+      @matching_decision_id_set = @matching_decision_ids&.to_h { |id| [id, true] }
     end
 
     def render
@@ -51,8 +52,10 @@ module Branchproof
       lines << "Empty groups mean no recorded completed observation."
       lines << ""
       render_focus_notice(lines)
+      lines << "Whole-run coverage and policy:" if @selection.decision_ids
       lines.concat(@coordinator.coverage_ladder_lines)
       lines.concat(@coordinator.coverage_policy_lines)
+      lines.concat(@coordinator.changed_scope_lines)
       case @view
       when :conditions
         render_conditions(lines)
@@ -64,7 +67,8 @@ module Branchproof
       render_unowned(lines)
       render_unsupported(lines)
       Array(fetch(@document, :diagnostics)).each do |diagnostic|
-        lines << "Diagnostic: #{@coordinator.diagnostic_message(diagnostic)}"
+        prefix = @selection.decision_ids ? "Run-wide diagnostic" : "Diagnostic"
+        lines << "#{prefix}: #{@coordinator.diagnostic_message(diagnostic)}"
       end
       lines.join("\n") << "\n"
     end
@@ -94,7 +98,8 @@ module Branchproof
         render_group(lines, "Short-circuited in", row[:short_circuited], row)
         lines << "  Unattributed observations: #{row[:unattributed]}" if row[:unattributed].to_i.positive?
         if @level >= 2 && row[:supporting_set].any?
-          lines << "  Supporting test set: #{row[:supporting_set].map { |id| test_label(id) }.join(", ")}"
+          heading = @selection.decision_ids ? "Whole-run supporting test set" : "Supporting test set"
+          lines << "  #{heading}: #{row[:supporting_set].map { |id| test_label(id) }.join(", ")}"
           lines << "  Tests outside this MC/DC evidence set may provide other coverage."
         end
         render_constraint(lines, row) if @level >= 3 && row[:constraint_result]
@@ -112,7 +117,8 @@ module Branchproof
         end
         lines << ""
       end
-      lines << "No missing conditions" if @missing_only && rows.empty? && focus_match_exists?
+      lines << "No missing conditions" if @missing_only && rows.empty? && focus_match_exists? &&
+                                          !empty_changed_scope? && @coordinator.changed_coverage_available?
       render_alternatives(lines, alternatives)
     end
 
@@ -142,7 +148,11 @@ module Branchproof
       rows, hidden = limit_rows(all_rows)
       append_limit_summary(lines, hidden, "decision")
       rendered = 0
-      impossible = @index.decision_tables.sum { |row| row[:impossible_rules].to_i }
+      impossible = if @selection.decision_filter_active?
+                     all_rows.sum { |row| row[:impossible_rules].to_i }
+                   else
+                     @index.decision_tables.sum { |row| row[:impossible_rules].to_i }
+                   end
       rows.each do |row|
         rules = @missing_only ? row[:rules].select { |rule| rule[:coverage].to_s == "missing" } : row[:rules]
         next if @missing_only && rules.empty? && row[:status].to_s == "calculated"
@@ -163,7 +173,8 @@ module Branchproof
         rules.each { |rule| render_decision_table_rule(lines, row, rule) }
         lines << ""
       end
-      lines << "No missing decision-table rules" if @missing_only && rendered.zero?
+      lines << "No missing decision-table rules" if @missing_only && rendered.zero? && focus_match_exists? &&
+                                                    !empty_changed_scope? && @coordinator.changed_coverage_available?
       return unless impossible.positive?
 
       lines << "#{impossible} statically impossible rule#{"s" unless impossible == 1} excluded"
@@ -213,7 +224,8 @@ module Branchproof
         end
         lines << ""
       end
-      lines << "No missing alternatives" if @missing_only && rows.empty? && focus_match_exists?
+      lines << "No missing alternatives" if @missing_only && rows.empty? && focus_match_exists? &&
+                                            !empty_changed_scope? && @coordinator.changed_coverage_available?
     end
 
     def render_alternative_group(lines, heading, evidence)
@@ -340,10 +352,12 @@ module Branchproof
     def render_focus_notice(lines)
       return unless @selection.focus_active?
 
+      focus_label = @coordinator.display_scope_path(@selection.focus_label)
+      no_match = @selection.decision_ids ? "no matching changed decisions" : "no matching decisions"
       lines << if @matching_decision_ids.empty?
-                 "Focus: no matching decisions for #{@selection.focus_label}"
+                 "Focus: #{no_match} for #{focus_label}"
                else
-                 "Focus: #{@selection.focus_label}"
+                 "Focus: #{focus_label}"
                end
     end
 
@@ -360,9 +374,17 @@ module Branchproof
       !@selection.focus_active? || !@matching_decision_ids.empty?
     end
 
+    def empty_changed_scope?
+      @selection.decision_ids&.empty?
+    end
+
     def filtered_conditions
       rows = @index.conditions
-      rows = rows.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) } if @selection.focus_active?
+      if @selection.decision_filter_active?
+        rows = rows.select do |row|
+          @matching_decision_id_set.key?(row[:decision_id].to_s)
+        end
+      end
       rows = rows.reject { |row| row[:status].to_s.upcase == "PROVEN" } if @missing_only && @level > 1
       rows.sort_by do |row|
         [row[:relative_path].to_s, row[:line].to_i, row[:column].to_i,
@@ -372,7 +394,11 @@ module Branchproof
 
     def filtered_alternatives
       rows = @index.alternatives
-      rows = rows.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) } if @selection.focus_active?
+      if @selection.decision_filter_active?
+        rows = rows.select do |row|
+          @matching_decision_id_set.key?(row[:decision_id].to_s)
+        end
+      end
       rows = rows.select { |row| row[:missing] || row[:status].to_s != "covered" } if @missing_only && @level > 1
       rows.sort_by do |row|
         [row[:relative_path].to_s, row[:line].to_i, row[:column].to_i,
@@ -397,7 +423,11 @@ module Branchproof
 
     def filtered_decision_tables
       rows = @index.decision_tables
-      rows = rows.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) } if @selection.focus_active?
+      if @selection.decision_filter_active?
+        rows = rows.select do |row|
+          @matching_decision_id_set.key?(row[:decision_id].to_s)
+        end
+      end
       rows = rows.select do |row|
         !@missing_only || row[:status].to_s != "calculated" || row[:rules].any? do |rule|
           rule[:coverage].to_s == "missing"
@@ -410,15 +440,12 @@ module Branchproof
       rows = @index.tests
       return rows unless @selection.active?
 
-      if @selection.focus_active?
-        condition_ids = @index.conditions.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) }
-                              .map { |row| row[:id].to_s }
-        alternative_ids = @index.alternatives.select { |row| @matching_decision_ids.include?(row[:decision_id].to_s) }
-                                .map { |row| row[:alternative_id].to_s }
+      if @selection.decision_filter_active?
+        ids = selected_observation_ids
         rows = rows.select do |row|
           row[:observations].any? do |observation|
-            condition_ids.include?(observation[:condition_id].to_s) ||
-              alternative_ids.include?(observation[:alternative_id].to_s)
+            ids[:conditions].key?(observation[:condition_id].to_s) ||
+              ids[:alternatives].key?(observation[:alternative_id].to_s)
           end
         end
       end
@@ -430,15 +457,38 @@ module Branchproof
     end
 
     def test_observations(row, missing_ids, missing_alternative_ids)
-      return row[:observations] unless @missing_only
+      observations = row[:observations]
+      if @selection.decision_ids
+        ids = selected_observation_ids
+        observations = observations.select do |observation|
+          ids[:conditions].key?(observation[:condition_id].to_s) ||
+            ids[:alternatives].key?(observation[:alternative_id].to_s)
+        end
+      end
+      return observations unless @missing_only
 
-      row[:observations].select do |observation|
+      observations.select do |observation|
         missing_ids.include?(observation[:condition_id]) ||
           missing_alternative_ids.include?(observation[:alternative_id])
       end
     end
 
+    def selected_observation_ids
+      @selected_observation_ids ||= begin
+        conditions = {}
+        alternatives = {}
+        @index.conditions.each do |row|
+          conditions[row[:id].to_s] = true if @matching_decision_id_set.key?(row[:decision_id].to_s)
+        end
+        @index.alternatives.each do |row|
+          alternatives[row[:alternative_id].to_s] = true if @matching_decision_id_set.key?(row[:decision_id].to_s)
+        end
+        { conditions: conditions, alternatives: alternatives }
+      end
+    end
+
     def location(path, line, unavailable: "location unavailable")
+      path = @coordinator.display_scope_path(path)
       return "location unavailable" if path.to_s.empty?
       return "#{path}: #{unavailable}" if line.nil?
 

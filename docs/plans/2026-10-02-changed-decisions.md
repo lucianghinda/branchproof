@@ -35,12 +35,11 @@ inventory fields, IDs, instrumentation or default parsing. Nested body edits
 may affect all enclosing controllers. Compare normalized old/current hunk token
 sequences, ignoring comment/trivia while retaining literal contents. Equal
 semantic sequences select nothing, including inline-comment or spacing-only
-edits beside unchanged Ruby code. Removed code in zero-new-line hunks maps
-to a zero-width current anchor at the end of `new_start`'s line (zero at file
-start). Require construct start < anchor < construct end; an anchor outside a
-surviving controller must not select a neighboring construct. Removed constructs
-have no surviving decision and must not select an adjacent unrelated decision.
-Capture deletion information even when no current decision survives.
+edits beside unchanged Ruby code. Deleted body tokens use old AST ownership,
+translated through hunk line and byte offsets to surviving current controllers.
+Removed constructs have no surviving decision and must not select an adjacent
+unrelated decision, including empty bodies separated by blank lines. Capture
+deletion information even when no current decision survives.
 
 Scope capture checks inventory digests against mapping bytes and rechecks
 relevant diff/status/content after mapping, using the fixed resolved commit.
@@ -141,15 +140,15 @@ assert_equal normal_json.fetch("coverage_policy"), json.fetch("coverage_policy")
 assert_equal normal_report.exit_code, report.exit_code
 ```
 
-- [ ] Add failing subset/count/view/offline/schema tests, including empty,
+- [x] Add failing subset/count/view/offline/schema tests, including empty,
       unsupported-only, failed/incomplete and uncalculated decision tables.
-- [ ] Implement shared aggregation and scope validation; retain normal 1.4 JSON.
+- [x] Implement shared aggregation and scope validation; retain normal 1.4 JSON.
       Changed detail filtering must work in every existing view and GitHub
       annotations/step summary. Include base, deleted-file and untracked notices.
-- [ ] Test --focus intersection/top cap without denominator or gate changes;
+- [x] Test --focus intersection/top cap without denominator or gate changes;
       full JSON retains all records. Validate membership and recompute counts
       from captured analysis when reading a saved report; reject tampering.
-- [ ] Run focused analyzer/report/saved/comparison tests and lint. Obtain Luna
+- [x] Run focused analyzer/report/saved/comparison tests and lint. Obtain Luna
       spec then quality approval before CLI integration.
 
 Task 2a evidence: independent Luna spec and quality reviews approved shared
@@ -159,6 +158,16 @@ coverage ladder (13) and relevant flow/table validation tests pass. Scoped
 RuboCop is clean. Schema 1.5 stores both `changed_scope` and `changed_coverage`;
 invalid fractions produce unavailable scope coverage, and recomputation rejects
 tampered summaries. Git's zero-padded rename/copy similarity scores are retained.
+
+Task 2b evidence: independent Luna spec and quality reviews approved live Report
+integration and scoped display selection. Changed-view tests (13 tests / 293
+assertions), existing report/focused/summary/GitHub and comparison tests pass;
+scoped RuboCop and diff checks are clean. Regressions cover disjoint focus in
+every renderer, unavailable criteria, full JSON identity, captured offline scope
+and control characters in metadata and selected source paths. Ordinary output
+is preserved. A conservative no-gap notice can be suppressed in a focused
+criterion view when another criterion is unavailable; individual criterion
+counts still show their own availability.
 
 ## Task 3 — CLI, public contracts and acceptance
 

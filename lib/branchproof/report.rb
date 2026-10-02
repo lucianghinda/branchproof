@@ -8,20 +8,25 @@ require_relative "coverage_policy"
 require_relative "report_selection"
 require_relative "summary_report"
 require_relative "github_report"
+require_relative "changed_coverage"
 
 module Branchproof
   # Renders versioned terminal and JSON analysis reports.
   class Report
     SCHEMA_VERSION = "1.4"
+    CHANGED_SCOPE_SCHEMA_VERSION = "1.5"
     CRITERION_VERSION = "masking_occurrence_v1"
     VIEWS = %i[decisions conditions tests decision_tables summary].freeze
     FORMATS = %i[terminal json github].freeze
     DECISION_TABLE_LABELS = { "true" => "T", "false" => "F", "dont_care" => "-" }.freeze
     DECISION_TABLE_STATUS_LABELS = { "covered" => "COVERED", "missing" => "MISSING",
                                      "excluded" => "EXCLUDED" }.freeze
+    CRITERIA_LABELS = { decision: "Decision", condition: "Condition", condition_decision: "Condition/decision",
+                        mcdc: "MC/DC", decision_table: "Decision table", alternative: "Alternative" }.freeze
 
     def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false,
-                   view: :decisions, run_metadata: {}, saved_document: nil, focus: nil, top: nil, minimum: nil)
+                   view: :decisions, run_metadata: {}, saved_document: nil, focus: nil, top: nil, minimum: nil,
+                   changed_scope: nil)
       raise ArgumentError, "level must be 1, 2, or 3" unless [1, 2, 3].include?(level.to_i)
       unless VIEWS.include?(view.to_sym)
         raise ArgumentError, "view must be :decisions, :conditions, :tests, :decision_tables, or :summary"
@@ -38,30 +43,37 @@ module Branchproof
       @view = view.to_sym
       @run_metadata = run_metadata || {}
       @saved_document = saved_document
+      raise ArgumentError, "changed_scope must be a hash" if !changed_scope.nil? && !changed_scope.is_a?(Hash)
+
+      @changed_scope = changed_scope
       raise ArgumentError, "minimum must be a hash" if !minimum.nil? && !minimum.is_a?(Hash)
 
       @minimum_override = minimum.is_a?(Hash) && !minimum.empty? ? CoveragePolicy.normalize(minimum) : nil
       @minimum = effective_minimum
-      @selection = ReportSelection.new(focus: focus, top: top)
+      @selection = ReportSelection.new(focus: focus, top: top,
+                                       decision_ids: value(@changed_scope, :decision_ids))
     end
 
     def self.from_document(document:, level: nil, view: :decisions, missing_only: false, focus: nil, top: nil,
                            minimum: nil)
       data = document || {}
+      captured_scope = data[:changed_scope] || data["changed_scope"]
       new(inventory: data[:source_inventory] || data["source_inventory"],
           evidence: data[:observations] || data["observations"],
           analysis: data[:analysis] || data["analysis"], minima: data[:minima] || data["minima"],
           baseline: data[:baseline] || data["baseline"], diagnostics: data[:diagnostics] || data["diagnostics"],
           level: level || (data[:analysis] || data["analysis"] ? 3 : 1), view: view, missing_only: missing_only,
           focus: focus, top: top,
-          run_metadata: data[:run_metadata] || data["run_metadata"], saved_document: data, minimum: minimum)
+          run_metadata: data[:run_metadata] || data["run_metadata"], saved_document: data, minimum: minimum,
+          changed_scope: captured_scope)
     end
 
     # path_prefix is only used by :github, to make annotation paths repository-relative.
     def write(io:, format:, path_prefix: nil)
       format = format.to_sym
       raise ArgumentError, "format must be :terminal, :json, or :github" unless FORMATS.include?(format)
-      raise ArgumentError, "focus and top filters are terminal-only" if format == :json && @selection.active?
+      raise ArgumentError, "focus and top filters are terminal-only" if format == :json &&
+                                                                        (@selection.focus_active? || @selection.top)
 
       io.write(case format
                when :json then JSON.generate(json_document)
@@ -125,6 +137,58 @@ module Branchproof
       lines
     end
 
+    # Shared informational changed-scope header for all terminal and GitHub views.
+    def changed_scope_lines
+      return [] unless @changed_scope
+
+      files = value(@changed_scope, :files)
+      deleted_paths = Array(files).filter_map do |file|
+        scope_text(value(file, :path)) if value(file, :status).to_s == "D"
+      end
+      ref = scope_text(value(@changed_scope, :requested_ref))
+      base = scope_text(value(@changed_scope, :base_commit))
+      lines = ["Changed scope: #{ref} (resolved #{base})",
+               "Comparison: tracked worktree; untracked files excluded"]
+      unless deleted_paths.empty?
+        lines << "Deleted files: #{deleted_paths.join(", ")} (no current decisions to display)"
+      end
+      lines << "Changed coverage (informational):"
+      coverage = value(json_document, :changed_coverage) || {}
+      overall_unavailable = value(coverage, :reason)
+      if overall_unavailable && overall_unavailable.to_s != "zero_denominator"
+        lines << "  Changed coverage unavailable: #{changed_coverage_reason(coverage)}"
+      end
+      CRITERIA_LABELS.each do |criterion, label|
+        row = value(value(coverage, :coverage), criterion) || {}
+        denominator = value(row, :denominator)
+        percentage = value(row, :percentage)
+        lines << if value(row, :status).to_s == "available"
+                   "  #{label}: #{value(row, :numerator)}/#{denominator} (#{percentage}%)"
+                 elsif value(row, :reason).to_s == "zero_denominator"
+                   "  #{label}: N/A (not applicable)"
+                 else
+                   "  #{label}: unavailable (#{changed_coverage_reason(row)})"
+                 end
+      end
+      lines
+    end
+
+    def changed_coverage_available?
+      return true unless @changed_scope
+
+      coverage = value(json_document, :changed_coverage)
+      return false unless value(coverage, :status).to_s == "available"
+
+      rows = value(coverage, :coverage) || {}
+      rows.values.all? do |row|
+        value(row, :status).to_s == "available" || value(row, :reason).to_s == "zero_denominator"
+      end
+    end
+
+    def display_scope_path(path)
+      @changed_scope ? scope_text(path) : path
+    end
+
     def exit_code
       return 2 unless usage_valid?
 
@@ -164,14 +228,20 @@ module Branchproof
         return document
       end
 
-      normalize(schema_version: SCHEMA_VERSION,
-                tool_version: (defined?(Branchproof::VERSION) ? Branchproof::VERSION : "unknown"),
-                criterion_version: CRITERION_VERSION, runtime: RUBY_DESCRIPTION,
-                run_ids: Array(value(@evidence, :run_ids)),
-                source_inventory: inventory_with_default_kinds, baseline: @baseline, observations: @evidence,
-                analysis: @analysis, minima: @minima, metrics: metrics,
-                diagnostics: @diagnostics, completeness: completeness, coverage_policy: coverage_policy,
-                run_metadata: @run_metadata)
+      document = normalize(schema_version: @changed_scope ? CHANGED_SCOPE_SCHEMA_VERSION : SCHEMA_VERSION,
+                           tool_version: (defined?(Branchproof::VERSION) ? Branchproof::VERSION : "unknown"),
+                           criterion_version: CRITERION_VERSION, runtime: RUBY_DESCRIPTION,
+                           run_ids: Array(value(@evidence, :run_ids)),
+                           source_inventory: inventory_with_default_kinds, baseline: @baseline, observations: @evidence,
+                           analysis: @analysis, minima: @minima, metrics: metrics,
+                           diagnostics: @diagnostics, completeness: completeness, coverage_policy: coverage_policy,
+                           run_metadata: @run_metadata)
+      if @changed_scope
+        document["changed_scope"] = normalize(@changed_scope)
+        document["changed_coverage"] = normalize(ChangedCoverage.call(document: document,
+                                                                      scope: @changed_scope))
+      end
+      document
     end
 
     def github_report
@@ -201,8 +271,11 @@ module Branchproof
                "Observations: #{metrics[:completed]} completed, #{metrics[:aborted]} aborted, " \
                "#{metrics[:unattributed]} unattributed",
                values_legend]
+      lines.insert(1, "Whole-run metrics:") if @changed_scope
+      lines << "Whole-run coverage and policy:" if @changed_scope
       lines.concat(coverage_ladder_lines)
       lines.concat(coverage_policy_lines)
+      lines.concat(changed_scope_lines)
       lines << missing_summary_line if @missing_only
       selected_decisions, hidden = selected_decisions_for_display
       append_selection_lines(lines, hidden, "decision")
@@ -211,7 +284,7 @@ module Branchproof
       selected_decisions.each { |decision| render_decision(lines, decision) }
       render_minima(lines) unless @missing_only
       unless @diagnostics.empty?
-        lines << "Diagnostics:"
+        lines << (@changed_scope ? "Run-wide diagnostics:" : "Diagnostics:")
         @diagnostics.each { |diagnostic| lines << "  - #{diagnostic_message(diagnostic)}" }
       end
       lines.join("\n") << "\n"
@@ -220,6 +293,7 @@ module Branchproof
     def render_decision(lines, decision)
       source = source_for(decision)
       filename = value(source, :relative_path) || value(source, :absolute_path) || value(decision, :source_id)
+      filename = display_scope_path(filename)
       decision_label = "Decision #{short_id(value(decision, :id))} #{filename}:#{value(decision, :line)}"
       lines << decision_label
       lines << "  Decision: #{value(decision, :expression)}"
@@ -550,7 +624,7 @@ module Branchproof
         "  #{label} (#{value(minimum, :status)}, decisions: [#{scope}]): #{selected}"
       end.uniq
       unless rows.empty?
-        lines << "Supporting sets:"
+        lines << (@changed_scope ? "Whole-run supporting sets:" : "Supporting sets:")
         lines.concat(rows)
       end
       lines << "Additional tests outside this MC/DC evidence set may improve coverage." unless @minima.empty?
@@ -959,19 +1033,26 @@ module Branchproof
     end
 
     def decisions_to_render
-      return inventory_decisions unless @missing_only
-      return [] unless analysis_available?
+      decisions = if !@missing_only
+                    inventory_decisions
+                  elsif !analysis_available?
+                    []
+                  else
+                    inventory_decisions
+                      .reject { |decision| unsupported?(decision) }
+                      .select do |decision|
+                        if nonboolean_decision?(decision)
+                          missing_alternatives_for(decision).any?
+                        else
+                          conditions_to_render(decision).any? || missing_decision_table_rules(decision).any? ||
+                            decision_table_unavailable?(decision)
+                        end
+                      end
+                  end
+      return decisions unless @selection.decision_ids
 
-      inventory_decisions
-        .reject { |decision| unsupported?(decision) }
-        .select do |decision|
-          if nonboolean_decision?(decision)
-            missing_alternatives_for(decision).any?
-          else
-            conditions_to_render(decision).any? || missing_decision_table_rules(decision).any? ||
-              decision_table_unavailable?(decision)
-          end
-        end
+      inventory = value(@inventory, :source_units) ? @inventory : { source_units: [], decisions: inventory_decisions }
+      @selection.filter_decisions(decisions, inventory: inventory)
     end
 
     def selected_decisions_for_display
@@ -986,11 +1067,17 @@ module Branchproof
 
     def append_selection_lines(lines, hidden, unit)
       if @selection.focus_active?
-        matching = @selection.matching_decision_ids(json_document)
+        matching = if @changed_scope
+                     @selection.selected_decision_ids(json_document)
+                   else
+                     @selection.matching_decision_ids(json_document)
+                   end
+        focus_label = display_scope_path(@selection.focus_label)
+        no_match = @changed_scope ? "no matching changed decisions" : "no matching decisions"
         lines << if matching.empty?
-                   "Focus: no matching decisions for #{@selection.focus_label}"
+                   "Focus: #{no_match} for #{focus_label}"
                  else
-                   "Focus: #{@selection.focus_label}"
+                   "Focus: #{focus_label}"
                  end
       end
       return unless @selection.top
@@ -1170,6 +1257,10 @@ module Branchproof
     def missing_summary_line
       return "Missing conditions: Cannot identify missing conditions (analysis unavailable)" unless analysis_available?
       return "Missing conditions: Cannot identify missing conditions (analysis incomplete)" unless analysis_complete?
+      if @changed_scope && (!changed_coverage_available? ||
+                            (@selection.focus_active? && @selection.selected_decision_ids(json_document).empty?))
+        return "Changed-scope missing coverage unavailable from the captured evidence"
+      end
 
       unavailable = unavailable_decision_table_count
       unavailable_suffix = if unavailable.positive?
@@ -1286,8 +1377,29 @@ module Branchproof
     def normalize_unknown(object)
       object.to_s
     end
-    public :condition_coverage_evidence, :coverage_ladder_lines, :coverage_policy_lines, :coverage_policy,
-           :coverage_status_label,
+
+    def changed_coverage_reason(row)
+      reason = value(row, :reason)
+      {
+        "empty_scope" => "no decisions matched the changed files",
+        "unsupported_only" => "all changed decisions are unsupported",
+        "baseline_unavailable" => "the test run is incomplete",
+        "incomplete_document" => "the report is incomplete",
+        "incomplete_observations" => "observation evidence is incomplete",
+        "incomplete_analysis" => "analysis evidence is incomplete",
+        "analysis_unavailable" => "analysis is unavailable",
+        "missing_selected_analysis" => "analysis is missing for changed decisions",
+        "missing_selected_coverage" => "coverage is missing for changed decisions",
+        "decision_table_not_calculated" => "decision table analysis was not calculated",
+        "zero_denominator" => "not applicable"
+      }.fetch(reason.to_s, "the captured evidence is unavailable")
+    end
+
+    def scope_text(text)
+      text.to_s.scrub.gsub(/[[:cntrl:]]/) { |character| "\\u{#{character.ord.to_s(16).upcase}}" }
+    end
+    public :condition_coverage_evidence, :changed_scope_lines, :coverage_ladder_lines, :coverage_policy_lines,
+           :coverage_policy, :coverage_status_label, :changed_coverage_available?, :display_scope_path,
            :decision_table_requirement, :decision_table_reachability, :decision_table_expected_heading
   end
 end
