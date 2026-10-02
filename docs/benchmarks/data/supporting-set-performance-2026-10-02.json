@@ -1,0 +1,6554 @@
+{
+  "metadata": {
+    "ruby": "ruby 4.0.1 (2026-01-13 revision e04267a14b) +PRISM [arm64-darwin25]",
+    "platform": "arm64-darwin25",
+    "seed": 1234,
+    "baseline_minimizer_sha256": "2eb3b90ca1af06724f09a38f749e2ce81d99fbaa441578ffdd8fd14d49cd919c",
+    "candidate_minimizer_sha256": "47fba264d2b682be3fc9fcc522ccfa1a1ae4459a6b31575d45662aeb36e4ccae",
+    "repeats": 3,
+    "profiled_report_pairs": 36,
+    "unprofiled_report_pairs": 36,
+    "baseline_commit": "f370702",
+    "minitest": "5.27.0",
+    "prism": "1.9.0",
+    "rspec_core": "3.13.6",
+    "order": "fixed seed, alternating baseline/candidate",
+    "rss": "unavailable: Fiddle is absent from the Ruby 4 bundle"
+  },
+  "samples": [
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007396999979391694,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2631769999861717,
+          "allocations": 1671
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0016270000487565994,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005870000459253788,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4807269999291748,
+      "phase_total_seconds": 0.2727880000602454,
+      "remainder_seconds": 0.20793899986892939,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 98549,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007079000002704561,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24877800000831485,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0012710000155493617,
+          "allocations": 1162
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00016999989748001099,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0008460000390186906,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00008099991828203201,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.0000879999715834856,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.00001600012183189392,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000020999927073717117,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00003599992487579584,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.000060999998822808266,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000019999919459223747,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4753290000371635,
+      "phase_total_seconds": 0.25814799999352545,
+      "remainder_seconds": 0.21718100004363805,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99714,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.0074640000239014626,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2534860000014305,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013259999686852098,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005489999894052744,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.47160900000017136,
+      "phase_total_seconds": 0.26282499998342246,
+      "remainder_seconds": 0.2087840000167489,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99245,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.008059000014327466,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2540449999505654,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013089999556541443,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000200001522898674,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00020200014114379883,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005880000535398722,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.0000980000477284193,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00010000006295740604,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000019999919459223747,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000021000043489038944,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00004100007936358452,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00006600003689527512,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000025000073947012424,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4881020000902936,
+      "phase_total_seconds": 0.26420500013045967,
+      "remainder_seconds": 0.22389699995983392,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 100358,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007550999987870455,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.22263099998235703,
+          "allocations": 1642
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013559999642893672,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005639999872073531,
+          "allocations": 3534
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4483970000874251,
+      "phase_total_seconds": 0.2321019999217242,
+      "remainder_seconds": 0.2162950001657009,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 76414,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007075999979861081,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.21502600004896522,
+          "allocations": 1655
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014669999945908785,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.000003999914042651653,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00018999993335455656,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005900000687688589,
+          "allocations": 3808
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00010199996177107096,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008599995635449886,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000022000051103532314,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000023999949917197227,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00003899994771927595,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00006499991286545992,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000020999927073717117,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.43263300007674843,
+      "phase_total_seconds": 0.22435299993958324,
+      "remainder_seconds": 0.2082800001371652,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 77538,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007957000052556396,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2533899999689311,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.001677999971434474,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006130000110715628,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4689459999790415,
+      "phase_total_seconds": 0.2636380000039935,
+      "remainder_seconds": 0.205307999975048,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 98550,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007631000014953315,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24822800001129508,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.00133200001437217,
+          "allocations": 1162
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000200001522898674,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00016599998343735933,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006590000120922923,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.0000790000194683671,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008599995635449886,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.00001600012183189392,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.0000239998335018754,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00003599992487579584,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00006200000643730164,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000020999927073717117,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4728950000135228,
+      "phase_total_seconds": 0.2580180000513792,
+      "remainder_seconds": 0.2148769999621436,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99746,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.00789100001566112,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24905300000682473,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013420000905171037,
+          "allocations": 1163
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0010370000964030623,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4717669999226928,
+      "phase_total_seconds": 0.259323000209406,
+      "remainder_seconds": 0.21244399971328676,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99313,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007551999995484948,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2530530000803992,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013089999556541443,
+          "allocations": 1162
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.0001610000617802143,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.000669000088237226,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00007599999662488699,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008300004992634058,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000016000005416572094,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000021000043489038944,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00003599992487579584,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00005900010000914335,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000020000035874545574,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4756219999399036,
+      "phase_total_seconds": 0.2627480002120137,
+      "remainder_seconds": 0.2128739997278899,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 100448,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007829000009223819,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.21889200003352016,
+          "allocations": 1642
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013340000296011567,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.000547999981790781,
+          "allocations": 3534
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.44695000001229346,
+      "phase_total_seconds": 0.22860300005413592,
+      "remainder_seconds": 0.21834699995815754,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 76425,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.00776499998755753,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.21594499994535,
+          "allocations": 1649
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0015869999770075083,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000200001522898674,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00019299995619803667,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006150000263005495,
+          "allocations": 3808
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00009899993892759085,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008999998681247234,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000017000013031065464,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.00002199981827288866,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.000042999861761927605,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00007399998139590025,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000019999919459223747,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.43593200005125254,
+      "phase_total_seconds": 0.2261069999076426,
+      "remainder_seconds": 0.20982500014360994,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 77568,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007918999996036291,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2638270000461489,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0015460000140592456,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.000593000091612339,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.47474999993573874,
+      "phase_total_seconds": 0.27388500014785677,
+      "remainder_seconds": 0.20086499978788197,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 98554,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.008068999974057078,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2533870000625029,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014099999098107219,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000300002284348011,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00020299991592764854,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005939999828115106,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00010100007057189941,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00009899993892759085,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000019999919459223747,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000023999949917197227,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00004300009459257126,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00007399998139590025,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000020999927073717117,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.48095800005830824,
+      "phase_total_seconds": 0.26366599986795336,
+      "remainder_seconds": 0.21729200019035488,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99691,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.008570000063627958,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2520099999383092,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014550000196322799,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005860000383108854,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.48223399999551475,
+      "phase_total_seconds": 0.2626210000598803,
+      "remainder_seconds": 0.21961299993563443,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99257,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007649999926798046,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2502640000311658,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.001319000031799078,
+          "allocations": 1162
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.0000029999064281582832,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00016499997582286596,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006590000120922923,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00008100003469735384,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008099991828203201,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.00001599977258592844,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000024000066332519054,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00003699993249028921,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.000059999991208314896,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.0000200001522898674,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4713970000157133,
+      "phase_total_seconds": 0.2600599998841062,
+      "remainder_seconds": 0.21133700013160706,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 100444,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007998000015504658,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.21590499999001622,
+          "allocations": 1655
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0015290000010281801,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005530000198632479,
+          "allocations": 3534
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4366160000208765,
+      "phase_total_seconds": 0.2259850000264123,
+      "remainder_seconds": 0.21063099999446422,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 76439,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007596999988891184,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.21984299994073808,
+          "allocations": 1642
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014019999653100967,
+          "allocations": 1162
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000300002284348011,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.0001729999203234911,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0007009999826550484,
+          "allocations": 3808
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00008699996396899223,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008399994112551212,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000016999896615743637,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000024000066332519054,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.0000350000336766243,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.000063000014051795,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.0000200001522898674,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4427619999041781,
+      "phase_total_seconds": 0.22971899982076138,
+      "remainder_seconds": 0.2130430000834167,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 77612,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007605000049807131,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2500999999465421,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014260000316426158,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005870000459253788,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4614510000683367,
+      "phase_total_seconds": 0.2597180000739172,
+      "remainder_seconds": 0.20173299999441952,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 98545,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.006988000008277595,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.26199599995743483,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013470000121742487,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00020399992354214191,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005929999751970172,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00009699992369860411,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00010499998461455107,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000017000013031065464,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.00002299982588738203,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.000050999922677874565,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00008100003469735384,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000022999942302703857,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.48026199999731034,
+      "phase_total_seconds": 0.2711319999070838,
+      "remainder_seconds": 0.20913000009022653,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99654,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007531999959610403,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24921200005337596,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0012489999644458294,
+          "allocations": 1162
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0010460000485181808,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4718760000541806,
+      "phase_total_seconds": 0.25903900002595037,
+      "remainder_seconds": 0.21283700002823025,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99302,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007754000020213425,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24672900000587106,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0015460000140592456,
+          "allocations": 1160
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000600004568696022,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.0002009999006986618,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.000610999995842576,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00009999994654208422,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00009899993892759085,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.00001800013706088066,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000023000058718025684,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00004499999340623617,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00007299997378140688,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000019999919459223747,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4698400000343099,
+      "phase_total_seconds": 0.2568469999823719,
+      "remainder_seconds": 0.212993000051938,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 100357,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007239999948069453,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.22522999998182058,
+          "allocations": 1642
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.00133500003721565,
+          "allocations": 1160
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005260000471025705,
+          "allocations": 3534
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.44307499995920807,
+      "phase_total_seconds": 0.23433100001420826,
+      "remainder_seconds": 0.20874399994499981,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 76415,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007508000009693205,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2226449999725446,
+          "allocations": 1655
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.001366000040434301,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000600004568696022,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00018400012049824,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006010000361129642,
+          "allocations": 3808
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00010000006295740604,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008300004992634058,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000019999919459223747,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000025000073947012424,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.000036000157706439495,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00006100011523813009,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000020000035874545574,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4553460000315681,
+      "phase_total_seconds": 0.23231000022497028,
+      "remainder_seconds": 0.22303599980659783,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 77538,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007264000014401972,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2515239999629557,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013370000524446368,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.000560999964363873,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.46920299995690584,
+      "phase_total_seconds": 0.2606859999941662,
+      "remainder_seconds": 0.20851699996273965,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 98545,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007486000075004995,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24503500002902,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.001260999939404428,
+          "allocations": 1162
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000200001522898674,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.0001610000617802143,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0007990000303834677,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00008100003469735384,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00007800001185387373,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.00001700012944638729,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000021000043489038944,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00003100000321865082,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.000056999968364834785,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000019999919459223747,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.46756500005722046,
+      "phase_total_seconds": 0.2547440001508221,
+      "remainder_seconds": 0.21282099990639836,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99711,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007368999999016523,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24971799994818866,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013460000045597553,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005929999751970172,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.47203299996908754,
+      "phase_total_seconds": 0.25902599992696196,
+      "remainder_seconds": 0.21300700004212558,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99247,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007276999996975064,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.24684999999590218,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014730000402778387,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000300002284348011,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00018599990289658308,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005840000230818987,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00009699992369860411,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008499994874000549,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000018000020645558834,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000022000051103532314,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00003699993249028921,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00006399990525096655,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000022000051103532314,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4648540000198409,
+      "phase_total_seconds": 0.25637299998197705,
+      "remainder_seconds": 0.20848100003786385,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 100357,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007288999971933663,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2145170000148937,
+          "allocations": 1642
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.001221999991685152,
+          "allocations": 1162
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0009819999104365706,
+          "allocations": 3534
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.43513599992729723,
+      "phase_total_seconds": 0.2240099998889491,
+      "remainder_seconds": 0.21112600003834814,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 76466,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007706000003963709,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.22432800009846687,
+          "allocations": 1649
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014329999685287476,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.000005999929271638393,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.0002050000475719571,
+          "allocations": 677
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006179999327287078,
+          "allocations": 3808
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00011300004553049803,
+          "allocations": 261
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00008800008799880743,
+          "allocations": 404
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000024000066332519054,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000024999957531690598,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.000043999869376420975,
+          "allocations": 146
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00007199996616691351,
+          "allocations": 253
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000021999934688210487,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.44580599991604686,
+      "phase_total_seconds": 0.23429599998053163,
+      "remainder_seconds": 0.21150999993551522,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 77533,
+      "variant": "baseline",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007266999920830131,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2504490000428632,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014059999957680702,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005489999894052744,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.46180299995467067,
+      "phase_total_seconds": 0.25967099994886667,
+      "remainder_seconds": 0.202132000005804,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 98555,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.00754600006621331,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2526200000429526,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.001307999948039651,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000300002284348011,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.0002009999006986618,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006000000284984708,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00010199996177107096,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00009599991608411074,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000021999934688210487,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.000023999949917197227,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00004400010220706463,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00007099995855242014,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000021000043489038944,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.47259200003463775,
+      "phase_total_seconds": 0.26227800000924617,
+      "remainder_seconds": 0.21031400002539158,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99691,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007844000007025898,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2648549999576062,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0013559999642893672,
+          "allocations": 1162
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0011289999820291996,
+          "allocations": 3584
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.49475399998482317,
+      "phase_total_seconds": 0.27518399991095066,
+      "remainder_seconds": 0.2195700000738725,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 99314,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.00837399996817112,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.2509420000715181,
+          "allocations": 1664
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014150000642985106,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00020299991592764854,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005990000208839774,
+          "allocations": 3858
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.0001039999770000577,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00009600003249943256,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000020000035874545574,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.00002300017513334751,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00004000007174909115,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00006700004450976849,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000021000043489038944,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.48194699990563095,
+      "phase_total_seconds": 0.26153700007125735,
+      "remainder_seconds": 0.2204099998343736,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 100398,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.008356999955140054,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.22053700010292232,
+          "allocations": 1649
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0014799999771639705,
+          "allocations": 1159
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0005629999795928597,
+          "allocations": 3534
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4460780000081286,
+      "phase_total_seconds": 0.2309370000148192,
+      "remainder_seconds": 0.21514099999330938,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 76434,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 1,
+        "vectors": 2,
+        "tests": 2
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.007554000010713935,
+          "allocations": 1629
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.21583599993027747,
+          "allocations": 1642
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.0015119999879971147,
+          "allocations": 1159
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000600004568696022,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 3,
+          "wall_seconds": 0.00020400003995746374,
+          "allocations": 702
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0006089999806135893,
+          "allocations": 3808
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 1,
+          "wall_seconds": 0.00010300008580088615,
+          "allocations": 272
+        },
+        "tests_scope_one_decision": {
+          "calls": 2,
+          "wall_seconds": 0.00009600003249943256,
+          "allocations": 418
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 3,
+          "wall_seconds": 0.000021000043489038944,
+          "allocations": 53
+        },
+        "vector_candidates": {
+          "calls": 3,
+          "wall_seconds": 0.00002299982588738203,
+          "allocations": 116
+        },
+        "greedy": {
+          "calls": 3,
+          "wall_seconds": 0.00004900002386420965,
+          "allocations": 171
+        },
+        "search": {
+          "calls": 3,
+          "wall_seconds": 0.00007800001185387373,
+          "allocations": 279
+        },
+        "test_candidates": {
+          "calls": 2,
+          "wall_seconds": 0.000021999934688210487,
+          "allocations": 98
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 3,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.4371899999678135,
+      "phase_total_seconds": 0.22572099999524653,
+      "remainder_seconds": 0.21146899997256696,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 77564,
+      "variant": "candidate",
+      "workload": "small",
+      "profiled": true
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5556540000252426,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5648359999759123,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5619489999953657,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5703320000320673,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5564879999728873,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5717860000440851,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5812179999193177,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5746950000757352,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5368889999808744,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5534389999229461,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.558418000000529,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5584820000221953,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5797810000367463,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5608459999784827,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5701879999833182,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5787990000098944,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5813619999680668,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5569229999091476,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5614630000200123,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5579450000077486,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5326359999598935,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5301279999548569,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5301099999342114,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5379739999771118,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5776740000583231,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5650600000517443,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5589679999975488,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5754139999626204,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5546689999755472,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5707979999715462,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5650270000332966,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5733039999613538,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5542559999739751,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5447220000205562,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5542190000414848,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "small",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2,
+      "decisions": 1,
+      "elapsed_seconds": 0.5630919999675825,
+      "exit_status": 0
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.018444999936036766,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.8588110000127926,
+          "allocations": 156149
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.02659500006120652,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10732399998232722,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.5047059999778867,
+      "phase_total_seconds": 1.0111749999923632,
+      "remainder_seconds": 0.4935309999855235,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3027844,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015792000107467175,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.7814939999952912,
+          "allocations": 156323
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.015022999956272542,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000300002284348011,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.855474001145922,
+          "allocations": 973669
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.1266790000954643,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.010886000585742295,
+          "allocations": 18772
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.05017900082748383,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.794265000033192,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0034020005259662867,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.009235999779775739,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.783153999131173,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03367299877572805,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.01218700036406517,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.390740999951959,
+      "phase_total_seconds": 6.79446500132326,
+      "remainder_seconds": 0.5962759986286983,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4042340,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015309000038541853,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.060905999969691,
+          "allocations": 156335
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.019400999997742474,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.11383899999782443,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.725200999993831,
+      "phase_total_seconds": 1.2094550000037998,
+      "remainder_seconds": 0.5157459999900311,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3653617,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015801000059582293,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.0998400000389665,
+          "allocations": 156323
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.017919000005349517,
+          "allocations": 59993
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.791094999411143,
+          "allocations": 973669
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12831900001037866,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.01074299996253103,
+          "allocations": 18772
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.05544399959035218,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.724779000040144,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0039109993958845735,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.011360998847521842,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.717009999672882,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03761299967300147,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.01162800018209964,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.56620399991516,
+      "phase_total_seconds": 7.052977999555878,
+      "remainder_seconds": 0.5132260003592819,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4670221,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01528300007339567,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.47164700005669147,
+          "allocations": 150152
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.015496000065468252,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09112600004300475,
+          "allocations": 509892
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.0672560000093654,
+      "phase_total_seconds": 0.5935520002385601,
+      "remainder_seconds": 0.47370399977080524,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 2564290,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015192000078968704,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.45826999994460493,
+          "allocations": 150253
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.015165999997407198,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.783913000137545,
+          "allocations": 973669
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09942800004500896,
+          "allocations": 528382
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.010232999920845032,
+          "allocations": 18772
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.04971400008071214,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.723830999922939,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.003156000981107354,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008296999265439808,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.7210740013979375,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03476599999703467,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.012257000198587775,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 6.882403000025079,
+      "phase_total_seconds": 6.371973000233993,
+      "remainder_seconds": 0.5104299997910857,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3578711,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015425999998115003,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.7713559999829158,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.018527999985963106,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09939299989491701,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4120119999861345,
+      "phase_total_seconds": 0.9047029998619109,
+      "remainder_seconds": 0.5073090001242235,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3025898,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.016681000008247793,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.856973999994807,
+          "allocations": 156353
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01894499990157783,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000700005330145359,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.47537599958013743,
+          "allocations": 1359173
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10710699995979667,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.008191000786609948,
+          "allocations": 19476
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.052109999232925475,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.4149619999807328,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.003132000216282904,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.0082609998062253,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.4097289992496371,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03366299986373633,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.011387000093236566,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 2.0014390000142157,
+      "phase_total_seconds": 1.4750899994978681,
+      "remainder_seconds": 0.5263490005163476,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4427887,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.016859000083059072,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.0940430000191554,
+          "allocations": 156383
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.02830899995751679,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10164699994493276,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.7538820001063868,
+      "phase_total_seconds": 1.240858000004664,
+      "remainder_seconds": 0.5130240001017228,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3655981,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015206000069156289,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.0830449999775738,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.021062999963760376,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.000003999914042651653,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.48578299989458174,
+          "allocations": 1359173
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12909100006800145,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.01837199996225536,
+          "allocations": 19476
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.050162999774329364,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.4170850000809878,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.003871999913826585,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.010656999773345888,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.4117790014715865,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03842400119174272,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.011599999852478504,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 2.2337119999574497,
+      "phase_total_seconds": 1.7341919998871163,
+      "remainder_seconds": 0.4995200000703335,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 5055796,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015967000043019652,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4801819999702275,
+          "allocations": 150326
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.014990000054240227,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.091539999935776,
+          "allocations": 509892
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.0999399999855086,
+      "phase_total_seconds": 0.6026790000032634,
+      "remainder_seconds": 0.49726099998224527,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 2562177,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015835000085644424,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4737279999535531,
+          "allocations": 150026
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.017253000056371093,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.4595929995412007,
+          "allocations": 1359173
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09384100011084229,
+          "allocations": 528382
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.007736999308690429,
+          "allocations": 19476
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.05133100028615445,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.4004049999639392,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0034510003169998527,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008029998862184584,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.3919560016365722,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.034833999699912965,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.01184300018940121,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 1,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.5600780000677332,
+      "phase_total_seconds": 1.0602539997780696,
+      "remainder_seconds": 0.4998240002896637,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3963999,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015353000024333596,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.7759599999990314,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01766400004271418,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0988640000578016,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4024719999870285,
+      "phase_total_seconds": 0.9078410001238808,
+      "remainder_seconds": 0.49463099986314774,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3025887,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015781000023707747,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.795280999969691,
+          "allocations": 156383
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.018318000016734004,
+          "allocations": 59993
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.4771910000126809,
+          "allocations": 1359175
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10655500006396323,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.008236000663600862,
+          "allocations": 19478
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.05018600029870868,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.4186350000090897,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.003020001808181405,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.00812099955510348,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.4134530001319945,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.032448999816551805,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.010995000251568854,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.904171000001952,
+      "phase_total_seconds": 1.4131300001172349,
+      "remainder_seconds": 0.49104099988471717,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4427922,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01570800004992634,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.0915700000477955,
+          "allocations": 156216
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.018558999989181757,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10430200002156198,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.7112280000001192,
+      "phase_total_seconds": 1.2301390001084656,
+      "remainder_seconds": 0.48108899989165366,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3653511,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01758500002324581,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.0699130001012236,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.017953000031411648,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.4621379994787276,
+          "allocations": 1359173
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10907200002111495,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.007564999628812075,
+          "allocations": 19476
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.051898999605327845,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.4025499999988824,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0029740005265921354,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008233999134972692,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.3975320002064109,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03568000008817762,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.011867000255733728,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 2.1761160000460222,
+      "phase_total_seconds": 1.6766649996861815,
+      "remainder_seconds": 0.4994510003598407,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 5055798,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015364999999292195,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4720160000724718,
+          "allocations": 150302
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.014740000013262033,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.0897920000134036,
+          "allocations": 509892
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.074633999960497,
+      "phase_total_seconds": 0.5919130000984296,
+      "remainder_seconds": 0.4827209998620674,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 2562152,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015268999966792762,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4714809999568388,
+          "allocations": 150338
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.015311999944970012,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.480805000057444,
+          "allocations": 1359173
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09676200000103563,
+          "allocations": 528382
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.0077929997351020575,
+          "allocations": 19476
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.048740999889560044,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.424085000064224,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.00310699874535203,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008059001411311328,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.41787300060968846,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03313600062392652,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.011528000235557556,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.5711289999308065,
+      "phase_total_seconds": 1.0796329999575391,
+      "remainder_seconds": 0.4914959999732673,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3966614,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01528300007339567,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.7891640000743791,
+          "allocations": 156383
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.017717999988235533,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09823399991728365,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4079200000269338,
+      "phase_total_seconds": 0.920399000053294,
+      "remainder_seconds": 0.48752099997363985,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3025867,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01552600006107241,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.7670030000153929,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01772900007199496,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.772499999846332,
+          "allocations": 973669
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12433899997267872,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.00793000019621104,
+          "allocations": 18772
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.04539100010879338,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.7190539999864995,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0031430000672116876,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008104999898932874,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.7110299991909415,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.029388000024482608,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.012738000135868788,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.191090999986045,
+      "phase_total_seconds": 6.697100999997929,
+      "remainder_seconds": 0.4939899999881163,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4042394,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01559399999678135,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.1402389999711886,
+          "allocations": 155903
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.020688000018708408,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09899899992160499,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.8012480000033975,
+      "phase_total_seconds": 1.2755199999082834,
+      "remainder_seconds": 0.5257280000951141,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3653181,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.014863000018522143,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.08217099995818,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01831000007223338,
+          "allocations": 59994
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000400003045797348,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.770215999451466,
+          "allocations": 973669
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10726200009230524,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.007600999902933836,
+          "allocations": 18772
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.04964399978052825,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.712842999957502,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0030019994592294097,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.00827100034803152,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.707712999312207,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03345099976286292,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.01133000012487173,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.493494999944232,
+      "phase_total_seconds": 6.9928259996231645,
+      "remainder_seconds": 0.5006690003210679,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4670279,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01511700008995831,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4997039999580011,
+          "allocations": 150254
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.025059999898076057,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09772100008558482,
+          "allocations": 509892
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.1265229999553412,
+      "phase_total_seconds": 0.6376020000316203,
+      "remainder_seconds": 0.48892099992372096,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 2564392,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.017634999938309193,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.5542170000262558,
+          "allocations": 148942
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.014777999953366816,
+          "allocations": 59993
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000500003807246685,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.8494420000351965,
+          "allocations": 973671
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09888200007844716,
+          "allocations": 528382
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.00989400059916079,
+          "allocations": 18774
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.05006299971137196,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.789359999937005,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0032280002487823367,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008192998822778463,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.77356099919416,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03319999948143959,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.012462999671697617,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 2,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.066434000036679,
+      "phase_total_seconds": 6.534959000069648,
+      "remainder_seconds": 0.5314749999670312,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3577403,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015327999950386584,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.8207649999530986,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.018771000090055168,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12904000002890825,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.5146270000841469,
+      "phase_total_seconds": 0.9839040000224486,
+      "remainder_seconds": 0.5307230000616983,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3025774,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.017639000085182488,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.829903999925591,
+          "allocations": 156300
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.014835000038146973,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000500003807246685,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.739477000082843,
+          "allocations": 973669
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12478299997746944,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.010663999826647341,
+          "allocations": 18772
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.04874900041613728,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.6799299999838695,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.003284000325948,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.00848600163590163,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.669168000342324,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03272900136653334,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.011655999696813524,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.274903999990784,
+      "phase_total_seconds": 6.726643000147305,
+      "remainder_seconds": 0.5482609998434782,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4042317,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015903000021353364,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.0783100000116974,
+          "allocations": 156317
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01769800006877631,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10043300001416355,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.7359290000749752,
+      "phase_total_seconds": 1.2123440001159906,
+      "remainder_seconds": 0.5235849999589846,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3653598,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.014675999991595745,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.1310130000347272,
+          "allocations": 156144
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01871400000527501,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.000005999929271638393,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.803875999990851,
+          "allocations": 973671
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12306000001262873,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.0099769999505952,
+          "allocations": 18774
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.04663700028322637,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.747161000035703,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0030619995668530464,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008227000012993813,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.73992100043688,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.030781999696046114,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.01134899933822453,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.5893579999683425,
+      "phase_total_seconds": 7.091344999964349,
+      "remainder_seconds": 0.4980130000039935,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4670053,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.018151999916881323,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.482700000051409,
+          "allocations": 150247
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.014864000026136637,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09222700004465878,
+          "allocations": 509892
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.0999890000093728,
+      "phase_total_seconds": 0.6079430000390857,
+      "remainder_seconds": 0.4920459999702871,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 2562087,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.017823999980464578,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4919659999432042,
+          "allocations": 149241
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.016820000018924475,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000600004568696022,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 5.746471000602469,
+          "allocations": 973671
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.11344200000166893,
+          "allocations": 528382
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.008146999985910952,
+          "allocations": 18774
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.05109300080221146,
+          "allocations": 130108
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 5.687106999917887,
+          "allocations": 824183
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0034330011112615466,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008379000471904874,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 5.6630379994167015,
+          "allocations": 821826
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.033893000800162554,
+          "allocations": 111523
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.012309000245295465,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 6.897812000010163,
+      "phase_total_seconds": 6.386529000592418,
+      "remainder_seconds": 0.5112829994177446,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3577702,
+      "variant": "baseline",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.018383999937213957,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.7912580000702292,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.019320000079460442,
+          "allocations": 59992
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10097699996549636,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4098499999381602,
+      "phase_total_seconds": 0.9299390000523999,
+      "remainder_seconds": 0.47991099988576025,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3025787,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015263000037521124,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.7724630000302568,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01812600006815046,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000500003807246685,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.4623670004075393,
+          "allocations": 1359173
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12022800010163337,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.008374999975785613,
+          "allocations": 19476
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.047935000038705766,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.40593600005377084,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0032189994817599654,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.008977000834420323,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.39678399986587465,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03265799942892045,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.013216999592259526,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.880665999953635,
+      "phase_total_seconds": 1.3884520006831735,
+      "remainder_seconds": 0.4922139992704615,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 4427910,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01495100010652095,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.080333000048995,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.020400999928824604,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12640800001099706,
+          "allocations": 543908
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.765633000060916,
+      "phase_total_seconds": 1.2420930000953376,
+      "remainder_seconds": 0.5235399999655783,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3653669,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.01579799992032349,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 1.0943480000132695,
+          "allocations": 156377
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.019619000027887523,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.00000300002284348011,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.49799700011499226,
+          "allocations": 1359173
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.12244800000917166,
+          "allocations": 562398
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.018466000561602414,
+          "allocations": 19476
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.050593999680131674,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.42839399992953986,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0038860004860907793,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.010137000936083496,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.4225709995953366,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03707299998495728,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.011985000222921371,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 2.249009000021033,
+      "phase_total_seconds": 1.750213000108488,
+      "remainder_seconds": 0.4987959999125451,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 5055796,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.015980000025592744,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4841379999415949,
+          "allocations": 150362
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.016213999944739044,
+          "allocations": 59993
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.09981599997263402,
+          "allocations": 509892
+        }
+      },
+      "minimizer_by_scope": {},
+      "minimizer_details": {},
+      "output_report_calls": 1,
+      "minimization_calls": 0,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.0913589999545366,
+      "phase_total_seconds": 0.6161479998845607,
+      "remainder_seconds": 0.47521100006997585,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 2564512,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "status": 0,
+      "report_status": "PASSED",
+      "verified": true,
+      "evidence_counts": {
+        "decisions": 100,
+        "vectors": 200,
+        "tests": 2000
+      },
+      "phases": {
+        "inventory": {
+          "calls": 1,
+          "wall_seconds": 0.016382999951019883,
+          "allocations": 26282
+        },
+        "worker": {
+          "calls": 1,
+          "wall_seconds": 0.4959129999624565,
+          "allocations": 149600
+        },
+        "analysis": {
+          "calls": 1,
+          "wall_seconds": 0.01632900000549853,
+          "allocations": 59992
+        },
+        "minimizer_initialization": {
+          "calls": 1,
+          "wall_seconds": 0.000005999929271638393,
+          "allocations": 7
+        },
+        "minimization": {
+          "calls": 201,
+          "wall_seconds": 0.47020199976395816,
+          "allocations": 1359175
+        },
+        "rendering": {
+          "calls": 1,
+          "wall_seconds": 0.10497099999338388,
+          "allocations": 528382
+        }
+      },
+      "minimizer_by_scope": {
+        "local_vectors": {
+          "calls": 100,
+          "wall_seconds": 0.007639999384991825,
+          "allocations": 19478
+        },
+        "tests_scope_one_decision": {
+          "calls": 100,
+          "wall_seconds": 0.0542059998260811,
+          "allocations": 134408
+        },
+        "tests_scope_many_decisions": {
+          "calls": 1,
+          "wall_seconds": 0.4082140000537038,
+          "allocations": 1204683
+        }
+      },
+      "minimizer_details": {
+        "obligations": {
+          "calls": 201,
+          "wall_seconds": 0.0032879990758374333,
+          "allocations": 3815
+        },
+        "vector_candidates": {
+          "calls": 201,
+          "wall_seconds": 0.00835200201254338,
+          "allocations": 10115
+        },
+        "greedy": {
+          "calls": 201,
+          "wall_seconds": 0.40354500082321465,
+          "allocations": 1207330
+        },
+        "search": {
+          "calls": 200,
+          "wall_seconds": 0.03657500073313713,
+          "allocations": 116528
+        },
+        "test_candidates": {
+          "calls": 101,
+          "wall_seconds": 0.01219899975694716,
+          "allocations": 15218
+        }
+      },
+      "output_report_calls": 1,
+      "minimization_calls": 201,
+      "type": "run",
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "iteration": 3,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.6110440000193194,
+      "phase_total_seconds": 1.1038039996055886,
+      "remainder_seconds": 0.5072400004137307,
+      "exit_status": 0,
+      "peak_process_rss_bytes": null,
+      "peak_process_rss_source": "unavailable",
+      "allocations": 3963571,
+      "variant": "candidate",
+      "workload": "large",
+      "profiled": true
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4798939999891445,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4729619999416173,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.4999120000284165,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.9657240000087768,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.8653019999619573,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.7691469999263063,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.799418000038713,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 2.281133999931626,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.1557579999789596,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.1550150000257418,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 6.928588000009768,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 1,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.6303039999911562,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.6206290000118315,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4998699999414384,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.9880390000762418,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.276024000020698,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.8007999999681488,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.7594779999926686,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 2.2411000001011416,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.621145999990404,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.1210200000787154,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.1262219999916852,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.6097280000103638,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 2,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.11041700001806,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4852239999454468,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.4792270000325516,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.297934000031091,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.9986880000215024,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.834603000083007,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.864532999927178,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 7.633316999999806,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "rspec",
+      "suite": "shared",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 2.283994000055827,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.1091539999470115,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 1,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.1396719999611378,
+      "exit_status": 0
+    },
+    {
+      "variant": "baseline",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 6.930486999917775,
+      "exit_status": 0
+    },
+    {
+      "variant": "candidate",
+      "workload": "large",
+      "iteration": 3,
+      "framework": "minitest",
+      "suite": "ordinary",
+      "level": 3,
+      "profiled": false,
+      "examples": 2000,
+      "decisions": 100,
+      "elapsed_seconds": 1.6065579999703914,
+      "exit_status": 0
+    }
+  ]
+}

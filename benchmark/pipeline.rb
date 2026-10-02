@@ -108,27 +108,41 @@ if frameworks.include?("minitest") && suites.include?("shared")
 end
 
 Dir.mktmpdir("branchproof-pipeline") do |dir|
+  dir = File.expand_path(ENV.fetch("PIPELINE_FIXTURE_DIR", dir))
   FileUtils.mkdir_p(%w[lib spec test].map { |name| File.join(dir, name) })
+  artifact_dir = ENV.fetch("ARTIFACT_DIR", nil) && File.expand_path(ENV.fetch("ARTIFACT_DIR"))
+  FileUtils.mkdir_p(artifact_dir) if artifact_dir
   probe = File.join(dir, "allocation_probe.rb")
   File.write(probe, <<~'RUBY')
     require "json"
-    require "fiddle"
-    unless RUBY_PLATFORM.match?(/darwin|linux/) && Fiddle::SIZEOF_LONG == 8
-      raise "The peak RSS probe supports 64-bit macOS and Linux only"
+    require "rubygems"
+    fiddle_available = begin
+      Gem::Specification.find_by_name("fiddle")
+      require "fiddle"
+      true
+    rescue Gem::LoadError, LoadError
+      false
     end
     probe_dir = ENV.fetch("BRANCHPROOF_BENCHMARK_PROBE_DIR")
     parent_pid = Integer(ENV.fetch("BRANCHPROOF_BENCHMARK_PARENT_PID"), 10)
-    getrusage = Fiddle::Function.new(Fiddle::Handle::DEFAULT["getrusage"],
-                                      [Fiddle::TYPE_INT, Fiddle::TYPE_VOIDP], Fiddle::TYPE_INT)
+    getrusage = if fiddle_available && RUBY_PLATFORM.match?(/darwin|linux/) && Fiddle::SIZEOF_LONG == 8
+                  Fiddle::Function.new(Fiddle::Handle::DEFAULT["getrusage"],
+                                       [Fiddle::TYPE_INT, Fiddle::TYPE_VOIDP], Fiddle::TYPE_INT)
+                end
     probe_before = GC.stat(:total_allocated_objects)
     at_exit do
       path = File.join(probe_dir, "#{Process.pid}.json")
-      usage = Fiddle::Pointer.malloc(256)
-      raise "getrusage failed" unless getrusage.call(0, usage).zero?
-      peak = usage[Fiddle::SIZEOF_LONG * 4, Fiddle::SIZEOF_LONG].unpack1("l!")
-      peak *= 1024 unless RUBY_PLATFORM.include?("darwin")
+      peak = if getrusage
+               usage = Fiddle::Pointer.malloc(256)
+               if getrusage.call(0, usage).zero?
+                 rss = usage[Fiddle::SIZEOF_LONG * 4, Fiddle::SIZEOF_LONG].unpack1("l!")
+                 rss *= 1024 unless RUBY_PLATFORM.include?("darwin")
+                 rss
+               end
+             end
       File.write(path, JSON.generate(pid: Process.pid, parent_pid: Process.ppid,
                                      process_role: Process.ppid == parent_pid ? "parent" : "worker",
+                                     peak_rss_source: peak ? "getrusage" : "unavailable",
                                      peak_rss_bytes: peak,
                                      allocations: GC.stat(:total_allocated_objects) - probe_before))
     end
@@ -140,20 +154,25 @@ Dir.mktmpdir("branchproof-pipeline") do |dir|
     require "stringio"
     module BranchproofPipelineBenchmark
       @phases = Hash.new { |hash, key| hash[key] = { "calls" => 0, "wall_seconds" => 0.0, "allocations" => 0 } }
+      @minimizer_by_scope = Hash.new { |hash, key| hash[key] = { "calls" => 0, "wall_seconds" => 0.0, "allocations" => 0 } }
+      @minimizer_details = Hash.new { |hash, key| hash[key] = { "calls" => 0, "wall_seconds" => 0.0, "allocations" => 0 } }
       @output_report_calls = 0
       @minimization_calls = 0
       class << self
-        attr_reader :phases, :output_report_calls, :minimization_calls
-        def measure(name)
+        attr_reader :phases, :minimizer_by_scope, :minimizer_details, :output_report_calls, :minimization_calls
+        def measure(name, bucket = @phases)
           started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           allocations = GC.stat(:total_allocated_objects)
           result = yield
-          phase = @phases[name]
+          phase = bucket[name]
           phase["calls"] += 1
           phase["wall_seconds"] += Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
           phase["allocations"] += GC.stat(:total_allocated_objects) - allocations
           result
         end
+        def measure_phase(name, &block) = measure(name, @phases, &block)
+        def measure_scope(name, &block) = measure(name, @minimizer_by_scope, &block)
+        def measure_detail(name, &block) = measure(name, @minimizer_details, &block)
         def output_report_call = @output_report_calls += 1
         def minimization_call = @minimization_calls += 1
       end
@@ -169,12 +188,35 @@ Dir.mktmpdir("branchproof-pipeline") do |dir|
         def call(...) = BranchproofPipelineBenchmark.measure("analysis") { super }
       end
       module Minimizer
-        def call(...)
-          BranchproofPipelineBenchmark.measure("minimization") do
-            BranchproofPipelineBenchmark.minimization_call
-            super
+        def initialize(analysis:, evidence:, limits:)
+          BranchproofPipelineBenchmark.measure_phase("minimizer_initialization") do
+            super(analysis: analysis, evidence: evidence, limits: limits)
           end
         end
+
+        def call(objective:, decision_ids:)
+          BranchproofPipelineBenchmark.minimization_call
+          scope = if objective.to_sym == :vectors
+                    "local_vectors"
+                  elsif Array(decision_ids).length == 1
+                    "tests_scope_one_decision"
+                  else
+                    "tests_scope_many_decisions"
+                  end
+          BranchproofPipelineBenchmark.measure_phase("minimization") do
+            BranchproofPipelineBenchmark.measure_scope(scope) do
+              super(objective: objective, decision_ids: decision_ids)
+            end
+          end
+        end
+
+        def target_obligations(scope) = BranchproofPipelineBenchmark.measure_detail("obligations") { super }
+        def vector_candidates(scope) = BranchproofPipelineBenchmark.measure_detail("vector_candidates") { super }
+        def test_candidates(scope) = BranchproofPipelineBenchmark.measure_detail("test_candidates") { super }
+        def search(candidates, target) = BranchproofPipelineBenchmark.measure_detail("search") { super }
+        def greedy(ids, candidates, target) = BranchproofPipelineBenchmark.measure_detail("greedy") { super }
+
+        private :target_obligations, :vector_candidates, :test_candidates, :search, :greedy
       end
       module Report
         def write(...) = BranchproofPipelineBenchmark.measure("rendering") { super }
@@ -197,6 +239,9 @@ Dir.mktmpdir("branchproof-pipeline") do |dir|
       warn "BPPIPE_ERROR status=#{status.inspect} parse=#{error.message.inspect} stderr=#{errors.string.inspect}"
       exit(status.to_i.zero? ? 1 : status.to_i)
     end
+    if (report_path = ENV["BRANCHPROOF_BENCHMARK_REPORT_PATH"])
+      File.write(report_path, JSON.generate(exit_status: status, report: report))
+    end
     baseline = report["baseline"] || {}
     observations = report["observations"] || {}
     metrics = report["metrics"] || {}
@@ -207,6 +252,8 @@ Dir.mktmpdir("branchproof-pipeline") do |dir|
       evidence_counts: { decisions: metrics["discovered"], vectors: Array(observations["vectors"]).length,
                          tests: Array(observations["tests"]).length },
       phases: BranchproofPipelineBenchmark.phases,
+      minimizer_by_scope: BranchproofPipelineBenchmark.minimizer_by_scope,
+      minimizer_details: BranchproofPipelineBenchmark.minimizer_details,
       output_report_calls: BranchproofPipelineBenchmark.output_report_calls,
       minimization_calls: BranchproofPipelineBenchmark.minimization_calls
     }
@@ -226,12 +273,17 @@ Dir.mktmpdir("branchproof-pipeline") do |dir|
           levels.each do |level|
             probe_dir = Dir.mktmpdir("probe", dir)
             inherited_rubyopt = ENV.fetch("RUBYOPT", "").strip
+            report_path = if artifact_dir
+                            File.join(artifact_dir,
+                                      "#{scenario_examples}-#{scenario_decisions}-#{framework}-#{suite}-level#{level}-iteration#{iteration + 1}.json")
+                          end
             environment = { "RUBYOPT" => [inherited_rubyopt, "-r#{probe}"].reject(&:empty?).join(" "),
                             "BRANCHPROOF_BENCHMARK_PROBE_DIR" => probe_dir,
                             "BRANCHPROOF_BENCHMARK_PARENT_PID" => Process.pid.to_s }
+            environment["BRANCHPROOF_BENCHMARK_REPORT_PATH"] = report_path if report_path
             command = [RUBY, "-I#{File.join(REPO, "lib")}", wrapper, "analyze", "lib/**/*.rb",
                        "--framework", framework, "--test", test_glob, "--format", "json", "--level", level.to_s,
-                       "--no-config"]
+                       "--no-config", "--", *(framework == "rspec" ? ["--order", "defined", "--seed", "1234"] : ["--seed", "1234"])]
             started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
             stdout, stderr, process_status = Open3.capture3(environment, *command, chdir: dir)
             elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
@@ -265,9 +317,18 @@ Dir.mktmpdir("branchproof-pipeline") do |dir|
                              "phase_total_seconds" => phase_total,
                              "remainder_seconds" => elapsed - phase_total,
                              "exit_status" => process_status.exitstatus,
-                             "peak_process_rss_bytes" => probes.map { |item| item.fetch("peak_rss_bytes") }.max,
+                             "peak_process_rss_bytes" => if probes.all? { |item| item.fetch("peak_rss_bytes") }
+                                                           probes.map { |item| item.fetch("peak_rss_bytes") }.max
+                                                         end,
+                             "peak_process_rss_source" => if probes.all? { |item| item.fetch("peak_rss_source") == "getrusage" }
+                                                            "getrusage"
+                                                          else
+                                                            "unavailable"
+                                                          end,
                              "allocations" => probes.sum { |item| item.fetch("allocations") },
                              "process_allocations" => probes.sort_by { |item| item.fetch("pid") },
+                             "minimizer_by_scope" => data.fetch("minimizer_by_scope"),
+                             "minimizer_details" => data.fetch("minimizer_details"),
                              "stderr_tail" => stderr.lines.last(2).join)
             results << row
             puts JSON.generate(row)

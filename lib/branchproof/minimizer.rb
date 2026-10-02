@@ -146,9 +146,11 @@ module Branchproof
       covered = Set.new
       until covered >= target
         available = ids.reject { |candidate| chosen_set.include?(candidate) }
-        id = available.max_by { |candidate| [(candidates[candidate] - covered).length, -positions[candidate]] }
+        id = available.max_by do |candidate|
+          [candidates[candidate].count { |obligation| !covered.include?(obligation) }, -positions[candidate]]
+        end
         break unless id
-        break if (candidates[id] - covered).empty?
+        break if candidates[id].all? { |obligation| covered.include?(obligation) }
 
         chosen << id
         chosen_set << id

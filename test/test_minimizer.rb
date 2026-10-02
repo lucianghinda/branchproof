@@ -5,6 +5,14 @@ require "branchproof/analyzer"
 require "branchproof/minimizer"
 
 class TestMinimizer < Minitest::Test
+  def assert_complete_result(actual, objective:, scope:, target:, selected:, status:, lower_bound:, visited:, reasons:,
+                             necessary:, interchangeable:, additional:)
+    assert_equal({ objective: objective, scope_decision_ids: scope, target_obligations: target,
+                   selected_ids: selected, status: status, lower_bound: lower_bound, visited_nodes: visited,
+                   reasons: reasons, necessary_ids: necessary, interchangeable_ids: interchangeable,
+                   additional_ids: additional }, actual)
+  end
+
   def analysis
     tree = { type: :and, left: { type: :atom, index: 0 }, right: { type: :atom, index: 1 } }
     inventory = { decisions: [{ id: "d", tree: tree, conditions: [{ id: "c0", index: 0 }, { id: "c1", index: 1 }] }] }
@@ -21,10 +29,13 @@ class TestMinimizer < Minitest::Test
     minimizer = Branchproof::Minimizer.new(analysis: result, evidence: evidence, limits: {})
     vectors = minimizer.call(objective: :vectors, decision_ids: ["d"])
     tests = minimizer.call(objective: :tests, decision_ids: ["d"])
-    assert_equal "EXACT_MINIMUM", vectors[:status]
-    assert_equal %w[v1 v2 v3], vectors[:selected_ids]
-    assert_equal "EXACT_MINIMUM", tests[:status]
-    assert_equal ["t1"], tests[:selected_ids]
+    target = [["d", 0, false], ["d", 0, true], ["d", 1, false], ["d", 1, true]]
+    assert_complete_result(vectors, objective: :vectors, scope: ["d"], target: target, selected: %w[v1 v2 v3],
+                                    status: "EXACT_MINIMUM", lower_bound: 2, visited: 15, reasons: [],
+                                    necessary: %w[v1 v2 v3], interchangeable: [], additional: [])
+    assert_complete_result(tests, objective: :tests, scope: ["d"], target: target, selected: ["t1"],
+                                  status: "EXACT_MINIMUM", lower_bound: 1, visited: 3, reasons: [],
+                                  necessary: ["t1"], interchangeable: [], additional: [])
   end
 
   def test_vector_result_matches_independent_bruteforce_set_cover
@@ -66,8 +77,12 @@ class TestMinimizer < Minitest::Test
                                                                                                 decision_ids: %w[
                                                                                                   d e
                                                                                                 ])
-    assert_equal "EXACT_MINIMUM", minimum[:status]
-    assert_equal ["t1"], minimum[:selected_ids]
+    target = %w[d e].flat_map do |decision|
+      [[decision, 0, false], [decision, 0, true], [decision, 1, false], [decision, 1, true]]
+    end
+    assert_complete_result(minimum, objective: :tests, scope: %w[d e], target: target, selected: ["t1"],
+                                    status: "EXACT_MINIMUM", lower_bound: 1, visited: 3, reasons: [],
+                                    necessary: ["t1"], interchangeable: [], additional: [])
   end
 
   def test_best_found_remains_a_valid_cover_when_budget_is_exhausted
@@ -75,9 +90,11 @@ class TestMinimizer < Minitest::Test
     minimum = Branchproof::Minimizer.new(analysis: result, evidence: evidence, limits: { exact_search_nodes: 1 }).call(
       objective: :vectors, decision_ids: ["d"]
     )
-    assert_equal "BEST_FOUND", minimum[:status]
-    assert_equal %w[v1 v2 v3], minimum[:selected_ids]
-    assert_equal 4, minimum[:target_obligations].length
+    assert_complete_result(minimum, objective: :vectors, scope: ["d"],
+                                    target: [["d", 0, false], ["d", 0, true], ["d", 1, false], ["d", 1, true]],
+                                    selected: %w[v1 v2 v3], status: "BEST_FOUND", lower_bound: 2, visited: 1,
+                                    reasons: ["exact search budget exhausted"], necessary: %w[v1 v2 v3],
+                                    interchangeable: [], additional: [])
   end
 
   def test_candidate_limit_uses_full_universe_before_best_found_label
@@ -85,8 +102,11 @@ class TestMinimizer < Minitest::Test
     minimum = Branchproof::Minimizer.new(analysis: result, evidence: evidence, limits: { exact_candidates: 1 }).call(
       objective: :vectors, decision_ids: ["d"]
     )
-    assert_equal "BEST_FOUND", minimum[:status]
-    assert_equal %w[v1 v2 v3], minimum[:selected_ids]
+    assert_complete_result(minimum, objective: :vectors, scope: ["d"],
+                                    target: [["d", 0, false], ["d", 0, true], ["d", 1, false], ["d", 1, true]],
+                                    selected: %w[v1 v2 v3], status: "BEST_FOUND", lower_bound: nil, visited: 0,
+                                    reasons: ["candidate count exceeds exact search limit"],
+                                    necessary: %w[v1 v2 v3], interchangeable: [], additional: [])
   end
 
   def test_unattributed_essential_obligation_is_unavailable_for_tests
@@ -94,7 +114,11 @@ class TestMinimizer < Minitest::Test
     evidence[:vectors][2] = evidence[:vectors][2].dup.tap { |vector| vector.delete(:test_ids) }
     minimum = Branchproof::Minimizer.new(analysis: result, evidence: evidence, limits: {}).call(objective: :tests,
                                                                                                 decision_ids: ["d"])
-    assert_equal "NOT_AVAILABLE", minimum[:status]
+    assert_complete_result(minimum, objective: :tests, scope: ["d"],
+                                    target: [["d", 0, false], ["d", 0, true], ["d", 1, false], ["d", 1, true]],
+                                    selected: [], status: "NOT_AVAILABLE", lower_bound: nil, visited: 0,
+                                    reasons: ['missing ownership: ["d", 0, true], ["d", 1, true]'],
+                                    necessary: [], interchangeable: [], additional: [])
   end
 
   def test_validates_objective_and_vector_scope
@@ -155,5 +179,63 @@ class TestMinimizer < Minitest::Test
       output = minimizer.call(objective: :vectors, decision_ids: ["d"])
       assert_equal ["c"], output[:selected_ids]
     end
+  end
+
+  def test_interleaved_candidate_ids_keep_canonical_tie_breaking
+    result = { decisions: [{ decision_id: "d", conditions: [{ id: "c0", index: 0 }, { id: "c1", index: 1 }],
+                             condition_results: [{ condition_id: "c0", status: "PROVEN" },
+                                                 { condition_id: "c1", status: "PROVEN" }] }] }
+    candidates = {
+      "z" => Set[["d", 1, true], ["d", 1, false]],
+      "b" => Set[["d", 0, false], ["d", 1, true]],
+      "y" => Set[["d", 0, true], ["d", 1, false]],
+      "a" => Set[["d", 0, true], ["d", 0, false]]
+    }
+    cases = [
+      [{}, "EXACT_MINIMUM", 2, 21, []],
+      [{ exact_candidates: 1 }, "BEST_FOUND", nil, 0, ["candidate count exceeds exact search limit"]]
+    ]
+    cases.each do |limits, status, lower_bound, visited, reasons|
+      minimizer = Branchproof::Minimizer.new(analysis: result, evidence: { vectors: [] }, limits: limits)
+      minimizer.stub(:vector_candidates, candidates) do
+        output = minimizer.call(objective: :vectors, decision_ids: ["d"])
+        assert_complete_result(output, objective: :vectors, scope: ["d"],
+                                       target: [["d", 0, false], ["d", 0, true], ["d", 1, false], ["d", 1, true]],
+                                       selected: %w[a z], status: status, lower_bound: lower_bound, visited: visited,
+                                       reasons: reasons, necessary: [], interchangeable: %w[z b y a], additional: %w[b y])
+      end
+    end
+  end
+
+  def test_empty_target_has_a_complete_exact_result
+    result = { decisions: [{ decision_id: "d", conditions: [{ id: "c", index: 0 }], condition_results: [] }] }
+    output = Branchproof::Minimizer.new(analysis: result, evidence: { vectors: [] }, limits: {}).call(
+      objective: :vectors, decision_ids: ["d"]
+    )
+
+    assert_complete_result(output, objective: :vectors, scope: ["d"], target: [], selected: [],
+                                   status: "EXACT_MINIMUM", lower_bound: nil, visited: 0, reasons: [],
+                                   necessary: [], interchangeable: [], additional: [])
+  end
+
+  def test_string_key_inputs_and_mutations_between_calls_remain_visible
+    decision = { "decision_id" => "d", "conditions" => [{ "id" => "c", "index" => 0 }],
+                 "condition_results" => [{ "condition_id" => "c", "status" => "PROVEN" }],
+                 "effective_masks_by_vector" => { "v1" => 1, "v2" => 1 } }
+    evidence = { "vectors" => [{ "id" => "v1", "decision_id" => "d", "values" => [false] }] }
+    minimizer = Branchproof::Minimizer.new(analysis: { "decisions" => [decision] }, evidence: evidence, limits: {})
+    unavailable = minimizer.call(objective: :vectors, decision_ids: ["d"])
+    assert_complete_result(unavailable, objective: :vectors, scope: ["d"],
+                                        target: [["d", 0, false], ["d", 0, true]], selected: [],
+                                        status: "NOT_AVAILABLE", lower_bound: nil, visited: 0,
+                                        reasons: ['missing ownership: ["d", 0, true]'],
+                                        necessary: [], interchangeable: [], additional: [])
+
+    evidence["vectors"] << { "id" => "v2", "decision_id" => "d", "values" => [true] }
+    available = minimizer.call(objective: :vectors, decision_ids: ["d"])
+    assert_complete_result(available, objective: :vectors, scope: ["d"],
+                                      target: [["d", 0, false], ["d", 0, true]], selected: %w[v1 v2],
+                                      status: "EXACT_MINIMUM", lower_bound: 2, visited: 7, reasons: [],
+                                      necessary: %w[v1 v2], interchangeable: [], additional: [])
   end
 end
