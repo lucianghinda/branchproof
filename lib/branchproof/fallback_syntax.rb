@@ -41,8 +41,14 @@ module Branchproof
 
     # `a || b || c` parses as `(a || b) || c`, so the chain grows to the left.
     def fallback_operands(node)
-      left = node.left
-      (symbolic_or?(left) ? fallback_operands(left) : [left]) + [node.right]
+      operands = []
+      loop do
+        operands << node.right
+        node = node.left
+        break unless symbolic_or?(node)
+      end
+      operands << node
+      operands.reverse!
     end
 
     def symbolic_or?(node)
