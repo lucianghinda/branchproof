@@ -8,7 +8,7 @@ module Branchproof
   # Compares two complete report documents without loading or executing the project.
   class Comparison
     SCHEMA_VERSION = "1.0"
-    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4].freeze
+    SUPPORTED_REPORT_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4 1.5].freeze
     CRITERION_VERSION = "masking_occurrence_v1"
 
     def initialize(before:, after:)
@@ -58,7 +58,7 @@ module Branchproof
       status = reasons.empty? ? "complete" : "comparison incomplete"
       lost = changes.count { |change| change["change"] == "lost proof" }
 
-      {
+      result = {
         "schema_version" => SCHEMA_VERSION,
         "criterion_version" => CRITERION_VERSION,
         "status" => status,
@@ -87,8 +87,16 @@ module Branchproof
         "decision_table_regressions" => table_changes.count { |change| change["change"] == "rule coverage lost" },
         "regressions" => lost,
         "regression" => (lost.positive? || table_changes.any? { |change| change["change"] == "rule coverage lost" }) &&
-          status == "complete"
+                        status == "complete"
       }
+      if value(@before, :changed_scope) || value(@after, :changed_scope)
+        result["changed_scope"] = {
+          "before" => value(@before, :changed_scope),
+          "after" => value(@after, :changed_scope),
+          "notice" => "Changed scope is informational; comparison uses whole-run evidence."
+        }
+      end
+      result
     end
 
     private

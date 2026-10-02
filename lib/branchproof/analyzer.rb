@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require_relative "coverage_summary"
 
 module Branchproof
   # Performs the Boolean, occurrence-level masking analysis. It deliberately
@@ -342,58 +343,7 @@ module Branchproof
     end
 
     def aggregate_coverage(decisions)
-      supported = decisions.reject { |decision| decision[:unsupported] }
-      boolean_supported = supported.reject { |decision| alternative_decision?(decision) }
-      decision_covered = boolean_supported.count do |decision|
-        decision[:coverage][:decision][:status] == "covered"
-      end
-      condition_decision_covered = boolean_supported.count do |decision|
-        decision[:coverage][:condition_decision][:status] == "covered"
-      end
-      condition_count = boolean_supported.sum { |decision| decision[:coverage][:condition][:condition_count] }
-      condition_values = boolean_supported.sum { |decision| decision[:coverage][:condition][:covered_values] }
-      covered_conditions = boolean_supported.sum do |decision|
-        decision[:coverage][:condition][:covered_conditions]
-      end
-      proven = boolean_supported.sum { |decision| decision[:coverage][:mcdc][:proven_conditions] }
-      { decision: { covered_decisions: decision_covered, supported_decisions: boolean_supported.length,
-                    percentage: DecisionTable.percentage(decision_covered, boolean_supported.length) },
-        condition: { covered_values: condition_values, required_values: condition_count * 2,
-                     covered_conditions: covered_conditions, condition_count: condition_count,
-                     percentage: DecisionTable.percentage(condition_values, condition_count * 2) },
-        condition_decision: { covered_decisions: condition_decision_covered,
-                              supported_decisions: boolean_supported.length,
-                              percentage: DecisionTable.percentage(condition_decision_covered,
-                                                                   boolean_supported.length) },
-        mcdc: { proven_conditions: proven, supported_conditions: condition_count,
-                percentage: DecisionTable.percentage(proven, condition_count) },
-        decision_table: decision_table_aggregate(boolean_supported),
-        alternative: alternative_aggregate(decisions) }
-    end
-
-    # Rule coverage and fully covered decisions stay separate metrics: a
-    # decision can hold most of its rules and still fail the criterion.
-    def decision_table_aggregate(boolean_supported)
-      analyzed = boolean_supported.select { |decision| decision.dig(:decision_table, :status) == "calculated" }
-      not_calculated = boolean_supported.length - analyzed.length
-      covered = analyzed.sum { |decision| decision.dig(:decision_table, :covered_rules).to_i }
-      required = analyzed.sum { |decision| decision.dig(:decision_table, :required_rules).to_i }
-      generated = analyzed.sum { |decision| decision.dig(:decision_table, :generated_rules).to_i }
-      impossible = analyzed.sum { |decision| decision.dig(:decision_table, :impossible_rules).to_i }
-      fully_covered = analyzed.count { |decision| decision.dig(:decision_table, :coverage_status) == "covered" }
-      { decisions_analyzed: analyzed.length, not_calculated_decisions: not_calculated,
-        fully_covered_decisions: fully_covered, covered_rules: covered, required_rules: required,
-        generated_rules: generated, impossible_rules: impossible,
-        percentage: DecisionTable.percentage(covered, required),
-        decision_percentage: DecisionTable.percentage(fully_covered, analyzed.length) }
-    end
-
-    def alternative_aggregate(decisions)
-      flow = decisions.select { |decision| !decision[:unsupported] && alternative_decision?(decision) }
-      required = flow.sum { |decision| decision.dig(:coverage, :alternative, :required_alternatives).to_i }
-      covered = flow.sum { |decision| decision.dig(:coverage, :alternative, :covered_alternatives).to_i }
-      { covered_alternatives: covered, required_alternatives: required,
-        supported_decisions: flow.length, percentage: DecisionTable.percentage(covered, required) }
+      CoverageSummary.call(decisions)
     end
 
     def valid_vector(vector, decision)

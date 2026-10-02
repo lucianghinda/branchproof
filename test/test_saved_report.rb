@@ -2,6 +2,8 @@
 
 require "test_helper"
 require "branchproof/saved_report"
+require "branchproof/changed_coverage"
+require "branchproof/decision_table"
 require "json"
 require "tempfile"
 
@@ -62,6 +64,161 @@ class TestSavedReport < Minitest::Test
         assert_equal [true, false, nil], document.dig("observations", "vectors", 0, "values")
       end
     end
+  end
+
+  def test_reads_schema_1_5_with_valid_captured_scope_and_recomputed_summary
+    document = valid_1_5_document
+
+    write_document(document) { |path| assert_equal document, Branchproof::SavedReport.read(path) }
+  end
+
+  def test_schema_1_5_requires_policy_scope_and_strict_flow_coverage
+    missing_policy = valid_1_5_document
+    missing_policy.delete("coverage_policy")
+    error = assert_raises(ArgumentError) do
+      write_document(missing_policy) { |path| Branchproof::SavedReport.read(path) }
+    end
+    assert_match(/missing field: coverage_policy/, error.message)
+
+    missing_scope = valid_1_5_document
+    missing_scope.delete("changed_scope")
+    error = assert_raises(ArgumentError) do
+      write_document(missing_scope) { |path| Branchproof::SavedReport.read(path) }
+    end
+    assert_match(/missing field: changed_scope/, error.message)
+
+    flow_document = valid_1_5_document
+    decision = flow_document.dig("source_inventory", "decisions", 0)
+    decision["kind"] = "implicit"
+    decision["tree"] = nil
+    decision["support_status"] = "SUPPORTED"
+    decision["alternatives"] = [
+      { "id" => "alternative-1", "index" => 0, "expression" => "left" },
+      { "id" => "alternative-2", "index" => 1, "expression" => "right" }
+    ]
+    flow_document.dig("analysis", "decisions", 0)["condition_results"] = []
+    flow_document.dig("observations", "vectors", 0)["values"] = [true, false]
+    flow_document.dig("observations", "vectors", 0)["outcome"] = true
+    flow_document.dig("observations", "vectors", 1)["values"] = [false, true]
+    flow_document.dig("observations", "vectors", 1)["outcome"] = true
+    flow_document["changed_coverage"] = JSON.parse(JSON.generate(
+                                                     Branchproof::ChangedCoverage.call(document: flow_document, scope: flow_document["changed_scope"])
+                                                   ))
+    error = assert_raises(ArgumentError) do
+      write_document(flow_document) { |path| Branchproof::SavedReport.read(path) }
+    end
+    assert_match(/complete flow analysis requires coverage/, error.message)
+  end
+
+  def test_schema_1_5_rejects_an_invalid_decision_table
+    document = valid_1_5_document
+    document.dig("analysis", "decisions", 0)["decision_table"] = {
+      "status" => "calculated", "decision_id" => "decision-1", "schema_version" => 2,
+      "constraint_analysis_version" => 2
+    }
+
+    error = assert_raises(ArgumentError) do
+      write_document(document) { |path| Branchproof::SavedReport.read(path) }
+    end
+    assert_match(/unsupported decision_table schema version/, error.message)
+  end
+
+  def test_schema_1_5_rejects_impossible_recomputed_scope_percentages
+    document = valid_1_5_document
+    record = document.dig("analysis", "decisions", 0)
+    record["coverage"] = {
+      "decision" => { "status" => "covered" },
+      "condition" => { "status" => "covered", "covered_values" => 2, "required_values" => 2,
+                       "covered_conditions" => 1, "condition_count" => 1 },
+      "condition_decision" => { "status" => "covered" },
+      "mcdc" => { "status" => "covered", "proven_conditions" => 1, "condition_count" => 1 },
+      "decision_table" => { "status" => "not_calculated", "reason" => "decision_table_unavailable" }
+    }
+    inventory_decision = document.dig("source_inventory", "decisions", 0)
+    record["decision_table"] = Branchproof::DecisionTable.build(
+      decision: inventory_decision, vectors: [], limits: {}
+    )
+    summary = Branchproof::ChangedCoverage.call(document: document, scope: document["changed_scope"])
+    document["changed_coverage"] = JSON.parse(JSON.generate(summary))
+    assert_equal "available", summary.fetch(:status), summary.inspect
+    assert_equal 100, summary.dig(:coverage, :condition, :percentage)
+
+    impossible_summary = JSON.parse(JSON.generate(document["changed_coverage"]))
+    record["coverage"]["condition"]["covered_values"] = 3
+    record["coverage"]["mcdc"]["proven_conditions"] = 2
+    unavailable = Branchproof::ChangedCoverage.call(document: document, scope: document["changed_scope"])
+    assert_equal "unavailable", unavailable.fetch(:status)
+    assert_nil unavailable.dig(:coverage, :condition, :percentage)
+    assert_nil unavailable.dig(:coverage, :mcdc, :percentage)
+
+    impossible_summary["coverage"]["condition"].merge!(
+      "numerator" => 3, "denominator" => 2, "percentage" => 150, "status" => "available", "reason" => nil
+    )
+    impossible_summary["coverage"]["mcdc"].merge!(
+      "numerator" => 2, "denominator" => 1, "percentage" => 200, "status" => "available", "reason" => nil
+    )
+    document["changed_coverage"] = impossible_summary
+
+    assert_raises(ArgumentError) do
+      write_document(document) { |path| Branchproof::SavedReport.read(path) }
+    end
+  end
+
+  def test_rejects_changed_scope_on_older_schema
+    document = valid_document(schema_version: "1.4")
+    document["coverage_policy"] = { "minimum" => {}, "status" => "passed", "gates" => [] }
+    document["changed_scope"] = valid_scope
+
+    write_document(document) { |path| assert_raises(ArgumentError) { Branchproof::SavedReport.read(path) } }
+  end
+
+  def test_rejects_tampered_changed_scope_and_summary
+    mutations = [
+      ->(doc) { doc["changed_scope"]["base_commit"] = "not-a-commit" },
+      ->(doc) { doc["changed_scope"]["requested_ref"] = "--option\0name" },
+      ->(doc) { doc["changed_scope"]["status"] = "empty" },
+      ->(doc) { doc["changed_scope"]["decision_ids"] << "unknown" },
+      ->(doc) { doc["changed_scope"]["decision_ids"] << "decision-1" },
+      ->(doc) { doc["changed_scope"]["files"][0]["path"] = "../outside.rb" },
+      ->(doc) { doc["changed_scope"]["files"][0]["status"] = "R999" },
+      ->(doc) { doc["changed_scope"]["files"][0]["hunks"][0]["new_count"] = -1 },
+      ->(doc) { doc["changed_coverage"]["selected_decisions"] = 100 }
+    ]
+
+    mutations.each do |mutation|
+      document = valid_1_5_document
+      mutation.call(document)
+      write_document(document) do |path|
+        assert_raises(ArgumentError) { Branchproof::SavedReport.read(path) }
+      end
+    end
+  end
+
+  def test_accepts_valid_rename_status_and_copied_paths
+    %w[R100 C100 R095 R050 C075].each do |status|
+      document = valid_1_5_document
+      document["changed_scope"]["files"][0].merge!("status" => status, "old_path" => "lib/old decision.rb")
+      write_document(document) { |path| assert_equal document, Branchproof::SavedReport.read(path) }
+    end
+  end
+
+  def valid_scope
+    { "version" => "1.0", "requested_ref" => "main", "base_commit" => "a" * 40,
+      "comparison" => "tracked_worktree", "untracked" => "excluded", "status" => "complete",
+      "files" => [{ "status" => "M", "path" => "lib/decision.rb",
+                    "hunks" => [{ "old_start" => 1, "old_count" => 1,
+                                  "new_start" => 1, "new_count" => 1 }] }],
+      "decision_ids" => ["decision-1"] }
+  end
+
+  def valid_1_5_document
+    document = valid_document(schema_version: "1.5")
+    document["coverage_policy"] = { "minimum" => {}, "status" => "passed", "gates" => [] }
+    document["changed_scope"] = valid_scope
+    document["changed_coverage"] = JSON.parse(JSON.generate(
+                                                Branchproof::ChangedCoverage.call(document: document, scope: document["changed_scope"])
+                                              ))
+    document
   end
 
   def test_accepts_optional_framework_and_rspec_test_metadata

@@ -8,13 +8,14 @@ require "json"
 # rubocop:disable-next Lint/RedundantRequireStatement -- supports standalone core entry
 require "set"
 require_relative "coverage_policy"
+require_relative "changed_coverage"
 require_relative "decision_table"
 
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
   class SavedReport
-    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4].freeze
-    STRICT_FLOW_SCHEMAS = %w[1.2 1.3 1.4].freeze
+    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4 1.5].freeze
+    STRICT_FLOW_SCHEMAS = %w[1.2 1.3 1.4 1.5].freeze
     DECISION_TABLE_STATUSES = %w[calculated not_calculated].freeze
     RULE_CONDITION_VALUES = DecisionTable::CONDITION_VALUES
     RULE_COVERAGE_STATUSES = DecisionTable::COVERAGE_STATUSES
@@ -62,6 +63,7 @@ module Branchproof
       validate_completeness(@document.dig("observations", "completeness"))
       validate_completeness(@document.dig("analysis", "completeness")) if @document["analysis"]
       validate_coverage_policy
+      validate_changed_scope
       validate_optional_sections
       validate_analysis_coverage
       @document
@@ -220,7 +222,7 @@ module Branchproof
           fail_with("nonboolean condition results must be empty") unless results.empty?
           validate_nonboolean_analysis(decision, inventory_decision)
         elsif decision.key?("decision_table")
-          unless %w[1.3 1.4].include?(@schema_version)
+          unless %w[1.3 1.4 1.5].include?(@schema_version)
             fail_with("decision tables are unsupported in legacy report schemas")
           end
           validate_decision_table(decision["decision_table"], inventory_decision)
@@ -632,7 +634,7 @@ module Branchproof
 
     def validate_coverage_policy
       policy = @document["coverage_policy"]
-      fail_with("missing field: coverage_policy") if @schema_version == "1.4" && !policy
+      fail_with("missing field: coverage_policy") if %w[1.4 1.5].include?(@schema_version) && !policy
       return if policy.nil?
 
       fail_with("coverage_policy must be an object") unless hash_with_string_keys?(policy)
@@ -650,6 +652,111 @@ module Branchproof
       fail_with("coverage_policy does not match report coverage") unless actual == expected
     rescue ArgumentError => e
       fail_with(e.message.sub(/\Ainvalid saved report: /, ""))
+    end
+
+    def validate_changed_scope
+      scope_present = @document.key?("changed_scope")
+      summary_present = @document.key?("changed_coverage")
+      unless @schema_version == "1.5"
+        fail_with("changed scope is unsupported by this report schema") if scope_present || summary_present
+        return
+      end
+      fail_with("missing field: changed_scope") unless scope_present
+      fail_with("missing field: changed_coverage") unless summary_present
+
+      scope = @document["changed_scope"]
+      fail_with("changed_scope must be an object") unless hash_with_string_keys?(scope)
+      fail_with("changed_scope version is unsupported") unless scope["version"] == "1.0"
+      unless nonempty_string?(scope["requested_ref"]) && !scope["requested_ref"].include?("\0")
+        fail_with("changed_scope requested_ref must be a usable Git ref string")
+      end
+      unless scope["base_commit"].is_a?(String) && scope["base_commit"].match?(/\A(?:[0-9a-f]{40}|[0-9a-f]{64})\z/i)
+        fail_with("changed_scope base_commit must be a full commit id")
+      end
+      fail_with("changed_scope comparison is invalid") unless scope["comparison"] == "tracked_worktree"
+      fail_with("changed_scope untracked policy is invalid") unless scope["untracked"] == "excluded"
+      fail_with("changed_scope status is invalid") unless %w[complete empty].include?(scope["status"])
+      files = scope["files"]
+      fail_with("changed_scope files must be an array") unless files.is_a?(Array)
+      ids = scope["decision_ids"]
+      fail_with("changed_scope decision_ids must be an array of strings") unless strings?(ids)
+      fail_with("duplicate changed decision id") unless ids.uniq.length == ids.length
+      fail_with("changed_scope status does not match selected decisions") if (scope["status"] == "empty") != ids.empty?
+
+      changed_paths = validate_changed_files(files)
+      inventory_order = @decision_ids
+      fail_with("unknown changed decision id") unless (ids - inventory_order).empty?
+      fail_with("changed decision ids are out of inventory order") unless ids == inventory_order.select do |id|
+        ids.include?(id)
+      end
+      current_paths = @document.dig("source_inventory", "source_units").to_h do |source|
+        [source["source_id"], source["relative_path"]]
+      end
+      selected_on_changed_path = ids.all? do |id|
+        decision = @decisions_by_id.fetch(id)
+        path = current_paths[decision["source_id"]]
+        path && changed_paths.include?(path)
+      end
+      fail_with("changed decision does not belong to a current changed file") unless selected_on_changed_path
+
+      expected = JSON.parse(JSON.generate(ChangedCoverage.call(document: @document, scope: scope)))
+      actual = JSON.parse(JSON.generate(@document["changed_coverage"]))
+      fail_with("changed_coverage does not match captured analysis") unless actual == expected
+    end
+
+    def validate_changed_files(files)
+      seen_paths = {}
+      current_paths = []
+      files.each do |file|
+        fail_with("invalid changed file") unless hash_with_string_keys?(file)
+        status = file["status"]
+        simple_status = %w[A D M T U X B].include?(status)
+        scored_status = status.is_a?(String) && status.match?(/\A[RC]\d{1,3}\z/) &&
+                        status[1..].to_i.between?(0, 100)
+        valid_status = simple_status || scored_status
+        fail_with("changed file status is invalid") unless valid_status
+        path = file["path"]
+        validate_changed_path(path, "changed file path")
+        fail_with("duplicate changed file path") if seen_paths.key?(path)
+        seen_paths[path] = true
+        rename = status.start_with?("R", "C")
+        old_path = file["old_path"]
+        if rename
+          validate_changed_path(old_path, "changed file old_path")
+          fail_with("rename paths must differ") if old_path == path
+        elsif file.key?("old_path")
+          fail_with("old_path is only valid for renamed files")
+        end
+        current_paths << path unless status == "D"
+        hunks = file["hunks"]
+        fail_with("changed file hunks must be an array") unless hunks.is_a?(Array)
+        hunks.each { |hunk| validate_changed_hunk(hunk) }
+      end
+      current_paths
+    end
+
+    def validate_changed_path(path, field)
+      unless path.is_a?(String) && path.encoding == Encoding::UTF_8 && path.valid_encoding? && !path.empty? &&
+             !path.include?("\0") && !path.start_with?("/") && !path.split("/").intersect?(%w[. ..])
+        fail_with("#{field} must be a safe UTF-8 relative path")
+      end
+    end
+
+    def validate_changed_hunk(hunk)
+      fail_with("invalid changed hunk") unless hash_with_string_keys?(hunk)
+      %w[old_start old_count new_start new_count].each do |field|
+        value = hunk[field]
+        fail_with("changed hunk #{field} must be a nonnegative integer") unless value.is_a?(Integer) && value >= 0
+      end
+      %w[old new].each do |side|
+        start = hunk["#{side}_start"]
+        count = hunk["#{side}_count"]
+        fail_with("changed hunk #{side} range has an invalid start") if count.positive? && start.zero?
+      end
+    end
+
+    def nonempty_string?(value)
+      value.is_a?(String) && !value.empty?
     end
 
     def validate_phases(vector)

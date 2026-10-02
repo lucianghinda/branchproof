@@ -54,6 +54,24 @@ class TestComparison < Minitest::Test
     assert_equal "complete", result.fetch("status")
   end
 
+  def test_schema_1_5_compares_whole_run_evidence_when_captured_scopes_differ
+    before = document(status: "PROVEN").merge(schema_version: "1.5", changed_scope: { status: "complete",
+                                                                                      requested_ref: "main",
+                                                                                      decision_ids: ["d1"] })
+    after = document(status: "NOT_PROVEN").merge(schema_version: "1.5", changed_scope: { status: "empty",
+                                                                                         requested_ref: "release",
+                                                                                         decision_ids: [] })
+
+    result = Branchproof::Comparison.new(before: before, after: after).call
+
+    assert_equal "complete", result.fetch("status")
+    assert_equal 1, result.fetch("regressions")
+    assert_equal "lost proof", result.fetch("changes").find { |change| change["condition_id"] == "c1" }.fetch("change")
+    assert_equal before.fetch(:changed_scope), result.dig("changed_scope", "before")
+    assert_equal after.fetch(:changed_scope), result.dig("changed_scope", "after")
+    assert_match(/whole-run/i, result.dig("changed_scope", "notice"))
+  end
+
   def test_changed_source_is_incomplete_and_has_no_condition_delta
     result = Branchproof::Comparison.new(before: document(status: "PROVEN"), after: document(status: "NOT_PROVEN", digest: "changed")).call
 

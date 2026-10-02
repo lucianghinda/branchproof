@@ -152,6 +152,14 @@ assert_equal normal_report.exit_code, report.exit_code
 - [ ] Run focused analyzer/report/saved/comparison tests and lint. Obtain Luna
       spec then quality approval before CLI integration.
 
+Task 2a evidence: independent Luna spec and quality reviews approved shared
+aggregation, changed counts and saved/comparison contracts. CoverageSummary
+(2 tests), ChangedCoverage (9), SavedReport (20), Comparison (27), Analyzer (9),
+coverage ladder (13) and relevant flow/table validation tests pass. Scoped
+RuboCop is clean. Schema 1.5 stores both `changed_scope` and `changed_coverage`;
+invalid fractions produce unavailable scope coverage, and recomputation rejects
+tampered summaries. Git's zero-padded rename/copy similarity scores are retained.
+
 ## Task 3 — CLI, public contracts and acceptance
 
 Ownership: CLI, core autoloads, RBS, README and both changelogs; new subprocess
@@ -178,7 +186,7 @@ acceptance tests. Integrate the already-reviewed scope/report APIs.
       push the branch and open a new PR. Preserve the feature worktree and
       remove temporary Ruby scripts; do not merge the PR.
 
-All Ruby commands use `/Users/luciang/.rubies/ruby-4.0.1/bin` first in PATH.
-RuboCop cache: `/private/tmp/branchproof-rubocop-cache`. Utility scripts use Ruby
-standard library in a temporary directory. No timing-based tests or performance
-claims are required for this reporting feature.
+All Ruby commands use Ruby 4.0.1, activated through the local version manager.
+Use a writable temporary directory for the RuboCop cache. Utility scripts use
+Ruby standard library in a temporary directory. No timing-based tests or
+performance claims are required for this reporting feature.
