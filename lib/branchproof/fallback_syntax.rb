@@ -18,7 +18,9 @@ module Branchproof
       operands = fallback_operands(node)
       last = operands.last
       literal_truth(last) == true && !last.is_a?(Prism::TrueNode) &&
-        operands[0...-1].none? { |operand| logical_operand?(operand) || jump_operand?(operand) }
+        operands[0...-1].none? do |operand|
+          logical_operand?(operand) || jump_operand?(operand) || contextual_operand?(operand)
+        end
     end
 
     # Only reached for OrNodes already gated by fallback_chain? in Source#decisions_for phase two.
@@ -55,6 +57,12 @@ module Branchproof
     def jump_operand?(operand)
       tail = tail_statement(operand)
       JUMP_NODES.any? { |type| tail.is_a?(type) }
+    end
+
+    def contextual_operand?(operand)
+      operand = unwrap_predicate(operand)
+      operand.is_a?(Prism::MatchLastLineNode) || operand.is_a?(Prism::InterpolatedMatchLastLineNode) ||
+        operand.is_a?(Prism::FlipFlopNode)
     end
 
     # A `(...)` or `begin...end` operand evaluates to its last statement, so a

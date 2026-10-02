@@ -65,6 +65,68 @@ class TestContextualCoverage < Minitest::Test
     assert_equal "SUPPORTED", inventory[:decisions].find { |entry| entry[:expression] == "/needle/" }[:support_status]
   end
 
+  def test_fallback_chain_with_implicit_regexp_keeps_conditional_context
+    source = <<~'RUBY'
+      def self.exercise(input)
+        $_ = input
+        events = []
+        if begin /foo/ || "#{events << :fallback}" end
+          events << :selected
+        end
+        events
+      end
+    RUBY
+
+    inventory, rewritten = inventory_and_rewrite(source)
+
+    assert_boolean_short_circuit(inventory)
+    assert_equal [%i[fallback selected]], native_results(source, ["bar"])
+    assert_equal native_results(source, ["bar"]), rewritten_results(rewritten[:bytes], ["bar"])
+  end
+
+  def test_fallback_chain_with_interpolated_implicit_regexp_keeps_conditional_context
+    source = <<~'RUBY'
+      def self.exercise(input)
+        $_ = input
+        pattern = "foo"
+        events = []
+        if begin /#{pattern}/ || "#{events << :fallback}" end
+          events << :selected
+        end
+        events
+      end
+    RUBY
+
+    inventory, rewritten = inventory_and_rewrite(source)
+
+    assert_boolean_short_circuit(inventory)
+    arguments = %w[foo bar]
+    assert_equal [%i[selected], %i[fallback selected]], native_results(source, arguments)
+    assert_equal native_results(source, arguments), rewritten_results(rewritten[:bytes], arguments)
+  end
+
+  def test_fallback_chain_with_flip_flop_keeps_conditional_state
+    source = <<~'RUBY'
+      def self.exercise(inputs)
+        inputs.map do |input|
+          events = []
+          if begin ((input == :start)..(input == :finish)) || "#{events << :fallback}" end
+            events << :selected
+          end
+          events
+        end
+      end
+    RUBY
+
+    inventory, rewritten = inventory_and_rewrite(source)
+
+    assert_boolean_short_circuit(inventory)
+    inputs = [%i[start middle finish after]]
+    expected = [%i[selected], %i[selected], %i[selected], %i[fallback selected]]
+    assert_equal expected, native_results(source, inputs).first
+    assert_equal native_results(source, inputs), rewritten_results(rewritten[:bytes], inputs)
+  end
+
   def test_defined_expression_is_one_atomic_decision_and_prunes_unevaluated_operands
     source = <<~RUBY
       def self.exercise
@@ -129,6 +191,13 @@ class TestContextualCoverage < Minitest::Test
     mod = Module.new
     mod.module_eval(runtime_stub + source)
     arguments.map { |argument| argument.nil? ? mod.exercise : mod.exercise(argument) }
+  end
+
+  def assert_boolean_short_circuit(inventory)
+    assert(inventory[:decisions].any? do |decision|
+      decision[:context] == "short_circuit" && decision[:expression].include?("||")
+    end)
+    refute(inventory[:decisions].any? { |decision| decision[:context] == "fallback" })
   end
 
   def runtime_stub
