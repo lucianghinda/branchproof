@@ -13,7 +13,7 @@ module Branchproof
     # when the project is not at the repository root.
     def initialize(document:, level:, coordinator:, selection: ReportSelection.new, path_prefix: nil)
       @document = document || {}
-      @path_prefix = path_prefix.to_s.empty? ? nil : path_prefix.to_s.delete_suffix("/")
+      @path_prefix = path_prefix
       @level = level.to_i
       @coordinator = coordinator
       @selection = selection
@@ -21,13 +21,14 @@ module Branchproof
     end
 
     # Workflow commands for stdout, one warning per ranked decision gap.
-    def annotations
+    def annotations(path_prefix: @path_prefix)
+      path_prefix = path_prefix.to_s.empty? ? nil : path_prefix.to_s.delete_suffix("/")
       lines = error_lines
       gaps, hidden = @selection.limit(ranked_gaps)
       gaps.each_with_index do |decision, position|
         lines << command("warning", annotation_message(decision),
                          title: "Branchproof ##{position + 1}: #{SummaryReport.gap_summary(decision)}",
-                         file: annotation_path(decision.relative_path), line: decision.line)
+                         file: annotation_path(decision.relative_path, path_prefix), line: decision.line)
       end
       lines << command("notice", notice_message(hidden), title: "Branchproof coverage")
       lines.join("\n") << "\n"
@@ -103,10 +104,10 @@ module Branchproof
       lines << ""
     end
 
-    def annotation_path(path)
+    def annotation_path(path, path_prefix)
       return nil if path.nil?
 
-      @path_prefix ? "#{@path_prefix}/#{path}" : path
+      path_prefix ? "#{path_prefix}/#{path}" : path
     end
 
     def ranked_gaps

@@ -183,6 +183,43 @@ class TestGithubReport < Minitest::Test
     assert_includes output.string, "::warning file=gems/tool/lib/b.rb,line=5,"
   end
 
+  def test_github_report_constructor_prefix_remains_the_annotation_default
+    document = summary_document
+    renderer = Branchproof::GithubReport.new(document: document, level: 3,
+                                             coordinator: report(document), path_prefix: "gems/tool/")
+
+    assert_includes renderer.annotations, "::warning file=gems/tool/lib/b.rb,line=5,"
+  end
+
+  def test_annotations_reuse_the_step_summary_renderer_with_each_call_prefix
+    renderer = report
+    summary_before = renderer.step_summary
+    nested = StringIO.new
+    renderer.write(io: nested, format: :github, path_prefix: "gems/tool/")
+    summary_after = renderer.step_summary
+    root = StringIO.new
+    renderer.write(io: root, format: :github)
+
+    assert_equal summary_before, summary_after
+    assert_includes nested.string, "::warning file=gems/tool/lib/b.rb,line=5,"
+    assert_includes root.string, "::warning file=lib/b.rb,line=5,"
+    refute_includes root.string, "gems/tool/lib/b.rb"
+  end
+
+  def test_step_summary_reuse_does_not_pin_an_annotation_prefix
+    renderer = report
+    root = StringIO.new
+    renderer.write(io: root, format: :github)
+    summary = renderer.step_summary
+    nested = StringIO.new
+    renderer.write(io: nested, format: :github, path_prefix: "gems/other")
+
+    assert_includes root.string, "::warning file=lib/b.rb,line=5,"
+    assert_includes nested.string, "::warning file=gems/other/lib/b.rb,line=5,"
+    assert_includes summary, "`lib/b.rb:5`"
+    refute_includes summary, "gems/other"
+  end
+
   def test_step_summary_code_span_is_longer_than_inner_backticks
     document = summary_document
     document[:source_inventory][:decisions][2][:expression] = "a == `x``y` && b"

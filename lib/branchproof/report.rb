@@ -65,7 +65,7 @@ module Branchproof
 
       io.write(case format
                when :json then JSON.generate(json_document)
-               when :github then github_report(path_prefix: path_prefix).annotations
+               when :github then github_report.annotations(path_prefix: path_prefix)
                else terminal_document
                end)
       nil
@@ -174,9 +174,9 @@ module Branchproof
                 run_metadata: @run_metadata)
     end
 
-    def github_report(path_prefix: nil)
-      GithubReport.new(document: json_document, level: @level, coordinator: self, selection: @selection,
-                       path_prefix: path_prefix)
+    def github_report
+      @github_report ||= GithubReport.new(document: json_document, level: @level, coordinator: self,
+                                          selection: @selection)
     end
 
     def terminal_document

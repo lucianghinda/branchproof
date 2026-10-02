@@ -301,7 +301,7 @@ module Branchproof
   class GithubReport
     MARKDOWN_ROWS: Integer
     def initialize: (document: document, level: Integer, coordinator: Report, ?selection: ReportSelection, ?path_prefix: String?) -> void
-    def annotations: () -> String
+    def annotations: (?path_prefix: String?) -> String
     def step_summary: () -> String
   end
 
