@@ -31,7 +31,7 @@ class TestRSpecRailsCorpus < Minitest::Test
           env, "bundle", "exec", "rspec", "--format", "progress", "spec/corpus_spec.rb", chdir: root
         )
         assert native_status.success?, "native Rails RSpec failed (eager=#{eager}): #{native_stdout}\n#{native_stderr}"
-        assert_match(/403 examples, 0 failures/, native_stdout)
+        assert_match(/#{RSpecConstructs.non_terminating_cases} examples, 0 failures/, native_stdout)
 
         cli_stdout, cli_stderr, cli_status = Open3.capture3(
           env, RbConfig.ruby, RSpecConstructs::EXECUTABLE, "analyze", "lib/corpus/**/*.rb",
@@ -41,10 +41,10 @@ class TestRSpecRailsCorpus < Minitest::Test
         report = JSON.parse(cli_stdout)
         assert cli_status.success?, cli_stderr
         assert_equal "PASSED", report.dig("baseline", "status"), cli_stderr
-        assert_equal 403, report.dig("baseline", "executed_tests")
+        assert_equal RSpecConstructs.non_terminating_cases, report.dig("baseline", "executed_tests")
         assert_equal "rails", report.dig("baseline", "project", "kind")
         refute_match(/Minitest/, cli_stderr)
-        assert_equal 285, report.dig("metrics", "discovered")
+        assert_equal RSpecConstructs.decision_count, report.dig("metrics", "discovered")
         reports << report
         assert_rails_termination_cases(root, env)
       end

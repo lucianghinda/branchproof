@@ -230,8 +230,8 @@ class TestSource < Minitest::Test
     Dir.mktmpdir do |root|
       path = File.join(root, "fallbacks.rb")
       File.write(path, <<~RUBY)
-        def label(name, id)
-          name || "" || "Item #\#{id}" || :fallback || :"sym_\#{id}" || 0 || 1.5 || 2r || 3i
+        if name || "" || "Item #\#{id}" || :fallback || :"sym_\#{id}" || 0 || 1.5 || 2r || 3i
+          run
         end
       RUBY
       decision = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default)

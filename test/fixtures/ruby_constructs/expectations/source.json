@@ -7624,6 +7624,41 @@
         }
       ],
       "diagnostics": []
+    },
+    "FALL-01": {
+      "file": "fall_01.rb",
+      "decisions": [
+        {
+          "kind": "multiway",
+          "context": "fallback",
+          "support": "SUPPORTED",
+          "expression": "name || title || \"untitled\"",
+          "conditions": [],
+          "alternatives": [
+            {
+              "expression": "name",
+              "byte_start": 110,
+              "byte_length": 4
+            },
+            {
+              "expression": "title",
+              "byte_start": 118,
+              "byte_length": 5
+            },
+            {
+              "expression": "\"untitled\"",
+              "byte_start": 127,
+              "byte_length": 10
+            }
+          ],
+          "reasons": [],
+          "byte_start": 110,
+          "byte_length": 27,
+          "line": 5,
+          "column": 2
+        }
+      ],
+      "diagnostics": []
     }
   }
 }

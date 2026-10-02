@@ -6,6 +6,7 @@ require "prism"
 require_relative "decision_syntax"
 require_relative "iteration_syntax"
 require_relative "exception_syntax"
+require_relative "fallback_syntax"
 require_relative "default_syntax"
 require_relative "value_syntax"
 require_relative "constraints"
@@ -19,6 +20,7 @@ module Branchproof
     # family. Additional modules can follow the same seam.
     include IterationSyntax
     include ExceptionSyntax
+    include FallbackSyntax
     prepend DefaultSyntax
     prepend ValueSyntax
 
@@ -183,9 +185,16 @@ module Branchproof
 
       # Boolean expressions nested in an atomic expression (for example, a call
       # argument) are separate decisions when tree_for did not decompose them.
+      fallback_nodes = []
       collected[:phase_two_nodes].each do |node|
         next if inventoried_boolean_nodes[node]
         next if within_defined_expression?(node, defined_ranges) && !node.is_a?(Prism::DefinedNode)
+
+        if fallback_chain?(node)
+          fallback_nodes << node
+          mark_semantic_boolean_nodes(node, inventoried_boolean_nodes)
+          next
+        end
 
         context = if node.is_a?(Prism::MatchPredicateNode)
                     "pattern_in"
@@ -213,9 +222,12 @@ module Branchproof
                        predicate: predicate, context: spec[:context],
                        additional_reasons: spec[:additional_reasons] || [])
       end
-      decisions = boolean_decisions + flow_decisions_for(program, bytes, source_id, file_reasons, encoding,
-                                                         defined_ranges: defined_ranges,
-                                                         nodes: collected[:flow_nodes])
+      fallback_decisions = fallback_nodes.map do |node|
+        build_flow_decision(node, bytes, source_id, file_reasons, encoding)
+      end
+      decisions = boolean_decisions + fallback_decisions +
+                  flow_decisions_for(program, bytes, source_id, file_reasons, encoding,
+                                     defined_ranges: defined_ranges, nodes: collected[:flow_nodes])
       decisions + additional_decisions_for(program, bytes, source_id, file_reasons, encoding,
                                            collected: collected, decisions: decisions)
     end

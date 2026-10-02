@@ -7,6 +7,7 @@ require_relative "exception_runtime"
 require_relative "default_runtime"
 require_relative "value_runtime"
 require_relative "iteration_runtime"
+require_relative "fallback_runtime"
 
 module Branchproof
   # Process-local execution recorder. It deliberately never coerces or stores
@@ -19,6 +20,7 @@ module Branchproof
     extend DefaultRuntime
     extend ValueRuntime
     extend IterationRuntime
+    extend FallbackRuntime
 
     FRAME_STATE_KEY = :branchproof_runtime_frame_state
 
