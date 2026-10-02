@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+- Speed up level-3 supporting-set minimization by avoiding repeated Set
+  differences in greedy selection. Large synthetic RSpec and Minitest runs
+  take 70–77% less end-to-end time on Ruby 4.0.1; selected sets, search
+  budgets, report fields, and exit statuses are preserved. See the
+  [performance record](https://github.com/lucianghinda/branchproof/blob/main/docs/benchmarks/supporting-set-performance-2026-10-02.md)
+  for measurements and allocation/memory limits.
+
 - Add `Branchproof::RakeTask`. `require "branchproof/rake_task"` defines a
   Rake task that runs `branchproof analyze` in a subprocess with the options
   set in the Rakefile. Unset options keep the CLI and `.branchproof.json`

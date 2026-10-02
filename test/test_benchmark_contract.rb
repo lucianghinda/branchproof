@@ -88,12 +88,12 @@ class BenchmarkContractTest < Minitest::Test
       minimized_rows = run_rows.select { |row| row.fetch("level") == 3 }
       assert(minimized_rows.all? { |row| row.fetch("phases").key?("minimization") })
       assert(minimized_rows.all? { |row| row.fetch("phases").key?("minimizer_initialization") })
-      assert minimized_rows.all? do |row|
+      assert(minimized_rows.all? do |row|
         row.fetch("minimizer_by_scope").keys.sort == %w[local_vectors tests_scope_one_decision]
-      end
-      assert minimized_rows.all? do |row|
+      end)
+      assert(minimized_rows.all? do |row|
         row.fetch("minimizer_details").keys.sort == %w[greedy obligations search test_candidates vector_candidates]
-      end
+      end)
       assert(run_rows.all? do |row|
         case row.fetch("peak_process_rss_source")
         when "unavailable" then row.fetch("peak_process_rss_bytes").nil?

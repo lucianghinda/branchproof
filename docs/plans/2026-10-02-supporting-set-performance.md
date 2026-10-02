@@ -37,14 +37,15 @@ the benchmark. Do not weaken coverage or omit tests for speed.
       preserve allocations and wall time, report memory limitations honestly.
 - [x] Add complete-report semantic comparison, normalizing only enumerated
       nondeterministic metadata; prove semantic mutations are rejected.
-- [ ] Capture baseline samples: small and 2,000-test/100-decision workloads,
+- [x] Capture baseline samples: small and 2,000-test/100-decision workloads,
       ordinary/shared RSpec and Minitest, levels 1 and 3, repeated serial runs.
-- [ ] Add full-result regressions before changing production code.
-- [ ] Remove repeated set construction in the measured greedy hotspot; retain
+- [x] Add full-result regressions before changing production code.
+- [x] Remove repeated set construction in the measured greedy hotspot; retain
       the search algorithm and complete result behavior.
-- [ ] Compare baseline/candidate documents and repeated measurements.
-- [ ] Run full tests/RuboCop, RBS validation, whitespace checks and independent
-      behavior/code reviews, then publish a new PR.
+- [x] Compare baseline/candidate documents and repeated measurements.
+- [x] Run full tests/RuboCop, RBS validation, whitespace checks and independent
+      behavior/code reviews.
+- [x] Prepare the verified branch and measurement record for a new PR.
 
 ## Acceptance
 
@@ -74,3 +75,29 @@ git diff --check
 RBS validation uses the installed RBS CLI outside the application's bundle when
 RBS is not a declared development dependency. Record optional Rails evidence
 separately; core tests do not establish external Rails performance parity.
+
+## Delivery evidence
+
+Greedy now counts uncovered obligations directly and checks whether any remain,
+removing temporary Set differences while retaining selection and tie order.
+No input indexes, caches, dependencies, or public API changes were needed.
+
+Three rotating samples per case passed complete-report comparison: 36 profiled
+and 36 normal CLI baseline/candidate pairs. Large level-3 minimization time fell
+91.6–91.9%; normal CLI wall time fell 70.1–76.8%. Small workloads and large
+level-1 medians stayed within the 5% regression gate. Allocations increased;
+the gate passes on targeted time. RSS was unavailable and remains unverified.
+Details and raw per-sample metrics: [performance record](../benchmarks/supporting-set-performance-2026-10-02.md).
+
+Verification: 1,703 tests / 241,851 assertions, zero failures or errors, 13
+optional integration skips; RuboCop 187 files, zero offenses. Two benchmark
+assertion block bindings were then corrected; the focused benchmark suite
+(6 tests / 40 assertions) and touched-file lint pass. Minimizer regressions
+pass against both sources (14 tests / 22 assertions); an independent generated
+comparison matched 14,604 complete results from 1,000 cases. Luna spec and
+quality reviews approved both implementation lanes.
+
+RBS parses and validates with a temporary declaration of the external
+`Rake::TaskLib` superclass, whose types are absent from the installed RBS
+environment. Signatures did not change. External Rails performance and peak
+memory are not established by this slice.
