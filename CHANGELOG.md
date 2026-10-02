@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 - Require Ruby 4.0 or newer and run core, RSpec, and Rails CI on Ruby 4.0.
+- `branchproof mutate` now exits with status 2 and says that mutation testing
+  is not supported yet, instead of the generic unknown-command error.
 - Add RBS signatures for `Branchproof::Worker`.
 - Add `--view summary` for `analyze` and `report`. It ranks source files and
   decisions with gaps: unexecuted decisions first, then the most missing

@@ -28,6 +28,7 @@ module Branchproof
       argv = Array(argv)
       return help if [["--help"], ["help"], ["analyze", "--help"]].include?(argv)
       return offline(argv) if %w[report compare].include?(argv.first)
+      return usage_error("mutation testing is not supported yet; use analyze, report, or compare") if argv.first == "mutate"
 
       options = parse(argv)
       return usage_error("expected analyze, report, or compare; use branchproof --help") unless options

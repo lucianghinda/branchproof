@@ -46,6 +46,18 @@ class TestCLI < Minitest::Test
     refute_empty stderr.string
   end
 
+  def test_mutate_command_reports_unsupported_mutation_testing
+    stdout = StringIO.new
+    stderr = StringIO.new
+
+    status = Branchproof::CLI.new(stdout: stdout, stderr: stderr).call(%w[mutate lib/app.rb])
+
+    assert_equal 2, status
+    assert_empty stdout.string
+    assert_includes stderr.string, "mutation testing is not supported yet"
+    refute_includes stderr.string, "expected analyze"
+  end
+
   def test_level_outside_supported_range_is_usage_error
     stderr = StringIO.new
     status = Branchproof::CLI.new(stdout: StringIO.new, stderr: stderr).call(["analyze", "--level", "4"])
