@@ -17,6 +17,7 @@ Not documented.
 - [Branchproof/Analyzer.md](doc/Branchproof/Analyzer.md)
 - [Branchproof/CLI.md](doc/Branchproof/CLI.md)
 - [Branchproof/ChangedCoverage.md](doc/Branchproof/ChangedCoverage.md)
+- [Branchproof/ChangedCoveragePolicy.md](doc/Branchproof/ChangedCoveragePolicy.md)
 - [Branchproof/ChangedDecisionMap.md](doc/Branchproof/ChangedDecisionMap.md)
 - [Branchproof/ChangedScope.md](doc/Branchproof/ChangedScope.md)
 - [Branchproof/Comparison.md](doc/Branchproof/Comparison.md)

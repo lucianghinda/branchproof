@@ -47,6 +47,13 @@ module Branchproof
             lines << "Condition #{row[:index]}: #{row[:expression]} NOT_PROVEN#{explanation}"
           end
         end
+        if decision.rule_cases? && decision.unproven_conditions.any?
+          row = decision.unproven_conditions.first
+          explanation = coordinator.condition_explanation(decision_id: decision.id, condition_id: row[:id])
+          lines << "MC/DC evidence: Condition #{row[:index]}: #{row[:expression]} NOT_PROVEN#{explanation}"
+          remaining = decision.unproven_conditions.length - 1
+          lines << "Additional unproven conditions: #{remaining}" if remaining.positive?
+        end
         decision.missing_alternatives.each { |row| lines << "Need selection of: #{row[:expression]}" }
         lines
       end

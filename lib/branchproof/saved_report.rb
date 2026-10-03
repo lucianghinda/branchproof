@@ -14,8 +14,8 @@ require_relative "decision_table"
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
   class SavedReport
-    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4 1.5].freeze
-    STRICT_FLOW_SCHEMAS = %w[1.2 1.3 1.4 1.5].freeze
+    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4 1.5 1.6].freeze
+    STRICT_FLOW_SCHEMAS = %w[1.2 1.3 1.4 1.5 1.6].freeze
     DECISION_TABLE_STATUSES = %w[calculated not_calculated].freeze
     RULE_CONDITION_VALUES = DecisionTable::CONDITION_VALUES
     RULE_COVERAGE_STATUSES = DecisionTable::COVERAGE_STATUSES
@@ -64,6 +64,7 @@ module Branchproof
       validate_completeness(@document.dig("analysis", "completeness")) if @document["analysis"]
       validate_coverage_policy
       validate_changed_scope
+      validate_changed_coverage_policy
       validate_optional_sections
       validate_analysis_coverage
       @document
@@ -222,7 +223,7 @@ module Branchproof
           fail_with("nonboolean condition results must be empty") unless results.empty?
           validate_nonboolean_analysis(decision, inventory_decision)
         elsif decision.key?("decision_table")
-          unless %w[1.3 1.4 1.5].include?(@schema_version)
+          unless %w[1.3 1.4 1.5 1.6].include?(@schema_version)
             fail_with("decision tables are unsupported in legacy report schemas")
           end
           validate_decision_table(decision["decision_table"], inventory_decision)
@@ -634,7 +635,7 @@ module Branchproof
 
     def validate_coverage_policy
       policy = @document["coverage_policy"]
-      fail_with("missing field: coverage_policy") if %w[1.4 1.5].include?(@schema_version) && !policy
+      fail_with("missing field: coverage_policy") if %w[1.4 1.5 1.6].include?(@schema_version) && !policy
       return if policy.nil?
 
       fail_with("coverage_policy must be an object") unless hash_with_string_keys?(policy)
@@ -657,7 +658,7 @@ module Branchproof
     def validate_changed_scope
       scope_present = @document.key?("changed_scope")
       summary_present = @document.key?("changed_coverage")
-      unless @schema_version == "1.5"
+      unless %w[1.5 1.6].include?(@schema_version)
         fail_with("changed scope is unsupported by this report schema") if scope_present || summary_present
         return
       end
@@ -702,6 +703,34 @@ module Branchproof
       expected = JSON.parse(JSON.generate(ChangedCoverage.call(document: @document, scope: scope)))
       actual = JSON.parse(JSON.generate(@document["changed_coverage"]))
       fail_with("changed_coverage does not match captured analysis") unless actual == expected
+    end
+
+    def validate_changed_coverage_policy
+      policy_present = @document.key?("changed_coverage_policy")
+      if @schema_version == "1.6"
+        fail_with("missing field: changed_coverage_policy") unless policy_present
+      elsif policy_present
+        fail_with("changed_coverage_policy is unsupported by this report schema")
+      else
+        return
+      end
+
+      policy = @document["changed_coverage_policy"]
+      fail_with("changed_coverage_policy must be an object") unless hash_with_string_keys?(policy)
+      minimum = policy["minimum_changed"]
+      fail_with("changed_coverage_policy minimum_changed must be an object") unless hash_with_string_keys?(minimum)
+      normalized = CoveragePolicy.normalize(minimum)
+      fail_with("changed_coverage_policy minimum_changed must not be empty") if normalized.empty?
+      fail_with("changed_coverage_policy status must be a string") unless policy["status"].is_a?(String)
+      fail_with("changed_coverage_policy gates must be an array") unless policy["gates"].is_a?(Array)
+      expected = ChangedCoveragePolicy.new(minimum_changed: normalized).call(
+        document: @document, scope: @document["changed_scope"]
+      )
+      actual = JSON.parse(JSON.generate(policy))
+      expected = JSON.parse(JSON.generate(expected))
+      fail_with("changed_coverage_policy does not match captured analysis") unless actual == expected
+    rescue ArgumentError => e
+      fail_with(e.message.sub(/\Ainvalid saved report: /, ""))
     end
 
     def validate_changed_files(files)

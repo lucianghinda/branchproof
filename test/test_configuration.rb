@@ -34,6 +34,17 @@ class TestConfiguration < Minitest::Test
     end
   end
 
+  def test_loads_integer_minimum_changed_policy
+    Dir.mktmpdir do |root|
+      path = File.join(root, ".branchproof.json")
+      File.write(path, JSON.generate(schema_version: 1, minimum_changed: { mcdc: 80.5 }))
+
+      config = Branchproof::Configuration.load(path: path, root: root)
+
+      assert_equal({ "mcdc" => 80.5 }, config.fetch(:minimum_changed))
+    end
+  end
+
   def test_missing_default_configuration_is_absent_but_missing_explicit_configuration_is_an_error
     Dir.mktmpdir do |root|
       assert_nil Branchproof::Configuration.load(path: File.join(root, ".branchproof.json"), root: root)
@@ -63,7 +74,8 @@ class TestConfiguration < Minitest::Test
       { schema_version: 1, exclude: [1] },
       { schema_version: 1, minimum: { mcdc: 101 } },
       { schema_version: 1, minimum: { mcdc: "80" } },
-      { schema_version: 1, minimum: { other: 80 } }
+      { schema_version: 1, minimum: { other: 80 } },
+      { schema_version: 1, minimum_changed: { mcdc: 101.5 } }
     ]
 
     Dir.mktmpdir do |root|

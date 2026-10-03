@@ -147,7 +147,8 @@ module Branchproof
 
     def configuration_info(config, options)
       { state: configuration_state(config, options), path: configuration_path(config, options),
-        minimum: config ? config.fetch(:minimum, {}) : {} }
+        minimum: config ? config.fetch(:minimum, {}) : {},
+        minimum_changed: config ? config.fetch(:minimum_changed, {}) : {} }
     end
 
     def configuration_state(config, options)
@@ -214,7 +215,9 @@ module Branchproof
 
         path = configuration[:path] ? " (#{configuration[:path]})" : nil
         minimum = configuration[:minimum].empty? ? "none" : configuration[:minimum].inspect
-        ["Config: #{configuration[:state]}#{path}", "Configured minima: #{minimum} (not evaluated)"]
+        changed = configuration[:minimum_changed].empty? ? "none" : configuration[:minimum_changed].inspect
+        ["Config: #{configuration[:state]}#{path}", "Configured minima: #{minimum} (not evaluated)",
+         "Configured changed minima: #{changed} (not evaluated)"]
       end
 
       def selection_lines

@@ -61,6 +61,43 @@ class TestCoveragePolicy < Minitest::Test
     assert_equal [2, 3, 66.67], result[:gates].first.values_at(:numerator, :denominator, :minimum)
   end
 
+  def test_changed_policy_uses_exact_integer_thresholds_and_changed_counts
+    decisions = [changed_decision("d1", 1), changed_decision("d2", 0), changed_decision("d3", 1)]
+    doc = changed_document(decisions)
+    scope = { status: "complete", decision_ids: %w[d1 d2 d3] }
+    policy = Branchproof::ChangedCoveragePolicy.new(minimum_changed: { mcdc: 66.67 })
+
+    assert_equal "failed", policy.call(document: doc, scope: scope)[:status]
+    assert_raises(ArgumentError) { Branchproof::ChangedCoveragePolicy.new(minimum_changed: { mcdc: 101 }) }
+  end
+
+  def test_changed_policy_empty_scope_is_not_applicable_only_with_valid_global_evidence
+    policy = Branchproof::ChangedCoveragePolicy.new(minimum_changed: { decision: 100 })
+    empty_doc = changed_document([])
+    result = policy.call(document: empty_doc, scope: { status: "empty", decision_ids: [] })
+    assert_equal "not_applicable", result[:status]
+    assert_equal "not_applicable", result[:gates].first[:status]
+
+    incomplete = document.merge(completeness: { observation: false, attribution: true, analysis: true })
+    result = policy.call(document: incomplete, scope: { status: "empty", decision_ids: [] })
+    assert_equal "unavailable", result[:status]
+    assert_equal "incomplete_document", result[:gates].first[:reason]
+  end
+
+  def test_changed_policy_does_not_treat_unsupported_scope_or_zero_denominator_as_pass
+    policy = Branchproof::ChangedCoveragePolicy.new(minimum_changed: { mcdc: 0 })
+    %w[unsupported_only zero_denominator].each do |reason|
+      selected = if reason == "unsupported_only"
+                   [changed_decision("d1", nil, unsupported: true)]
+                 else
+                   [changed_decision("d1", 0, condition_count: 0)]
+                 end
+      result = policy.call(document: changed_document(selected),
+                           scope: { status: "complete", decision_ids: ["d1"] })
+      assert_equal "unavailable", result[:status], reason
+    end
+  end
+
   def test_symbol_and_string_keyed_documents_produce_the_same_gate
     symbol_document = document({ mcdc: { proven_conditions: 2, supported_conditions: 3 } })
     string_document = JSON.parse(JSON.generate(symbol_document))
@@ -165,5 +202,23 @@ class TestCoveragePolicy < Minitest::Test
                completeness: COMPLETE, observations: { completeness: COMPLETE },
                analysis: { completeness: COMPLETE, coverage: coverage })
     { baseline: baseline, completeness: completeness, observations: observations, analysis: analysis }
+  end
+
+  def changed_document(decisions)
+    section = COMPLETE
+    { baseline: { status: "PASSED", finalized: true }, completeness: section,
+      observations: { completeness: section }, analysis: { completeness: section, decisions: decisions } }
+  end
+
+  def changed_decision(id, proven, unsupported: false, condition_count: 1)
+    { decision_id: id, unsupported: unsupported, coverage: {
+      decision: { status: "covered" }, condition: { covered_values: condition_count * 2,
+                                                    condition_count: condition_count,
+                                                    covered_conditions: condition_count },
+      condition_decision: { status: "covered" }, mcdc: { proven_conditions: proven },
+      decision_table: { status: "covered", covered_rules: 1, required_rules: 1, generated_rules: 1,
+                        impossible_rules: 0 }
+    }, decision_table: { status: "calculated", coverage_status: "covered", covered_rules: 1,
+                         required_rules: 1, generated_rules: 1, impossible_rules: 0 } }
   end
 end
