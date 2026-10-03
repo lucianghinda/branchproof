@@ -29,6 +29,7 @@ module Branchproof
   autoload :FocusedReport, "branchproof/focused_report"
   autoload :SummaryRanking, "branchproof/summary_ranking"
   autoload :SummaryReport, "branchproof/summary_report"
+  autoload :HtmlReport, "branchproof/html_report"
   autoload :GithubReport, "branchproof/github_report"
   autoload :SavedReport, "branchproof/saved_report"
   autoload :Comparison, "branchproof/comparison"

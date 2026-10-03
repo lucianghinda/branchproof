@@ -8,6 +8,7 @@ require_relative "coverage_policy"
 require_relative "report_selection"
 require_relative "summary_report"
 require_relative "github_report"
+require_relative "html_report"
 require_relative "changed_coverage"
 
 module Branchproof
@@ -17,7 +18,7 @@ module Branchproof
     CHANGED_SCOPE_SCHEMA_VERSION = "1.5"
     CRITERION_VERSION = "masking_occurrence_v1"
     VIEWS = %i[decisions conditions tests decision_tables summary].freeze
-    FORMATS = %i[terminal json github].freeze
+    FORMATS = %i[terminal json github html].freeze
     DECISION_TABLE_LABELS = { "true" => "T", "false" => "F", "dont_care" => "-" }.freeze
     DECISION_TABLE_STATUS_LABELS = { "covered" => "COVERED", "missing" => "MISSING",
                                      "excluded" => "EXCLUDED" }.freeze
@@ -71,13 +72,15 @@ module Branchproof
     # path_prefix is only used by :github, to make annotation paths repository-relative.
     def write(io:, format:, path_prefix: nil)
       format = format.to_sym
-      raise ArgumentError, "format must be :terminal, :json, or :github" unless FORMATS.include?(format)
+      raise ArgumentError, "format must be :terminal, :json, :github, or :html" unless FORMATS.include?(format)
       raise ArgumentError, "focus and top filters are terminal-only" if format == :json &&
                                                                         (@selection.focus_active? || @selection.top)
 
       io.write(case format
                when :json then JSON.generate(json_document)
                when :github then github_report.annotations(path_prefix: path_prefix)
+               when :html then HtmlReport.new(document: json_document, level: @level, coordinator: self,
+                                              missing_only: @missing_only, selection: @selection).render
                else terminal_document
                end)
       nil
