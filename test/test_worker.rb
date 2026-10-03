@@ -27,10 +27,144 @@ class TestWorker < Minitest::Test
     end
   end
 
+  def test_missing_minitest_has_an_actionable_framework_diagnostic
+    missing = load_error("minitest")
+    stub_framework_require("minitest", missing) do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+      assert_equal "minitest_missing", error.diagnostic_code
+      assert_includes error.message, "minitest"
+      assert_includes error.message, "application's test bundle"
+      assert_includes error.message, ">= 5.25.5, < 6"
+    end
+  end
+
+  def test_missing_minitest_test_entrypoint_has_an_actionable_framework_diagnostic
+    missing = load_error("minitest/test")
+    stub_framework_require("minitest/test", missing) do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+      assert_equal "minitest_missing", error.diagnostic_code
+      assert_includes error.message, "minitest/test"
+      assert_includes error.message, "application's test bundle"
+    end
+  end
+
+  def test_dependency_load_error_is_not_misreported_as_missing_minitest
+    missing = load_error("application_dependency")
+    stub_framework_require("minitest", missing) do
+      error = assert_raises(LoadError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+      assert_same missing, error
+    end
+  end
+
+  def test_unsupported_minitest_version_has_a_structured_diagnostic
+    with_minitest_version("5.25.4") do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+      assert_equal "minitest_unsupported_version", error.diagnostic_code
+      assert_includes error.message, "5.25.4"
+      assert_includes error.message, ">= 5.25.5, < 6"
+    end
+  end
+
+  def test_minitest_lower_bound_is_supported
+    with_minitest_version("5.25.5") do
+      adapter = Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      assert_instance_of Branchproof::MinitestAdapter, adapter
+    end
+  end
+
+  def test_minitest_six_is_not_supported
+    with_minitest_version("6.0.0") do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+      assert_equal "minitest_unsupported_version", error.diagnostic_code
+      assert_includes error.message, "6.0.0"
+    end
+  end
+
+  def test_unsupported_minitest_version_is_reported_before_test_entrypoint_load
+    missing_test_entrypoint = load_error("minitest/test")
+    with_minitest_version("6.0.0") do
+      stub_framework_require("minitest/test", missing_test_entrypoint) do
+        error = assert_raises(ArgumentError) do
+          Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+        end
+
+        assert_equal "minitest_unsupported_version", error.diagnostic_code
+      end
+    end
+  end
+
+  def test_loaded_minitest_six_is_rejected_even_when_runtime_version_is_supported
+    with_minitest_versions("6.0.0", "5.27.0") do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+
+      assert_equal "minitest_unsupported_version", error.diagnostic_code
+      assert_includes error.message, "6.0.0"
+    end
+  end
+
+  def test_old_loaded_minitest_is_rejected_even_when_runtime_version_is_supported
+    with_minitest_versions("5.25.4", "5.27.0") do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+
+      assert_equal "minitest_unsupported_version", error.diagnostic_code
+      assert_includes error.message, "5.25.4"
+    end
+  end
+
+  def test_supported_loaded_minitest_is_accepted_when_runtime_constant_is_stale
+    with_minitest_versions("5.25.5", "6.0.0") do
+      adapter = Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+
+      assert_instance_of Branchproof::MinitestAdapter, adapter
+    end
+  end
+
+  def test_runtime_version_is_used_when_no_minitest_gem_is_activated
+    with_runtime_minitest_version("5.25.5") do
+      adapter = Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+
+      assert_instance_of Branchproof::MinitestAdapter, adapter
+    end
+  end
+
   def test_project_metadata_defaults_legacy_payloads_to_minitest
     metadata = Branchproof::Worker.project_metadata({ kind: "ruby", root: Dir.pwd, load_paths: [] }, nil)
 
     assert_equal "minitest", metadata[:framework]
+  end
+
+  def test_minitest_project_metadata_uses_activated_package_version
+    with_minitest_versions("5.27.0", "5.26.2") do
+      metadata = Branchproof::Worker.project_metadata(
+        { kind: "ruby", framework: "minitest", root: Dir.pwd, load_paths: [] }, nil
+      )
+
+      assert_equal "5.27.0", metadata[:framework_version]
+    end
+  end
+
+  def test_minitest_project_metadata_falls_back_to_runtime_version
+    with_runtime_minitest_version("5.26.2") do
+      metadata = Branchproof::Worker.project_metadata(
+        { kind: "ruby", framework: "minitest", root: Dir.pwd, load_paths: [] }, nil
+      )
+
+      assert_equal "5.26.2", metadata[:framework_version]
+    end
   end
 
   def test_project_metadata_preserves_selected_framework
@@ -100,6 +234,29 @@ class TestWorker < Minitest::Test
     end
   end
 
+  def test_framework_startup_failures_preserve_incomplete_evidence
+    Dir.mktmpdir do |root|
+      payload = { "project" => { "kind" => "ruby", "framework" => "minitest", "root" => root,
+                                 "load_paths" => [], "environment" => {} },
+                  "result_path" => File.join(root, "result.json"), "marker_path" => File.join(root, "complete") }
+      evidence = { completeness: { observation: true, attribution: true, analysis: true }, diagnostics: [] }
+
+      %w[minitest_missing minitest_unsupported_version].each do |code|
+        Branchproof::Worker.write_failure(payload, code, { message: "Minitest startup failed" }, evidence: evidence)
+        result = JSON.parse(File.binread(payload.fetch("result_path")))
+
+        assert_equal "ERROR", result.fetch("status")
+        assert_equal false, result.fetch("finalized")
+        assert_equal 2, result.fetch("exit_status")
+        assert_equal false, result.dig("evidence", "completeness", "observation")
+        assert_equal false, result.dig("evidence", "completeness", "analysis")
+        assert_equal code, result.dig("evidence", "diagnostics", 0, "code")
+        assert_equal code, result.dig("diagnostics", 0, "code")
+        assert_equal true, evidence.dig(:completeness, :observation)
+      end
+    end
+  end
+
   def test_loader_errors_make_completion_incomplete
     evidence = { completeness: { observation: true, attribution: true, analysis: true }, diagnostics: [] }
     result = Branchproof::Worker.send(:completion_result,
@@ -113,5 +270,60 @@ class TestWorker < Minitest::Test
     assert_equal false, result.dig(:evidence, :completeness, :observation)
     assert_equal false, result.dig(:evidence, :completeness, :analysis)
     assert_equal "loader_conflict", result.dig(:evidence, :diagnostics, 0, :code)
+  end
+
+  private
+
+  def load_error(path)
+    error = LoadError.new("cannot load such file -- #{path}")
+    error.define_singleton_method(:path) { path }
+    error
+  end
+
+  def stub_framework_require(failing_path, error, &)
+    original_require = Kernel.instance_method(:require)
+    Branchproof::MinitestAdapter.stub(:require, lambda { |path|
+      raise error if path == failing_path
+
+      original_require.bind_call(Branchproof::MinitestAdapter, path)
+    }, &)
+  end
+
+  def with_minitest_version(version, &)
+    with_minitest_versions(version, version, &)
+  end
+
+  def with_minitest_versions(package_version, runtime_version, &)
+    specs = Gem.loaded_specs
+    original_spec = specs["minitest"]
+    specs["minitest"] = Gem::Specification.new("minitest", package_version)
+    with_minitest_runtime_version(runtime_version, &)
+  ensure
+    specs.delete("minitest")
+    specs["minitest"] = original_spec if original_spec
+  end
+
+  def with_runtime_minitest_version(version, &)
+    specs = Gem.loaded_specs
+    original_spec = specs.delete("minitest")
+    with_minitest_constant(version, &)
+  ensure
+    specs.delete("minitest")
+    specs["minitest"] = original_spec if original_spec
+  end
+
+  def with_minitest_runtime_version(version, &)
+    with_minitest_constant(version, &)
+  end
+
+  def with_minitest_constant(version)
+    had_version = Minitest.const_defined?(:VERSION, false)
+    original_version = Minitest.const_get(:VERSION, false) if had_version
+    Minitest.send(:remove_const, :VERSION) if had_version
+    Minitest.const_set(:VERSION, version)
+    yield
+  ensure
+    Minitest.send(:remove_const, :VERSION) if Minitest.const_defined?(:VERSION, false)
+    Minitest.const_set(:VERSION, original_version) if had_version
   end
 end

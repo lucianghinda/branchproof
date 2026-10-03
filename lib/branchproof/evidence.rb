@@ -37,6 +37,7 @@ module Branchproof
       @repetition_cache = {}
       @limited = false
       @attribution_complete = true
+      @analysis_complete = true
     end
 
     def register_test(test:)
@@ -134,7 +135,7 @@ module Branchproof
                              tests: @tests.values, vectors: @vectors.values,
                              abort_counts: @abort_counts.dup, diagnostics: @diagnostics.map(&:dup),
                              completeness: { observation: !@limited, attribution: @attribution_complete,
-                                             analysis: true } }))
+                                             analysis: @analysis_complete } }))
     end
 
     def merge(snapshot:)
@@ -180,6 +181,7 @@ module Branchproof
       @abort_counts.merge!(incoming.fetch(:abort_counts, {})) { |_k, a, b| a.to_i + b.to_i }
       @limited ||= !incoming.dig(:completeness, :observation)
       @attribution_complete &&= incoming.dig(:completeness, :attribution) ? true : false
+      @analysis_complete &&= incoming.dig(:completeness, :analysis) ? true : false
       @repetition_cache.clear
       status("merged", nil)
     rescue StandardError => e
@@ -565,6 +567,7 @@ module Branchproof
       { vectors: deep_dup(@vectors), tests: deep_dup(@tests), run_ids: @run_ids.dup,
         run_payloads: @run_payloads.dup, diagnostics: deep_dup(@diagnostics),
         abort_counts: @abort_counts.dup, limited: @limited, attribution_complete: @attribution_complete,
+        analysis_complete: @analysis_complete,
         vector_counts_by_decision: @vector_counts_by_decision.dup, owner_associations_count: @owner_associations_count,
         repetition_cache: deep_dup(@repetition_cache) }
     end
@@ -581,6 +584,7 @@ module Branchproof
       @repetition_cache = state[:repetition_cache]
       @limited = state[:limited]
       @attribution_complete = state[:attribution_complete]
+      @analysis_complete = state[:analysis_complete]
     end
 
     def cached_execution(execution)

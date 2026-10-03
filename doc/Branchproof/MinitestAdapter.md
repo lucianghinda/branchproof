@@ -14,6 +14,10 @@ Returns the value of attribute active_adapter.
 ### `tests` [R] <a id="attribute-i-tests"></a> <a id="tests-instance_method"></a>
 Returns the value of attribute tests.
 
+## Public Class Methods
+### `load_framework!()` <a id="method-c-load_framework-21"></a> <a id="load_framework!-class_method"></a>
+Not documented.
+
 ## Public Instance Methods
 ### `initialize(runtime:)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@return** [MinitestAdapter] a new instance of MinitestAdapter

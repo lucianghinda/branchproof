@@ -65,7 +65,10 @@ module Branchproof
              else
                "worker"
              end
-      write_failure(payload || {}, code, { message: e.message }) if payload
+      if payload
+        evidence_snapshot = runtime&.snapshot if %w[minitest_missing minitest_unsupported_version].include?(code)
+        write_failure(payload, code, { message: e.message }, evidence: evidence_snapshot)
+      end
       2
     end
 
@@ -83,9 +86,8 @@ module Branchproof
         require_relative "rspec_adapter"
         Branchproof::RSpecAdapter.new(runtime: runtime)
       else
-        require "minitest"
-        require "minitest/test"
         require_relative "minitest_adapter"
+        Branchproof::MinitestAdapter.load_framework!
         Branchproof::MinitestAdapter.new(runtime: runtime)
       end
     end
@@ -131,8 +133,8 @@ module Branchproof
       framework = project[:framework].to_s.empty? ? "minitest" : project[:framework].to_s
       version = if framework == "rspec" && defined?(RSpec::Core::Version::STRING)
                   RSpec::Core::Version::STRING
-                elsif framework == "minitest" && defined?(Minitest::VERSION)
-                  Minitest::VERSION
+                elsif framework == "minitest"
+                  Gem.loaded_specs["minitest"]&.version&.to_s || (Minitest::VERSION if defined?(Minitest::VERSION))
                 end
       metadata = { kind: project[:kind].to_s, root: project[:root].to_s,
                    framework: framework, framework_version: version,
@@ -169,12 +171,15 @@ module Branchproof
       nil
     end
 
-    def write_failure(payload, code, details)
+    def write_failure(payload, code, details, evidence: nil)
       return unless payload["result_path"]
 
-      write_completion(payload, { status: "ERROR", executed_tests: 0, failed_tests: 0, skipped_tests: 0,
-                                  finalized: false, exit_status: 2, project: project_metadata_for(payload),
-                                  diagnostics: [{ code: code, severity: "error", message: details.to_s }] })
+      diagnostic = { code: code, severity: "error", message: details.to_s }
+      result = { status: "ERROR", executed_tests: 0, failed_tests: 0, skipped_tests: 0,
+                 finalized: false, exit_status: 2, project: project_metadata_for(payload),
+                 diagnostics: [diagnostic] }
+      result[:evidence] = incomplete_evidence(evidence, [diagnostic]) if evidence
+      write_completion(payload, result)
     end
 
     def project_metadata_for(payload)

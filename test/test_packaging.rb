@@ -79,6 +79,7 @@ class TestPackaging < Minitest::Test
     spec = Gem::Specification.load(File.join(ROOT, "branchproof.gemspec"))
 
     refute(spec.runtime_dependencies.any? { |dependency| %w[rails railties].include?(dependency.name) })
+    refute(spec.runtime_dependencies.any? { |dependency| dependency.name == "minitest" })
   end
 
   def test_rbs_and_ci_cover_the_supported_runtime

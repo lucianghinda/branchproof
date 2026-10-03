@@ -64,6 +64,35 @@ class TestEvidence < Minitest::Test
     assert_equal({ "body" => 4 }, target.snapshot.dig(:tests, 0, :phase_counts))
   end
 
+  def test_analysis_incompleteness_survives_later_complete_merges
+    snapshot = evidence_for_run("incomplete", test_id: "incomplete").snapshot
+    incomplete = snapshot.merge(completeness: snapshot[:completeness].merge(analysis: false))
+    complete = evidence_for_run("complete", test_id: "complete").snapshot
+    target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")
+
+    assert_equal "merged", target.merge(snapshot: incomplete)[:status]
+    refute target.snapshot.dig(:completeness, :analysis)
+    assert_equal "merged", target.merge(snapshot: complete)[:status]
+    refute target.snapshot.dig(:completeness, :analysis)
+  end
+
+  def test_rejected_merge_restores_analysis_completeness
+    snapshot = evidence_for_run("incomplete", test_id: "incomplete").snapshot
+    incomplete = snapshot.merge(completeness: snapshot[:completeness].merge(analysis: false))
+    target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")
+    assert_equal "merged", target.merge(snapshot: incomplete)[:status]
+    before = target.snapshot
+    complete = evidence_for_run("complete", test_id: "complete").snapshot
+
+    result = target.stub(:merge_vector, ->(*) { raise "merge failed after mutation" }) do
+      target.merge(snapshot: complete)
+    end
+
+    assert_equal "rejected", result[:status]
+    assert_equal before, target.snapshot
+    refute target.snapshot.dig(:completeness, :analysis)
+  end
+
   def test_merging_json_roundtrip_sums_shared_test_phase_counts
     source = evidence_for_run("source", test_id: "shared", repetitions: 2)
     target = Branchproof::Evidence.new(inventory: inventory, limits: {}, run_id: "target")

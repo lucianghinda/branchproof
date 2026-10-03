@@ -5,6 +5,38 @@ module Branchproof
   class MinitestAdapter
     class << self
       attr_accessor :active_adapter
+
+      def load_framework!
+        require_framework!("minitest")
+
+        version = Gem.loaded_specs["minitest"]&.version || Gem::Version.new(Minitest::VERSION)
+        requirement = Gem::Requirement.new(">= 5.25.5", "< 6")
+        unless requirement.satisfied_by?(Gem::Version.new(version))
+          failure = ArgumentError.new(
+            "Minitest #{version} is unsupported; supported version range is >= 5.25.5, < 6"
+          )
+          def failure.diagnostic_code = "minitest_unsupported_version"
+          raise failure
+        end
+
+        require_framework!("minitest/test")
+        Minitest
+      end
+
+      private
+
+      def require_framework!(entrypoint)
+        require entrypoint
+      rescue LoadError => e
+        raise unless e.path == entrypoint
+
+        failure = ArgumentError.new(
+          "Minitest entrypoint #{entrypoint} is unavailable; " \
+          "add minitest >= 5.25.5, < 6 to the application's test bundle"
+        )
+        def failure.diagnostic_code = "minitest_missing"
+        raise failure
+      end
     end
 
     def initialize(runtime:)
@@ -18,9 +50,8 @@ module Branchproof
       raise ArgumentError, "on_complete must respond to call" unless on_complete.respond_to?(:call)
 
       reject_runner_args!(runner_args)
+      self.class.load_framework!
       @runner_args = Array(runner_args).dup.freeze
-      require "minitest"
-      require "minitest/test"
       self.class.active_adapter = self
       install_lifecycle_hooks
       install_runner_guard

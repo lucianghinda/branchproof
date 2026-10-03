@@ -48,5 +48,5 @@ Not documented.
 ### `write_completion(payload, result)` <a id="method-c-write_completion"></a> <a id="write_completion-class_method"></a>
 Not documented.
 
-### `write_failure(payload, code, details)` <a id="method-c-write_failure"></a> <a id="write_failure-class_method"></a>
+### `write_failure(payload, code, details, evidence: = nil)` <a id="method-c-write_failure"></a> <a id="write_failure-class_method"></a>
 Not documented.
