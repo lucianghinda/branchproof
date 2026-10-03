@@ -54,6 +54,9 @@ class TestSavedReportAcceptance < Minitest::Test
         _, stderr, status = command(root, "report", "saved.json", "--output", output)
         assert_equal 2, status
         assert_includes stderr, "overwrite an input"
+        _, html_stderr, html_status = command(root, "report", "saved.json", "--format", "html", "--output", output)
+        assert_equal 2, html_status
+        assert_includes html_stderr, "overwrite an input"
         assert_equal original, File.binread(path)
       end
       FileUtils.mkdir_p(File.join(root, "directory"))
@@ -62,6 +65,45 @@ class TestSavedReportAcceptance < Minitest::Test
       assert_includes stderr, "branchproof:"
       assert_empty Dir.glob(File.join(root, "directory.tmp-*"))
       assert_equal original, File.binread(path)
+    end
+  end
+
+  def test_html_report_is_offline_selectable_and_preserves_run_status
+    with_project do |root|
+      _, stderr, status = command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "saved.json")
+      assert_equal 0, status, stderr
+      marker = marker_count(root)
+      FileUtils.rm_rf(File.join(root, "lib"))
+      FileUtils.rm_rf(File.join(root, "test"))
+
+      stdout_report = command(root, "report", "saved.json", "--format", "html")
+      assert_equal 0, stdout_report.last, stdout_report[1]
+      assert_html_document stdout_report.first
+      assert_equal marker, marker_count(root)
+
+      output_report = command(root, "report", "saved.json", "--format", "html", "--output", "coverage.html")
+      assert_equal 0, output_report.last, output_report[1]
+      assert_empty output_report.first
+      assert_equal stdout_report.first, File.read(File.join(root, "coverage.html"))
+      assert_equal stdout_report, command(root, "report", "saved.json", "--format", "html", executable: "mcdc")
+
+      filtered = command(root, "report", "saved.json", "--format", "html", "--focus", "lib/decision.rb:2",
+                         "--top", "1", "--missing-only")
+      assert_equal 0, filtered.last, filtered[1]
+      assert_html_document filtered.first
+      assert_includes filtered.first, "Focus: lib/decision.rb:2"
+      assert_equal marker, marker_count(root)
+
+      _, analyze_error, analyze_status = command(root, "analyze", "--format", "html")
+      assert_equal 2, analyze_status
+      assert_includes analyze_error, "format must be terminal, json, or github"
+      _, compare_error, compare_status = command(root, "compare", "saved.json", "saved.json", "--format", "html")
+      assert_equal 2, compare_status
+      assert_includes compare_error, "format must be terminal or json"
+      _, view_error, view_status = command(root, "report", "saved.json", "--format", "html", "--view", "tests")
+      assert_equal 2, view_status
+      assert_includes view_error, "integrated layout"
+      assert_equal marker, marker_count(root)
     end
   end
 
@@ -75,10 +117,32 @@ class TestSavedReportAcceptance < Minitest::Test
       legacy["analysis"] = nil
       File.write(File.join(root, "legacy.json"), JSON.generate(legacy))
       assert_equal 0, command(root, "report", "legacy.json", "--level", "1").last
+      legacy_html = command(root, "report", "legacy.json", "--format", "html")
+      assert_equal 0, legacy_html.last, legacy_html[1]
+      assert_html_document legacy_html.first
+      assert_includes legacy_html.first, "Analysis: <strong>unavailable</strong>"
       assert_equal 2, command(root, "report", "legacy.json", "--level", "3").last
       File.write(File.join(root, "test/decision_test.rb"), "require 'minitest/autorun'\nclass BrokenTest < Minitest::Test\n def test_failure; flunk; end\nend\n")
       assert_equal 1, command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "failed.json").last
       assert_equal 1, command(root, "report", "failed.json").last
+      failed_html = command(root, "report", "failed.json", "--format", "html")
+      assert_equal 1, failed_html.last
+      assert_html_document failed_html.first
+    end
+  end
+
+  def test_incomplete_html_report_keeps_the_saved_exit_status
+    with_project do |root|
+      FileUtils.rm_rf(File.join(root, "test"))
+      _, stderr, status = command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "incomplete.json")
+      assert_equal 2, status, stderr
+
+      html = command(root, "report", "incomplete.json", "--format", "html")
+
+      assert_equal 2, html.last, html[1]
+      assert_html_document html.first
+      assert_includes html.first, "Tests: <strong>INCOMPLETE</strong>"
+      assert_includes html.first, "lower bounds"
     end
   end
 
@@ -143,6 +207,14 @@ class TestSavedReportAcceptance < Minitest::Test
   def marker_count(root)
     path = File.join(root, "marker")
     File.exist?(path) ? File.readlines(path).length : 0
+  end
+
+  def assert_html_document(html)
+    assert_includes html, "<!doctype html>"
+    assert_includes html, "Content-Security-Policy"
+    assert_includes html, "<style>"
+    refute_match(/<script\b/i, html)
+    refute_match(/<(?:link|img)\b[^>]*(?:src|href)=["']https?:/i, html)
   end
 
   def command(root, *, executable: "branchproof")

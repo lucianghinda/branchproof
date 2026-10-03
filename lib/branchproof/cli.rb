@@ -109,11 +109,12 @@ module Branchproof
             [--no-reachability] [-- RUNNER_ARGS]
           branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables|summary]
             [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--focus PATH[:LINE]] [--top N]
-            [--format terminal|json|github] [--output PATH]
+            [--format terminal|json|github|html] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
         JSON always contains full evidence; --view requires terminal output.
         github prints Actions annotations for the summary ranking and appends Markdown to $GITHUB_STEP_SUMMARY.
+        HTML report output is self-contained and offline; it uses an integrated layout, so --view is unavailable.
         decision_tables is also accepted as an alias for the decision-tables view.
         --no-reachability keeps every generated decision-table rule as a coverage obligation.
         --changed-since REF reports informational coverage for tracked changes from a commit to the current worktree; tests and gates remain whole-run.
@@ -130,6 +131,7 @@ module Branchproof
 
     def validate_view!(options)
       return unless options[:explicit_view]
+      raise ArgumentError, "HTML uses an integrated layout; --view is unavailable" if options[:format] == :html
       raise ArgumentError, "--view requires terminal format; JSON contains full evidence" if options[:format] == :json
       return unless options[:format] == :github
 
@@ -153,8 +155,8 @@ module Branchproof
         if options[:level] > 1 && !document["analysis"]
           raise ArgumentError, "saved report has no analysis; use --level 1"
         end
-        if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
-          raise ArgumentError, "--missing-only requires terminal format and level 2 or 3"
+        if options[:missing_only] && (!%i[terminal html].include?(options[:format]) || options[:level] == 1)
+          raise ArgumentError, "--missing-only requires terminal or HTML format and level 2 or 3"
         end
 
         report = Report.from_document(document: document, level: options[:level], view: options[:view],
@@ -179,7 +181,7 @@ module Branchproof
           if command == "compare"
             raise ArgumentError, "format must be terminal or json" unless %w[terminal json].include?(format)
           else
-            raise ArgumentError, "format must be terminal, json, or github" unless %w[terminal json github].include?(format)
+            raise ArgumentError, "format must be terminal, json, github, or html" unless %w[terminal json github html].include?(format)
           end
 
           options[:format] = format.to_sym
