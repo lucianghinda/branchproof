@@ -14,6 +14,7 @@ module Branchproof
   autoload :CoverageSummary, "branchproof/coverage_summary"
   autoload :ReportSelection, "branchproof/report_selection"
   autoload :CLI, "branchproof/cli"
+  autoload :Doctor, "branchproof/doctor"
   autoload :Instrumenter, "branchproof/instrumenter"
   autoload :Loader, "branchproof/loader"
   autoload :Runtime, "branchproof/runtime"

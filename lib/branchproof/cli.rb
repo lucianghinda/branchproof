@@ -27,6 +27,7 @@ module Branchproof
     def call(argv)
       argv = Array(argv)
       return help if [["--help"], ["help"], ["analyze", "--help"]].include?(argv)
+      return doctor_command(argv.drop(1)) if argv.first == "doctor"
       return offline(argv) if %w[report compare].include?(argv.first)
       return usage_error("mutation testing is not supported yet; use analyze, report, or compare") if argv.first == "mutate"
 
@@ -101,6 +102,8 @@ module Branchproof
     def help
       @stdout.write(<<~HELP)
         Usage:
+          branchproof doctor [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
+            [--config PATH|--no-config] [--format terminal|json]
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--view decisions|conditions|tests|decision-tables|summary] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
             [--changed-since REF]
@@ -120,6 +123,62 @@ module Branchproof
         --changed-since REF reports informational coverage for tracked changes from a commit to the current worktree; tests and gates remain whole-run.
       HELP
       0
+    end
+
+    def doctor_command(args)
+      return help if args == ["--help"]
+
+      format = doctor_json_requested?(args) ? :json : :terminal
+      begin
+        analyze_args = doctor_analyze_args(args)
+        options = parse(analyze_args)
+        source_files = select_source_files(options).select { |path| File.file?(path) }
+        test_files = options[:tests].select { |path| File.file?(path) }
+        document = Doctor.new(options: options).document(source_files: source_files, test_files: test_files)
+        format = options[:format]
+      rescue ArgumentError, SystemCallError, IOError => e
+        document = Doctor.error(e.message)
+      end
+      output_doctor(document, format)
+      document[:status] == "ready" ? 0 : 2
+    end
+
+    def doctor_json_requested?(args)
+      args.each_cons(2).any? { |flag, format| flag == "--format" && format == "json" }
+    end
+
+    def doctor_analyze_args(args)
+      allowed_with_value = %w[--test --project --framework --config --format]
+      allowed_without_value = ["--no-config"]
+      analyze = ["analyze"]
+      until args.empty?
+        token = args.shift
+        if allowed_with_value.include?(token)
+          value = args.shift
+          raise ArgumentError, "#{token} requires a value" if value.to_s.empty? || value.start_with?("-")
+          if token == "--format" && !%w[terminal json].include?(value)
+            raise ArgumentError, "format must be terminal or json"
+          end
+
+          analyze.push(token, value)
+        elsif allowed_without_value.include?(token)
+          analyze << token
+        elsif token.start_with?("-")
+          raise ArgumentError, "#{token} is not supported by doctor"
+        else
+          analyze << token
+        end
+      end
+      analyze
+    end
+
+    def output_doctor(document, format)
+      if format == :json
+        @stdout.write(JSON.generate(normalize(document)))
+        @stdout.write("\n")
+      else
+        @stdout.write(Doctor.terminal(document))
+      end
     end
 
     def parse_view(view)
@@ -428,6 +487,12 @@ module Branchproof
 
     def build_inventory(options)
       root = options[:project][:root]
+      selected = select_source_files(options)
+      Source.new(root: root, limits: options[:limits]).inventory(paths: selected)
+    end
+
+    def select_source_files(options)
+      root = options[:project][:root]
       test_paths = options[:tests].filter_map do |path|
         File.realpath(path)
       rescue StandardError
@@ -452,7 +517,7 @@ module Branchproof
       end
       options[:excluded_files] = excluded
       options[:selected_source_files] = selected
-      Source.new(root: root, limits: options[:limits]).inventory(paths: selected)
+      selected
     end
 
     def empty_evidence(inventory, options)

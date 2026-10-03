@@ -49,6 +49,14 @@ module Branchproof
     def self.load: (path: String, root: String, ?explicit: bool, ?disabled: bool) -> record?
   end
 
+  class Doctor
+    LIMITATIONS: Array[String]
+    def initialize: (options: record, ?runtime: { engine: String, version: String }, ?loaded_features: Array[String], ?gem_sources: { activated: Hash[String, untyped], discoverable: ^(String) -> Array[untyped] }) -> void
+    def document: (source_files: Array[String], test_files: Array[String]) -> record
+    def self.error: (String message) -> record
+    def self.terminal: (record document) -> String
+  end
+
   module RailsSupport
     def self.boot: (project: record) -> record
     def self.validate_rspec!: (project: record) -> record?
