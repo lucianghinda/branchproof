@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- Add independent changed-decision gates with `--minimum-changed`, paired with
+  `analyze --changed-since` or a saved report's captured scope. Terminal, GitHub,
+  and HTML show changed-policy results; JSON schema `1.6` records and validates
+  them. Valid empty scopes are explicitly not applicable, and incomplete or
+  unavailable evidence cannot pass a changed gate.
+- Explain missing MC/DC evidence using captured expressions, an observed vector,
+  and a suggested counterpart. Shared report wording distinguishes hypothetical
+  candidates from observations and preserves short-circuit information.
 - Add `branchproof doctor` for static setup checks of the Ruby runtime, selected
   test framework metadata, project configuration, and source/test file selection.
   The command reports terminal or JSON results without loading project code or

@@ -202,6 +202,28 @@ class TestChangedViews < Minitest::Test
     assert_raises(ArgumentError) { render(scoped, format: :json) }
   end
 
+  def test_changed_policy_is_independent_and_round_trips_as_schema_one_six
+    gated = report(minimum: { mcdc: 100 }, minimum_changed: { decision: 100 })
+    document = JSON.parse(render(gated, format: :json))
+    offline = Branchproof::Report.from_document(document: JSON.parse(JSON.generate(document)), view: :summary,
+                                                minimum_changed: { condition: 0 })
+    offline_document = JSON.parse(render(offline, format: :json))
+
+    assert_equal "1.6", document.fetch("schema_version")
+    assert_equal({ "decision" => 100 }, document.dig("changed_coverage_policy", "minimum_changed"))
+    assert_equal document.dig("changed_coverage", "coverage", "decision", "numerator"),
+                 document.dig("changed_coverage_policy", "gates", 0, "numerator")
+    assert_equal "1.6", offline_document.fetch("schema_version")
+    assert_equal({ "decision" => 100, "condition" => 0 },
+                 offline_document.dig("changed_coverage_policy", "minimum_changed"))
+    assert_equal offline.exit_code, gated.exit_code
+    assert_equal offline_document, Branchproof::SavedReport.new(offline_document).validate!
+    assert_includes render(report(view: :summary, minimum: { mcdc: 100 }, minimum_changed: { decision: 100 })),
+                    "Changed coverage policy:"
+    assert_includes render(gated, format: :html), "Changed coverage policy:"
+    assert_includes gated.step_summary, "Changed coverage policy:"
+  end
+
   def test_empty_changed_scope_does_not_claim_no_missing_coverage
     scope = changed_scope(ids: [])
     output = render(report(view: :summary, scope: scope, missing_only: true))

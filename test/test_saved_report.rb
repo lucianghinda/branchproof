@@ -4,8 +4,10 @@ require "test_helper"
 require "branchproof/saved_report"
 require "branchproof/changed_coverage"
 require "branchproof/decision_table"
+require "branchproof/report"
 require "json"
 require "tempfile"
+require "stringio"
 
 class TestSavedReport < Minitest::Test
   def write_document(document)
@@ -70,6 +72,30 @@ class TestSavedReport < Minitest::Test
     document = valid_1_5_document
 
     write_document(document) { |path| assert_equal document, Branchproof::SavedReport.read(path) }
+  end
+
+  def test_schema_six_recomputes_changed_policy_and_requires_it_only_in_schema_six
+    output = StringIO.new
+    Branchproof::Report.from_document(document: valid_1_5_document, minimum_changed: { mcdc: 80 })
+                       .write(io: output, format: :json)
+    upgraded = JSON.parse(output.string)
+
+    assert_equal "1.6", upgraded.fetch("schema_version")
+    assert_equal upgraded, Branchproof::SavedReport.new(upgraded).validate!
+    [
+      upgraded.merge("changed_coverage_policy" => upgraded.fetch("changed_coverage_policy").merge("status" => "passed")),
+      upgraded.merge(
+        "changed_coverage_policy" => upgraded.fetch("changed_coverage_policy").merge(
+          "gates" => upgraded.dig("changed_coverage_policy", "gates").map do |gate|
+            gate.merge("numerator" => 123)
+          end
+        )
+      ),
+      upgraded.except("changed_coverage_policy"),
+      valid_1_5_document.merge("changed_coverage_policy" => upgraded.fetch("changed_coverage_policy"))
+    ].each do |document|
+      assert_raises(ArgumentError) { Branchproof::SavedReport.new(document).validate! }
+    end
   end
 
   def test_schema_1_5_requires_policy_scope_and_strict_flow_coverage

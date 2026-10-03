@@ -85,7 +85,8 @@ module Branchproof
                           analysis: analysis, minima: minima, baseline: baseline, diagnostics: diagnostics,
                           level: options[:level], missing_only: options[:missing_only], view: options[:view],
                           run_metadata: run_metadata(options, baseline), minimum: options[:minimum],
-                          focus: options[:focus], top: options[:top], changed_scope: changed_scope)
+                          focus: options[:focus], top: options[:top], changed_scope: changed_scope,
+                          minimum_changed: options[:minimum_changed])
       output_report(report, options)
       write_step_summary(report, options)
       report.exit_code
@@ -105,13 +106,13 @@ module Branchproof
           branchproof doctor [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--config PATH|--no-config] [--format terminal|json]
           branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
-            [--view decisions|conditions|tests|decision-tables|summary] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD]
+            [--view decisions|conditions|tests|decision-tables|summary] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--minimum-changed CRITERION=THRESHOLD]
             [--changed-since REF]
             [--focus PATH[:LINE]] [--top N]
             [--format terminal|json|github] [--output PATH] [--limits PATH] [--config PATH|--no-config]
             [--no-reachability] [-- RUNNER_ARGS]
           branchproof report SNAPSHOT [--view decisions|conditions|tests|decision-tables|summary]
-            [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--focus PATH[:LINE]] [--top N]
+            [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--minimum-changed CRITERION=THRESHOLD] [--focus PATH[:LINE]] [--top N]
             [--format terminal|json|github|html] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
         mcdc accepts the same commands as a compatibility alias.
@@ -120,7 +121,7 @@ module Branchproof
         HTML report output is self-contained and offline; it uses an integrated layout, so --view is unavailable.
         decision_tables is also accepted as an alias for the decision-tables view.
         --no-reachability keeps every generated decision-table rule as a coverage obligation.
-        --changed-since REF reports informational coverage for tracked changes from a commit to the current worktree; tests and gates remain whole-run.
+        --changed-since REF captures tracked changes from a commit to the current worktree; --minimum-changed requires this scope and gates its coverage separately.
       HELP
       0
     end
@@ -131,7 +132,7 @@ module Branchproof
       format = doctor_json_requested?(args) ? :json : :terminal
       begin
         analyze_args = doctor_analyze_args(args)
-        options = parse(analyze_args)
+        options = parse(analyze_args, doctor: true)
         source_files = select_source_files(options).select { |path| File.file?(path) }
         test_files = options[:tests].select { |path| File.file?(path) }
         document = Doctor.new(options: options).document(source_files: source_files, test_files: test_files)
@@ -220,6 +221,7 @@ module Branchproof
 
         report = Report.from_document(document: document, level: options[:level], view: options[:view],
                                       missing_only: options[:missing_only], minimum: options[:minimum_overrides],
+                                      minimum_changed: options[:minimum_changed_overrides],
                                       focus: options[:focus], top: options[:top])
         output_report(report, options)
         write_step_summary(report, options)
@@ -251,7 +253,7 @@ module Branchproof
           raise ArgumentError, "--fail-on-regression requires compare" unless command == "compare"
 
           options[:fail_on_regression] = true
-        when "--view", "--level", "--missing-only", "--minimum", "--focus", "--top"
+        when "--view", "--level", "--missing-only", "--minimum", "--minimum-changed", "--focus", "--top"
           raise ArgumentError, "#{token} requires report" unless command == "report"
 
           case token
@@ -263,6 +265,8 @@ module Branchproof
             raise ArgumentError, "level must be 1, 2, or 3" unless (1..3).cover?(options[:level])
           when "--minimum"
             add_minimum_override!(options, args.shift)
+          when "--minimum-changed"
+            add_minimum_changed_override!(options, args.shift)
           when "--focus"
             options[:focus] = args.shift
             raise ArgumentError, "--focus requires PATH or PATH:LINE" if options[:focus].nil? || options[:focus].start_with?("-")
@@ -336,7 +340,7 @@ module Branchproof
       path.to_s.empty? ? path.to_s : relative_path(path, root)
     end
 
-    def parse(argv)
+    def parse(argv, doctor: false)
       return nil if argv.empty? || argv.first != "analyze"
 
       args = argv.drop(1)
@@ -347,7 +351,7 @@ module Branchproof
                   runner_args: runner_args, project: nil, missing_only: false, view: :decisions,
                   reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false,
                   explicit_project: false, explicit_framework: false, explicit_sources: false,
-                  config_path: nil, config_disabled: false, minimum_overrides: {} }
+                  config_path: nil, config_disabled: false, minimum_overrides: {}, minimum_changed_overrides: {} }
       until args.empty?
         token = args.shift
         case token
@@ -358,6 +362,8 @@ module Branchproof
           options[:missing_only] = true
         when "--minimum"
           add_minimum_override!(options, args.shift)
+        when "--minimum-changed"
+          add_minimum_changed_override!(options, args.shift)
         when "--changed-since"
           ref = args.shift
           raise ArgumentError, "--changed-since requires a non-option REF" if ref.to_s.empty? || ref.start_with?("-")
@@ -440,10 +446,16 @@ module Branchproof
         end
         options[:exclude] = Array(configuration[:exclude]).dup
         options[:minimum] = configuration.fetch(:minimum, {}).dup.merge(options[:minimum_overrides])
+        options[:minimum_changed] = configuration.fetch(:minimum_changed, {}).dup.merge(options[:minimum_changed_overrides])
       else
         options[:exclude] = []
         options[:minimum] = options[:minimum_overrides].dup
+        options[:minimum_changed] = options[:minimum_changed_overrides].dup
       end
+      if !doctor && !options[:minimum_changed].empty? && !options[:changed_since]
+        raise ArgumentError, "--minimum-changed requires --changed-since REF"
+      end
+
       options[:project] = Project.new(root: root, mode: options[:project_mode], framework: options[:framework]).to_h
       validate_view!(options)
       validate_selection!(options)
@@ -476,6 +488,20 @@ module Branchproof
       raise
     rescue TypeError
       raise ArgumentError, "minimum threshold must be a finite number from 0 to 100"
+    end
+
+    def add_minimum_changed_override!(options, argument)
+      match = argument.to_s.match(/\A([a-z_]+)=([0-9]+(?:\.[0-9]+)?)\z/)
+      raise ArgumentError, "minimum-changed must be CRITERION=THRESHOLD" unless match
+
+      criterion = match[1]
+      threshold = match[2].include?(".") ? Float(match[2]) : Integer(match[2], 10)
+      normalized = CoveragePolicy.normalize(criterion => threshold)
+      criterion = normalized.keys.first
+      options[:minimum_changed_overrides] ||= {}
+      raise ArgumentError, "duplicate coverage criterion: #{criterion}" if options[:minimum_changed_overrides].key?(criterion)
+
+      options[:minimum_changed_overrides][criterion] = normalized.fetch(criterion)
     end
 
     def validate_selection!(options)

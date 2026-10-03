@@ -76,6 +76,17 @@ class TestChangedCLIAcceptance < Minitest::Test
     end
   end
 
+  def test_minimum_changed_without_scope_fails_before_running_tests
+    with_project do |root, _base|
+      marker = File.join(root, "test-ran")
+      result = analyze(root, "--minimum-changed", "mcdc=80", marker: marker)
+
+      assert_equal 2, result[:status].exitstatus
+      assert_match(/minimum-changed requires --changed-since/i, result[:stderr])
+      refute File.exist?(marker)
+    end
+  end
+
   def test_changed_since_is_rejected_by_offline_commands_before_opening_snapshots
     report = cli("report", "missing-report.json", "--changed-since", "HEAD")
     compare = cli("compare", "missing-before.json", "missing-after.json", "--changed-since", "HEAD")
@@ -126,6 +137,64 @@ class TestChangedCLIAcceptance < Minitest::Test
       assert_equal 0, rendered[:status].exitstatus, rendered[:stderr]
       assert_equal saved_scope, rendered.dig(:json, "changed_scope")
       assert_equal "1.5", rendered.dig(:json, "schema_version")
+    end
+  end
+
+  def test_paid_and_suspended_change_reports_a_concrete_mcdc_counterpart
+    Dir.mktmpdir("branchproof-paid-suspended-") do |root|
+      setup_paid_project(root)
+      source_path = File.join(root, "lib", "access.rb")
+      File.write(source_path, File.read(source_path).sub("if user.paid?", "if user.paid? && !user.suspended?"))
+      base = git(root, "rev-parse", "HEAD").strip
+      snapshot = File.join(root, "snapshot.json")
+
+      failing = cli("analyze", "lib/access.rb", "--test", "test/access_test.rb", "--changed-since", base,
+                    "--minimum-changed", "mcdc=80", "--format", "json", "--output", snapshot, chdir: root)
+
+      assert_equal 1, failing[:status].exitstatus, failing[:stderr]
+      failed_document = JSON.parse(File.read(snapshot))
+      assert_equal "failed", failed_document.dig("changed_coverage_policy", "status")
+      assert_equal 1, failed_document.dig("changed_coverage_policy", "gates", 0, "numerator")
+      assert_equal 2, failed_document.dig("changed_coverage_policy", "gates", 0, "denominator")
+      terminal = cli("report", snapshot, "--view", "conditions", chdir: root)
+      assert_equal 1, terminal[:status].exitstatus, terminal[:stderr]
+      assert_includes terminal[:stdout], "Changed coverage:"
+      refute_includes terminal[:stdout], "Changed coverage (informational):"
+      assert_includes terminal[:stdout], "Missing evidence for: user.suspended?"
+      assert_includes terminal[:stdout], "user.suspended? changes between false and true"
+      assert_includes terminal[:stdout], "user.paid? remains true"
+      assert_includes terminal[:stdout], "decision outcome changes between true and false"
+      assert_includes terminal[:stdout], "application-level feasibility unknown"
+      summary = cli("report", snapshot, "--view", "summary", chdir: root)
+      assert_includes summary[:stdout], "MC/DC evidence: Condition"
+      assert_includes summary[:stdout], "Missing evidence for: user.suspended?"
+
+      File.open(File.join(root, "test", "access_test.rb"), "a") do |file|
+        file.write(<<~RUBY)
+
+          class SuspendedPaidAccessTest < Minitest::Test
+            def test_paid_but_suspended
+              refute allowed?(User.new(true, true))
+            end
+          end
+        RUBY
+      end
+      passing = cli("analyze", "lib/access.rb", "--test", "test/access_test.rb", "--changed-since", base,
+                    "--minimum-changed", "mcdc=80", "--format", "json", chdir: root)
+      assert_equal 0, passing[:status].exitstatus, passing[:stderr]
+      assert_equal 2, passing.dig(:json, "changed_coverage_policy", "gates", 0, "numerator"), passing[:json].inspect
+      assert_equal 2, passing.dig(:json, "changed_coverage_policy", "gates", 0, "denominator")
+
+      File.delete(source_path)
+      offline_html = cli("report", snapshot, "--format", "html", chdir: root)
+      offline_github = cli("report", snapshot, "--format", "github", chdir: root)
+      filtered = cli("report", snapshot, "--view", "summary", "--focus", "lib/access.rb", "--top", "1", chdir: root)
+      assert_equal 1, offline_html[:status].exitstatus, offline_html[:stderr]
+      assert_includes offline_html[:stdout], "user.suspended?"
+      assert_includes offline_html[:stdout], "user.paid? &amp;&amp; !user.suspended?"
+      assert_equal 1, offline_github[:status].exitstatus, offline_github[:stderr]
+      assert_includes offline_github[:stdout], "user.suspended?"
+      assert_equal 1, filtered[:status].exitstatus, filtered[:stderr]
     end
   end
 
@@ -249,6 +318,39 @@ class TestChangedCLIAcceptance < Minitest::Test
         end
       end
     RUBY
+  end
+
+  def setup_paid_project(root)
+    FileUtils.mkdir_p(File.join(root, "lib"))
+    FileUtils.mkdir_p(File.join(root, "test"))
+    File.write(File.join(root, "lib", "access.rb"), <<~RUBY)
+      def allowed?(user)
+        if user.paid?
+          true
+        else
+          false
+        end
+      end
+    RUBY
+    File.write(File.join(root, "test", "access_test.rb"), <<~RUBY)
+      require "minitest/autorun"
+      require #{File.join(root, "lib", "access.rb").inspect}
+      User = Struct.new(:paid, :suspended) do
+        def paid? = paid
+        def suspended? = suspended
+      end
+      class PaidAccessTest < Minitest::Test
+        def test_paid_and_unpaid
+          assert allowed?(User.new(true, false))
+          refute allowed?(User.new(false, false))
+        end
+      end
+    RUBY
+    git(root, "init", "-q")
+    git(root, "config", "user.name", "Branchproof Test")
+    git(root, "config", "user.email", "branchproof@example.test")
+    git(root, "add", "lib/access.rb", "test/access_test.rb")
+    git(root, "commit", "-qm", "baseline")
   end
 
   def analyze(root, *, marker: nil)

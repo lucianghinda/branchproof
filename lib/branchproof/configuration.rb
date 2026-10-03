@@ -10,7 +10,7 @@ module Branchproof
     PROJECTS = %w[auto ruby rails].freeze
     FRAMEWORKS = %w[auto minitest rspec].freeze
     MINIMUM_CRITERIA = CoveragePolicy::CRITERIA.keys.freeze
-    FIELDS = %w[schema_version project framework sources tests exclude minimum].freeze
+    FIELDS = %w[schema_version project framework sources tests exclude minimum minimum_changed].freeze
 
     class << self
       def load(path:, root:, explicit: false, disabled: false)
@@ -52,7 +52,7 @@ module Branchproof
         payload.each_with_object({ schema_version: SCHEMA_VERSION, path: path, root: root }) do |(key, value), result|
           next if key == "schema_version"
 
-          result[key.to_sym] = key == "minimum" ? value.transform_keys(&:to_s) : value
+          result[key.to_sym] = %w[minimum minimum_changed].include?(key) ? value.transform_keys(&:to_s) : value
         end
       end
 
@@ -77,6 +77,7 @@ module Branchproof
         %w[sources tests].each { |field| validate_nonempty_strings(payload, field) if payload.key?(field) }
         validate_strings(payload, "exclude") if payload.key?("exclude")
         validate_minimum(payload["minimum"]) if payload.key?("minimum")
+        validate_minimum_changed(payload["minimum_changed"]) if payload.key?("minimum_changed")
       end
 
       def validate_enum(payload, field, values)
@@ -105,6 +106,15 @@ module Branchproof
         CoveragePolicy.normalize(value)
       rescue ArgumentError => e
         raise ArgumentError, "configuration minimum #{e.message.sub(/\Acoverage minimum for /, "")}"
+      end
+
+      def validate_minimum_changed(value)
+        raise ArgumentError, "configuration minimum_changed must be an object" unless value.is_a?(Hash)
+
+        CoveragePolicy.normalize(value)
+      rescue ArgumentError => e
+        message = e.message.sub(/\Acoverage minimum for /, "")
+        raise ArgumentError, "configuration minimum_changed #{message}"
       end
     end
   end

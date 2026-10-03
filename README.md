@@ -219,6 +219,11 @@ requested policy gates unavailable and exits 2; without a policy, a failed test
 run retains the existing exit status 1. With no policy, the existing report
 exit behavior remains unchanged.
 
+For a separate policy on changed decisions, use `--changed-since REF` with
+repeatable `--minimum-changed criterion=threshold` options. The configuration
+equivalent is `"minimum_changed": { "mcdc": 80 }`; CLI values override matching
+entries. See [Changed-decision coverage and gates](#changed-decision-coverage-and-gates).
+
 For a Minitest project, a focused configuration can select the library and
 test trees directly:
 
@@ -573,11 +578,15 @@ making the decision false. The missing condition is presented as:
 
 ```text
   Condition 1: Instruction.installed?(content)
-    NOT_PROVEN — missing observation
-      Need an observation where:
-        content is truthy
-        Instruction.installed?(content) is falsey
-        Expected decision: false [TF]
+    NOT_PROVEN — Missing evidence for: Instruction.installed?(content)
+      Observed decision expression: content && Instruction.installed?(content)
+      Find two executions where:
+        Instruction.installed?(content) changes between true and false
+        content remains true
+        decision outcome changes between true and false
+      Observed: content = true; Instruction.installed?(content) = true; decision = true
+      Missing counterpart: content = true; Instruction.installed?(content) = false; decision = false (candidate; not observed)
+      Boolean requirement; application-level feasibility unknown
 ```
 
 An existing file without the instruction block
@@ -585,6 +594,13 @@ may produce this case; the test must reach the reported line. The report
 describes required truth values, not application inputs or guaranteed
 reachable paths. In Ruby, only `false` and `nil` are falsey; an empty string
 is truthy.
+
+This wording is generated from recorded expressions and analyzer candidates.
+Boolean values describe truthiness, not the original Ruby objects. Short-circuited
+conditions are marked as not evaluated. Unary negation remains in the full
+decision expression: for `user.paid? && !user.suspended?`, the atomic condition is
+`user.suspended?`, so its observed value is `false` and the missing counterpart
+requires `true`. No domain wording or application inputs are inferred.
 
 `NOT_PROVEN` means analysis ran but did not find the required pair of
 observations. `NOT CALCULATED` means analysis was not available or was not
@@ -782,9 +798,10 @@ New live JSON reports use schema `1.4` and include the required
 gate results. The report validates those results from its exact coverage
 counts rather than trusting a persisted percentage. Reports created with
 `--changed-since` use schema `1.5` and add the captured changed scope and its
-informational coverage. Readers accept schemas `1.0` through `1.5`; an offline
-policy overlay is optional and preserves the input snapshot's schema version,
-including for legacy reports.
+informational coverage. A changed policy adds `changed_coverage_policy` and uses
+schema `1.6`. Readers accept schemas `1.0` through `1.6`. A whole-run policy
+overlay preserves the input schema; adding a changed policy to a `1.5` snapshot
+upgrades the output to `1.6` without changing the input file.
 New snapshots retain the ladder at every level. Legacy snapshots without
 analysis can still be rendered at Level 1; levels 2 and 3 require analysis in
 the saved report.
@@ -793,7 +810,7 @@ policy when a project needs to retain reports.
 Saved JSON includes existing raw metadata such as test names and expressions;
 relative terminal labels do not mean every legacy JSON field is sanitized.
 
-### Informational changed scope
+### Changed-decision coverage and gates
 
 The analyze-only `--changed-since REF` option resolves `REF` to a commit and compares that
 commit directly with the current tracked worktree, including staged and
@@ -806,8 +823,29 @@ produce an empty scope. Invalid refs, non-Git projects, and observed source or
 Git drift fail with usage status 2 before tests start. Capture checks for drift
 but does not lock the checkout atomically.
 
-The full inventory, analysis, run metrics, thresholds, and exit gates remain
-whole-run. A minimum can fail even when changed-scope coverage is complete.
+The full inventory, analysis, run metrics, and `--minimum` gates remain
+whole-run. A whole-run minimum can fail even when changed coverage is complete.
+Add `--minimum-changed` to enforce an independent changed-decision threshold:
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' --changed-since main \
+  --minimum-changed mcdc=80
+```
+
+The changed gate uses exact counts for the captured changed decisions and the
+same five criteria as `--minimum`. For example, 1 of 2 conditions proven means
+50% MC/DC: an 80% gate fails even when every test passes. Add the missing
+independence evidence and 2 of 2 conditions passes. Both policies must pass when
+both are configured. A changed minimum requires `--changed-since` during
+analysis; missing scope is rejected before tests run.
+
+A valid empty changed scope is `not_applicable`, with no coverage percentage.
+It does not fail the run or waive failed tests, incomplete evidence, or whole-run
+gates. A nonempty scope with only unsupported decisions, or a requested criterion
+with no applicable denominator, is unavailable. As with whole-run gates, a failed
+test run makes a requested changed gate unavailable. Below-threshold gates exit
+1; unavailable gates exit 2.
+
 Terminal focus and top filters intersect the changed decision IDs for display;
 they do not change either coverage denominator. JSON accepts the scope option,
 while its existing focus and top restrictions remain. Saved reports retain the
@@ -817,7 +855,13 @@ cross-revision coverage.
 
 ```sh
 bundle exec branchproof analyze 'lib/**/*.rb' --changed-since main
+bundle exec branchproof report .branchproof/current.json --minimum-changed mcdc=80
 ```
+
+Offline reports inherit saved changed thresholds and allow matching overrides.
+They use the captured scope without consulting Git or project configuration.
+Terminal, GitHub, and HTML output show changed gate results separately from
+whole-run gates.
 
 To compare two explicitly saved runs:
 

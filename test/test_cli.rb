@@ -27,6 +27,18 @@ class TestCLI < Minitest::Test
     assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--top"]) }
   end
 
+  def test_minimum_changed_requires_changed_scope_and_accepts_only_integer_thresholds
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    options = cli.send(:parse, ["analyze", "--changed-since", "HEAD", "--minimum-changed", "mcdc=80"])
+    assert_equal({ "mcdc" => 80 }, options[:minimum_changed])
+    assert_raises(ArgumentError) { cli.send(:parse, ["analyze", "--minimum-changed", "mcdc=80"]) }
+    fractional = cli.send(:parse, ["analyze", "--changed-since", "HEAD", "--minimum-changed", "mcdc=80.5"])
+    assert_equal({ "mcdc" => 80.5 }, fractional[:minimum_changed])
+    assert_raises(ArgumentError) do
+      cli.send(:parse_offline, "compare", ["a.json", "b.json", "--minimum-changed", "mcdc=80"])
+    end
+  end
+
   def test_primary_help_lists_offline_commands
     stdout = StringIO.new
     status = Branchproof::CLI.new(stdout: stdout, stderr: StringIO.new).call(["--help"])
@@ -292,12 +304,15 @@ class TestCLI < Minitest::Test
   def test_cli_minimum_overrides_one_config_criterion_and_retains_the_rest
     Dir.mktmpdir do |root|
       File.write(File.join(root, ".branchproof.json"), JSON.generate(schema_version: 1,
-                                                                     minimum: { mcdc: 70, decision: 80 }))
+                                                                     minimum: { mcdc: 70, decision: 80 },
+                                                                     minimum_changed: { mcdc: 60, condition: 75 }))
       Dir.chdir(root) do
         cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
-        options = cli.send(:parse, ["analyze", "--minimum", "mcdc=90"])
+        options = cli.send(:parse, ["analyze", "--changed-since", "HEAD", "--minimum", "mcdc=90",
+                                    "--minimum-changed", "mcdc=95"])
 
         assert_equal({ "mcdc" => 90, "decision" => 80 }, options[:minimum])
+        assert_equal({ "mcdc" => 95, "condition" => 75 }, options[:minimum_changed])
       end
     end
   end

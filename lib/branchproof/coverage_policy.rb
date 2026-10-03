@@ -2,6 +2,8 @@
 
 # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/ParameterLists
 
+require_relative "changed_coverage"
+
 module Branchproof
   # Evaluates configured coverage thresholds against the aggregate Analyzer
   # coverage counts without relying on rounded percentage fields.
@@ -158,6 +160,126 @@ module Branchproof
       return hash[alternate] if hash.key?(alternate)
 
       nil
+    end
+
+    def key_present?(hash, key)
+      hash.key?(key) || hash.key?(key.to_s) || hash.key?(key.to_sym)
+    end
+  end
+
+  # Evaluates gates against the captured changed-scope summary independently
+  # from whole-run coverage policy.
+  class ChangedCoveragePolicy
+    CRITERIA = CoveragePolicy::CRITERIA
+    COMPLETENESS_FIELDS = CoveragePolicy::COMPLETENESS_FIELDS
+
+    def initialize(minimum_changed:)
+      raise ArgumentError, "minimum_changed must be a hash" unless minimum_changed.is_a?(Hash)
+
+      @minimum_changed = CoveragePolicy.normalize(minimum_changed)
+    end
+
+    def call(document:, scope:)
+      return { minimum_changed: @minimum_changed.dup, status: "passed", gates: [] } if @minimum_changed.empty?
+
+      global_reason = availability_reason(document)
+      empty_scope = value(scope, :status) == "empty" && Array(value(scope, :decision_ids)).empty?
+      changed_coverage = ChangedCoverage.call(document: document, scope: scope)
+      gates = @minimum_changed.map do |criterion, threshold|
+        if global_reason
+          gate(criterion, threshold, nil, nil, "unavailable", global_reason)
+        elsif empty_scope
+          gate(criterion, threshold, 0, 0, "not_applicable", "empty_scope")
+        else
+          evaluate_gate(criterion, threshold, changed_coverage)
+        end
+      end
+      status = if gates.all? { |item| item[:status] == "not_applicable" }
+                 "not_applicable"
+               elsif gates.any? { |item| item[:status] == "unavailable" }
+                 "unavailable"
+               elsif gates.any? { |item| item[:status] == "failed" }
+                 "failed"
+               else
+                 "passed"
+               end
+      { minimum_changed: @minimum_changed.dup, status: status, gates: gates }
+    end
+
+    private
+
+    def evaluate_gate(criterion, threshold, summary)
+      unless summary.is_a?(Hash) && value(summary, :status) == "available"
+        return gate(criterion, threshold, nil, nil, "unavailable",
+                    value(summary, :reason) || "changed_coverage_unavailable")
+      end
+
+      row = value(value(summary, :coverage), criterion)
+      return gate(criterion, threshold, nil, nil, "unavailable", "missing_coverage_count") unless row.is_a?(Hash)
+
+      numerator = value(row, :numerator)
+      denominator = value(row, :denominator)
+      reason = value(row, :reason)
+      status = value(row, :status).to_s
+      unless status == "available"
+        return gate(criterion, threshold, numerator, denominator, "unavailable",
+                    reason || "changed_coverage_unavailable")
+      end
+      unless valid_count?(numerator) && valid_count?(denominator)
+        return gate(criterion, threshold, numerator, denominator, "unavailable", "invalid_coverage_count")
+      end
+      return gate(criterion, threshold, numerator, denominator, "unavailable", "zero_denominator") if denominator.zero?
+      if numerator > denominator
+        return gate(criterion, threshold, numerator, denominator, "unavailable", "invalid_coverage_count")
+      end
+
+      result = numerator * 100 >= denominator * Rational(threshold.to_s) ? "passed" : "failed"
+      gate(criterion, threshold, numerator, denominator, result, nil)
+    end
+
+    def availability_reason(document)
+      return "document_unavailable" unless document.is_a?(Hash)
+
+      baseline = value(document, :baseline)
+      passed = baseline.is_a?(Hash) && value(baseline, :status).to_s.upcase == "PASSED"
+      return "baseline_unavailable" unless passed && value(baseline, :finalized) == true
+
+      completeness = value(document, :completeness)
+      return "incomplete_document" unless complete?(completeness)
+
+      observations = value(document, :observations) || value(document, :evidence)
+      return "incomplete_observations" unless observations.is_a?(Hash) && complete?(value(observations, :completeness))
+
+      analysis = value(document, :analysis)
+      return "incomplete_analysis" unless analysis.is_a?(Hash)
+      return "incomplete_analysis" unless complete?(value(analysis, :completeness))
+
+      nil
+    end
+
+    def complete?(completeness)
+      completeness.is_a?(Hash) && COMPLETENESS_FIELDS.all? { |field| value(completeness, field) == true }
+    end
+
+    def incomplete_section?(section)
+      section.is_a?(Hash) && key_present?(section, :completeness) && !complete?(value(section, :completeness))
+    end
+
+    def valid_count?(count)
+      count.is_a?(Integer) && count >= 0
+    end
+
+    def gate(criterion, threshold, numerator, denominator, status, reason)
+      { criterion: criterion, numerator: numerator, denominator: denominator, minimum: threshold,
+        status: status, reason: reason }
+    end
+
+    def value(hash, key)
+      return nil unless hash.respond_to?(:key?)
+      return hash[key] if hash.key?(key)
+
+      alternate = key.is_a?(Symbol) ? key.to_s : key.to_sym
+      hash[alternate] if hash.key?(alternate)
     end
 
     def key_present?(hash, key)

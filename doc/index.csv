@@ -252,6 +252,7 @@ Branchproof::Loader.load_iseq,Method,Branchproof/Loader.md#method-i-load_iseq
 Branchproof::Report,Class,Branchproof/Report.md
 Branchproof::Report.SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-SCHEMA_VERSION
 Branchproof::Report.CHANGED_SCOPE_SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-CHANGED_SCOPE_SCHEMA_VERSION
+Branchproof::Report.CHANGED_POLICY_SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-CHANGED_POLICY_SCHEMA_VERSION
 Branchproof::Report.CRITERION_VERSION,Constant,Branchproof/Report.md#constant-CRITERION_VERSION
 Branchproof::Report.VIEWS,Constant,Branchproof/Report.md#constant-VIEWS
 Branchproof::Report.FORMATS,Constant,Branchproof/Report.md#constant-FORMATS
@@ -259,6 +260,8 @@ Branchproof::Report.DECISION_TABLE_LABELS,Constant,Branchproof/Report.md#constan
 Branchproof::Report.DECISION_TABLE_STATUS_LABELS,Constant,Branchproof/Report.md#constant-DECISION_TABLE_STATUS_LABELS
 Branchproof::Report.CRITERIA_LABELS,Constant,Branchproof/Report.md#constant-CRITERIA_LABELS
 Branchproof::Report.changed_coverage_available?,Method,Branchproof/Report.md#method-i-changed_coverage_available-3F
+Branchproof::Report.changed_coverage_policy,Method,Branchproof/Report.md#method-i-changed_coverage_policy
+Branchproof::Report.changed_coverage_policy_lines,Method,Branchproof/Report.md#method-i-changed_coverage_policy_lines
 Branchproof::Report.changed_scope_lines,Method,Branchproof/Report.md#method-i-changed_scope_lines
 Branchproof::Report.condition_coverage_evidence,Method,Branchproof/Report.md#method-i-condition_coverage_evidence
 Branchproof::Report.condition_explanation,Method,Branchproof/Report.md#method-i-condition_explanation
@@ -427,6 +430,11 @@ Branchproof::CoveragePolicy.COMPLETENESS_FIELDS,Constant,Branchproof/CoveragePol
 Branchproof::CoveragePolicy.call,Method,Branchproof/CoveragePolicy.md#method-i-call
 Branchproof::CoveragePolicy.initialize,Method,Branchproof/CoveragePolicy.md#method-i-initialize
 Branchproof::CoveragePolicy.normalize,Method,Branchproof/CoveragePolicy.md#method-c-normalize
+Branchproof::ChangedCoveragePolicy,Class,Branchproof/ChangedCoveragePolicy.md
+Branchproof::ChangedCoveragePolicy.CRITERIA,Constant,Branchproof/ChangedCoveragePolicy.md#constant-CRITERIA
+Branchproof::ChangedCoveragePolicy.COMPLETENESS_FIELDS,Constant,Branchproof/ChangedCoveragePolicy.md#constant-COMPLETENESS_FIELDS
+Branchproof::ChangedCoveragePolicy.call,Method,Branchproof/ChangedCoveragePolicy.md#method-i-call
+Branchproof::ChangedCoveragePolicy.initialize,Method,Branchproof/ChangedCoveragePolicy.md#method-i-initialize
 Branchproof::SummaryRanking,Class,Branchproof/SummaryRanking.md
 Branchproof::SummaryRanking.available?,Method,Branchproof/SummaryRanking.md#method-i-available-3F
 Branchproof::SummaryRanking.decisions,Method,Branchproof/SummaryRanking.md#method-i-decisions

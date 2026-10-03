@@ -8,6 +8,9 @@
 Renders versioned terminal and JSON analysis reports.
 
 ## Constants
+### `CHANGED_POLICY_SCHEMA_VERSION` <a id="constant-CHANGED_POLICY_SCHEMA_VERSION"></a> <a id="CHANGED_POLICY_SCHEMA_VERSION-constant"></a>
+Not documented.
+
 ### `CHANGED_SCOPE_SCHEMA_VERSION` <a id="constant-CHANGED_SCOPE_SCHEMA_VERSION"></a> <a id="CHANGED_SCOPE_SCHEMA_VERSION-constant"></a>
 Not documented.
 
@@ -33,12 +36,18 @@ Not documented.
 Not documented.
 
 ## Public Class Methods
-### `from_document(document:, level: = nil, view: = :decisions, missing_only: = false, focus: = nil, top: = nil, minimum: = nil)` <a id="method-c-from_document"></a> <a id="from_document-class_method"></a>
+### `from_document(document:, level: = nil, view: = :decisions, missing_only: = false, focus: = nil, top: = nil, minimum: = nil, minimum_changed: = nil)` <a id="method-c-from_document"></a> <a id="from_document-class_method"></a>
 Not documented.
 
 ## Public Instance Methods
 ### `changed_coverage_available?()` <a id="method-i-changed_coverage_available-3F"></a> <a id="changed_coverage_available?-instance_method"></a>
 - **@return** [Boolean]
+
+### `changed_coverage_policy()` <a id="method-i-changed_coverage_policy"></a> <a id="changed_coverage_policy-instance_method"></a>
+Not documented.
+
+### `changed_coverage_policy_lines()` <a id="method-i-changed_coverage_policy_lines"></a> <a id="changed_coverage_policy_lines-instance_method"></a>
+Not documented.
 
 ### `changed_scope_lines()` <a id="method-i-changed_scope_lines"></a> <a id="changed_scope_lines-instance_method"></a>
 Shared informational changed-scope header for all terminal and GitHub views.
@@ -80,7 +89,7 @@ Not documented.
 ### `exit_code()` <a id="method-i-exit_code"></a> <a id="exit_code-instance_method"></a>
 Not documented.
 
-### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil, focus: = nil, top: = nil, minimum: = nil, changed_scope: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: = 3, missing_only: = false, view: = :decisions, run_metadata: = {}, saved_document: = nil, focus: = nil, top: = nil, minimum: = nil, changed_scope: = nil, minimum_changed: = nil)` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@raise** [ArgumentError]
 - **@return** [Report] a new instance of Report
 

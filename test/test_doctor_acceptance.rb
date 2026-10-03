@@ -106,7 +106,8 @@ class TestDoctorAcceptance < Minitest::Test
                                             sources: ["src/**/*.rb"],
                                             tests: ["checks/*_test.rb"],
                                             exclude: ["src/excluded.rb"],
-                                            minimum: { mcdc: 77 }
+                                            minimum: { mcdc: 77 },
+                                            minimum_changed: { decision: 90 }
                                           ))
 
       configured = run_doctor(project, "--format", "json")
@@ -116,6 +117,7 @@ class TestDoctorAcceptance < Minitest::Test
       assert_equal ["src/**/*.rb"], config_document.dig("selection", "source_patterns")
       assert_equal ["checks/*_test.rb"], config_document.dig("selection", "test_patterns")
       assert_equal({ "mcdc" => 77 }, config_document.dig("configuration", "minimum"))
+      assert_equal({ "decision" => 90 }, config_document.dig("configuration", "minimum_changed"))
 
       overridden = run_doctor(project, "lib/**/*.rb", "--test", "test/**/*_test.rb", "--project", "ruby",
                               "--framework", "minitest", "--format", "json")

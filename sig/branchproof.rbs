@@ -143,6 +143,13 @@ module Branchproof
     def call: (document: document?) -> record
   end
 
+  class ChangedCoveragePolicy
+    CRITERIA: Hash[String, Hash[Symbol, String]]
+    COMPLETENESS_FIELDS: Array[String]
+    def initialize: (minimum_changed: Hash[String | Symbol, untyped]) -> void
+    def call: (document: document?, scope: document?) -> record
+  end
+
   module Constraints
     VERSION: Integer
     NUMERIC_OPERATORS: Array[String]
@@ -239,11 +246,12 @@ module Branchproof
   class Report
     SCHEMA_VERSION: String
     CHANGED_SCOPE_SCHEMA_VERSION: String
+    CHANGED_POLICY_SCHEMA_VERSION: String
     CRITERION_VERSION: String
     VIEWS: Array[Symbol]
     FORMATS: Array[Symbol]
-    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?, ?changed_scope: document?) -> void
-    def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> Report
+    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?, ?changed_scope: document?, ?minimum_changed: document?) -> void
+    def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?, ?minimum_changed: document?) -> Report
     def diagnostic_message: (Hash[Symbol | String, untyped] diagnostic) -> String
     def condition_explanation: (decision_id: String, condition_id: String) -> String
     def decision_table_requirement: (untyped value) -> String?
@@ -251,6 +259,7 @@ module Branchproof
     def decision_table_expected_heading: (document decision) -> String
     def coverage_policy: () -> record
     def coverage_policy_lines: () -> Array[String]
+    def changed_coverage_policy: () -> record
     def changed_scope_lines: () -> Array[String]
     def changed_coverage_available?: () -> bool
     def display_scope_path: (String path) -> String

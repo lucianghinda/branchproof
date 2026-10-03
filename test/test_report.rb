@@ -414,6 +414,57 @@ class TestReport < Minitest::Test
     refute_includes output.string, "missing counterpart: )"
   end
 
+  def test_terminal_explains_missing_boolean_evidence_against_the_captured_vector
+    expression = "user.paid? && !user.suspended?"
+    inventory = { decisions: [{ id: "decision", expression: expression,
+                                conditions: [{ id: "paid", index: 0, expression: "user.paid?" },
+                                             { id: "suspended", index: 1, expression: "user.suspended?" }] }] }
+    constraint = { status: "CANDIDATE", existing_vector_id: "existing",
+                   candidate_vectors: [{ values: [true, true], outcome: false }],
+                   feasibility_statement: "candidate combinations are not guaranteed feasible" }
+    condition_result = { condition_id: "suspended", status: "NOT_PROVEN", constraint_result: constraint }
+    analysis = { proven_count: 0, completeness: { observation: true, attribution: true, analysis: true },
+                 decisions: [{ decision_id: "decision", condition_results: [condition_result] }] }
+    evidence = { vectors: [{ id: "existing", values: [true, false], outcome: true, test_ids: [] }],
+                 completeness: { observation: true, attribution: true, analysis: true } }
+    report = Branchproof::Report.new(inventory: inventory, evidence: evidence, analysis: analysis, minima: [],
+                                     baseline: { status: "PASSED" }, diagnostics: [])
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+    html = StringIO.new
+    report.write(io: html, format: :html)
+
+    assert_includes output.string, "Missing evidence for: user.suspended?"
+    assert_includes output.string, "Observed decision expression: user.paid? && !user.suspended?"
+    assert_includes output.string, "user.paid? remains true"
+    assert_includes output.string, "user.suspended? changes between false and true"
+    assert_includes output.string, "decision outcome changes between true and false"
+    assert_includes output.string, "candidate combinations are not guaranteed feasible"
+    refute_includes output.string, "!user.suspended? = true"
+    assert_includes report.condition_explanation(decision_id: "decision", condition_id: "suspended"),
+                    "Missing evidence for: user.suspended?"
+    assert_includes html.string, "user.paid? &amp;&amp; !user.suspended?"
+  end
+
+  def test_terminal_keeps_candidate_search_limit_status_before_suggestions
+    condition = { id: "condition", index: 0, expression: "ready?" }
+    inventory = { decisions: [{ id: "decision", expression: "ready?", conditions: [condition] }] }
+    result = { condition_id: "condition", status: "NOT_PROVEN",
+               constraint_result: { status: "LIMIT_REACHED", candidate_vectors: [{ values: [true], outcome: true }] } }
+    analysis = { proven_count: 0, completeness: { observation: true, attribution: true, analysis: true },
+                 decisions: [{ decision_id: "decision", condition_results: [result] }] }
+    report = Branchproof::Report.new(inventory: inventory, evidence: { vectors: [] }, analysis: analysis,
+                                     minima: [], baseline: { status: "PASSED" }, diagnostics: [])
+    output = StringIO.new
+    report.write(io: output, format: :terminal)
+
+    status_position = output.string.index("Constraint status: LIMIT_REACHED")
+    suggestion_position = output.string.index("Candidate requirements (not observed):")
+    assert status_position
+    assert suggestion_position
+    assert_operator status_position, :<, suggestion_position
+  end
+
   def test_terminal_keeps_exact_predicates_on_separate_readable_lines
     expression = "account.active?(user.id) && count >= 2"
     inventory = { decisions: [{ id: "decision", line: 17, expression: expression,
@@ -474,9 +525,10 @@ class TestReport < Minitest::Test
 
     report.write(io: output, format: :terminal)
 
-    assert_includes output.string, 'command == "install" is falsey'
-    assert_includes output.string, "Need an observation where:\n        left is truthy\n        command == \"install\" is falsey"
-    assert_includes output.string, "Expected decision: false [TF]"
+    assert_includes output.string, 'command == "install" changes between true and false'
+    assert_includes output.string, "left remains true"
+    assert_includes output.string, "decision outcome changes between true and false"
+    assert_includes output.string, "Missing counterpart: left = true; command == \"install\" = false; decision = false"
     assert_includes output.string, "ExampleTest#test_existing"
     assert_includes output.string, "Boolean requirement; application-level feasibility unknown"
     refute_includes output.string, "condition_index"
@@ -581,7 +633,7 @@ class TestReport < Minitest::Test
     assert_includes detail_output.string, "Outcome true: observed; tests: AdminTest#test_false"
     assert_includes detail_output.string, "Value false: missing; tests: none recorded"
     assert_includes detail_output.string, "Missing values for b: false"
-    assert_includes detail_output.string, "b is falsey"
+    assert_includes detail_output.string, "b changes between true and false"
   end
 
   def test_level_one_honors_errors_in_available_analysis

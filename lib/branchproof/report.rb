@@ -16,6 +16,7 @@ module Branchproof
   class Report
     SCHEMA_VERSION = "1.4"
     CHANGED_SCOPE_SCHEMA_VERSION = "1.5"
+    CHANGED_POLICY_SCHEMA_VERSION = "1.6"
     CRITERION_VERSION = "masking_occurrence_v1"
     VIEWS = %i[decisions conditions tests decision_tables summary].freeze
     FORMATS = %i[terminal json github html].freeze
@@ -27,7 +28,7 @@ module Branchproof
 
     def initialize(inventory:, evidence:, analysis:, minima:, baseline:, diagnostics:, level: 3, missing_only: false,
                    view: :decisions, run_metadata: {}, saved_document: nil, focus: nil, top: nil, minimum: nil,
-                   changed_scope: nil)
+                   changed_scope: nil, minimum_changed: nil)
       raise ArgumentError, "level must be 1, 2, or 3" unless [1, 2, 3].include?(level.to_i)
       unless VIEWS.include?(view.to_sym)
         raise ArgumentError, "view must be :decisions, :conditions, :tests, :decision_tables, or :summary"
@@ -51,12 +52,20 @@ module Branchproof
 
       @minimum_override = minimum.is_a?(Hash) && !minimum.empty? ? CoveragePolicy.normalize(minimum) : nil
       @minimum = effective_minimum
+      raise ArgumentError, "minimum_changed must be a hash" if !minimum_changed.nil? && !minimum_changed.is_a?(Hash)
+
+      @minimum_changed_override = normalize_minimum_changed(minimum_changed)
+      @minimum_changed = effective_minimum_changed
+      if !@minimum_changed.empty? && !@changed_scope
+        raise ArgumentError, "minimum-changed requires a captured changed scope"
+      end
+
       @selection = ReportSelection.new(focus: focus, top: top,
                                        decision_ids: value(@changed_scope, :decision_ids))
     end
 
     def self.from_document(document:, level: nil, view: :decisions, missing_only: false, focus: nil, top: nil,
-                           minimum: nil)
+                           minimum: nil, minimum_changed: nil)
       data = document || {}
       captured_scope = data[:changed_scope] || data["changed_scope"]
       new(inventory: data[:source_inventory] || data["source_inventory"],
@@ -66,6 +75,7 @@ module Branchproof
           level: level || (data[:analysis] || data["analysis"] ? 3 : 1), view: view, missing_only: missing_only,
           focus: focus, top: top,
           run_metadata: data[:run_metadata] || data["run_metadata"], saved_document: data, minimum: minimum,
+          minimum_changed: minimum_changed,
           changed_scope: captured_scope)
     end
 
@@ -155,7 +165,8 @@ module Branchproof
       unless deleted_paths.empty?
         lines << "Deleted files: #{deleted_paths.join(", ")} (no current decisions to display)"
       end
-      lines << "Changed coverage (informational):"
+      header = @minimum_changed.empty? ? "Changed coverage (informational):" : "Changed coverage:"
+      lines << header
       coverage = value(json_document, :changed_coverage) || {}
       overall_unavailable = value(coverage, :reason)
       if overall_unavailable && overall_unavailable.to_s != "zero_denominator"
@@ -172,6 +183,23 @@ module Branchproof
                  else
                    "  #{label}: unavailable (#{changed_coverage_reason(row)})"
                  end
+      end
+      lines.concat(changed_coverage_policy_lines)
+      lines
+    end
+
+    def changed_coverage_policy_lines
+      policy = changed_coverage_policy
+      return [] if (value(policy, :minimum_changed) || {}).empty?
+
+      lines = ["Changed coverage policy: #{value(policy, :status).to_s.upcase}"]
+      Array(value(policy, :gates)).each do |gate|
+        numerator = value(gate, :numerator)
+        denominator = value(gate, :denominator)
+        count = denominator.nil? || denominator.zero? ? "N/A" : "#{numerator || "N/A"}/#{denominator}"
+        suffix = value(gate, :reason) ? "; reason: #{value(gate, :reason)}" : ""
+        lines << "  #{value(gate, :criterion)}: #{count}, threshold #{value(gate, :minimum)}, " \
+                 "#{value(gate, :status).to_s.upcase}#{suffix}"
       end
       lines
     end
@@ -196,8 +224,9 @@ module Branchproof
       return 2 unless usage_valid?
 
       policy_status = value(coverage_policy, :status).to_s
-      return 2 if policy_status == "unavailable"
-      return 1 if policy_status == "failed"
+      changed_policy_status = value(changed_coverage_policy, :status).to_s
+      return 2 if [policy_status, changed_policy_status].include?("unavailable")
+      return 1 if [policy_status, changed_policy_status].include?("failed")
 
       status = value(@baseline, :status).to_s.upcase
       return 2 if %w[ERROR INCOMPLETE].include?(status)
@@ -228,10 +257,21 @@ module Branchproof
       if @saved_document
         document = normalize(@saved_document)
         document["coverage_policy"] = normalize(coverage_policy) if @minimum_override
+        if @minimum_changed_override
+          document["schema_version"] = CHANGED_POLICY_SCHEMA_VERSION
+          document["changed_coverage_policy"] = normalize(changed_coverage_policy)
+        end
         return document
       end
 
-      document = normalize(schema_version: @changed_scope ? CHANGED_SCOPE_SCHEMA_VERSION : SCHEMA_VERSION,
+      schema_version = if !@minimum_changed.empty?
+                         CHANGED_POLICY_SCHEMA_VERSION
+                       elsif @changed_scope
+                         CHANGED_SCOPE_SCHEMA_VERSION
+                       else
+                         SCHEMA_VERSION
+                       end
+      document = normalize(schema_version: schema_version,
                            tool_version: (defined?(Branchproof::VERSION) ? Branchproof::VERSION : "unknown"),
                            criterion_version: CRITERION_VERSION, runtime: RUBY_DESCRIPTION,
                            run_ids: Array(value(@evidence, :run_ids)),
@@ -243,6 +283,7 @@ module Branchproof
         document["changed_scope"] = normalize(@changed_scope)
         document["changed_coverage"] = normalize(ChangedCoverage.call(document: document,
                                                                       scope: @changed_scope))
+        document["changed_coverage_policy"] = normalize(changed_coverage_policy) unless @minimum_changed.empty?
       end
       document
     end
@@ -809,7 +850,7 @@ module Branchproof
       end
     end
 
-    def condition_detail(decision, _condition, result)
+    def condition_detail(decision, condition, result)
       return "" unless result && (@level == 3 || @missing_only)
 
       pair = value(result, :canonical_pair)
@@ -824,15 +865,15 @@ module Branchproof
         candidates = Array(value(constraint, :candidate_vectors))
         existing = existing_vector_for(constraint)
         unless candidates.empty?
-          detail_lines = [" — missing observation"]
+          detail_lines = []
+          status = value(constraint, :status).to_s
+          if !status.empty? && status != "CANDIDATE"
+            detail_lines << " — Constraint status: #{status}; candidate suggestions follow"
+          end
           candidates.each do |candidate|
-            detail_lines << "      Need an observation where:"
-            detail_lines.concat(candidate_requirements(decision, candidate).map { |item| "        #{item}" })
-            outcome = value(candidate, :outcome) ? "true" : "false"
-            detail_lines << "        Expected decision: #{outcome} [#{vector_values(candidate)}]"
+            detail_lines.concat(missing_evidence_lines(decision, condition, candidate, existing))
           end
           detail_lines << "      #{statement}" unless statement.to_s.empty?
-          detail_lines << "      Compare with: #{existing_vector_context(existing)}"
           return detail_lines.join("\n")
         end
         unless existing.nil?
@@ -846,6 +887,95 @@ module Branchproof
       end
 
       ""
+    end
+
+    def missing_evidence_lines(decision, condition, candidate, existing)
+      target_index = value(condition, :index).to_i
+      target_expression = value(condition, :expression) || "condition #{target_index}"
+      lines = [" — Missing evidence for: #{target_expression}"]
+      unless existing
+        lines << "      Candidate requirements (not observed):"
+        lines << "      Need an observation where:"
+        Array(value(candidate, :values)).each_with_index do |required, index|
+          expression = condition_expression(decision, index) || "condition #{index}"
+          requirement = if required.nil?
+                          "is not evaluated (short-circuited)"
+                        else
+                          "is #{required ? "truthy" : "falsey"}"
+                        end
+          lines << "        #{expression} #{requirement}"
+        end
+        expected_outcome = value(candidate, :outcome)
+        unless expected_outcome.nil?
+          lines << "      Expected decision: #{boolean_word(expected_outcome)} [#{vector_values(candidate)}]"
+        end
+        lines << "      Candidate combination (not observed): #{candidate_values_text(decision, candidate)}"
+        return lines
+      end
+
+      existing_values = Array(value(existing, :values))
+      candidate_values = Array(value(candidate, :values))
+      observed_target = existing_values[target_index]
+      candidate_target = candidate_values[target_index]
+      lines << "      Observed decision expression: #{value(decision, :expression)}"
+      lines << "      Find two executions where:"
+      target_requirement = if observed_target.nil? || candidate_target.nil?
+                             "#{target_expression} is not evaluated in one execution (short-circuited); " \
+                               "no Boolean flip can be claimed"
+                           else
+                             "#{target_expression} changes between #{boolean_word(observed_target)} and " \
+                               "#{boolean_word(candidate_target)}"
+                           end
+      lines << "        #{target_requirement}"
+      Array(value(decision, :conditions)).each_with_index do |item, index|
+        next if index == target_index
+
+        before = existing_values[index]
+        after = candidate_values[index]
+        expression = value(item, :expression) || "condition #{index}"
+        if !before.nil? && before == after
+          lines << "        #{expression} remains #{boolean_word(before)}"
+        elsif !before.nil? && !after.nil? && before != after
+          lines << "        #{expression} also changes from #{boolean_word(before)} to #{boolean_word(after)}"
+        elsif before.nil? || after.nil?
+          lines << "        #{expression} is not evaluated (short-circuited) in one execution"
+        end
+      end
+      before_outcome = value(existing, :outcome)
+      after_outcome = value(candidate, :outcome)
+      outcome_requirement = if before_outcome.nil? || after_outcome.nil?
+                              "decision outcome is unavailable for one execution"
+                            elsif before_outcome != after_outcome
+                              "decision outcome changes between #{boolean_word(before_outcome)} and " \
+                                "#{boolean_word(after_outcome)}"
+                            else
+                              "decision outcome remains #{boolean_word(before_outcome)}"
+                            end
+      lines << "        #{outcome_requirement}"
+      lines << "      Observed: #{candidate_values_text(decision, existing)}#{existing_owner_suffix(existing)}"
+      lines << "      Missing counterpart: #{candidate_values_text(decision, candidate)} (candidate; not observed)"
+      lines
+    end
+
+    def existing_owner_suffix(existing)
+      owner_ids = Array(value(existing, :test_ids))
+      owners = owner_ids.first(2).map { |id| test_label(id) }
+      owners << "#{owner_ids.length - 2} more" if owner_ids.length > 2
+      owners.empty? ? "" : " (#{owners.join(", ")})"
+    end
+
+    def candidate_values_text(decision, vector)
+      values = Array(value(vector, :values)).each_with_index.map do |item, index|
+        expression = condition_expression(decision, index) || "condition #{index}"
+        "#{expression} = #{item.nil? ? "not evaluated (short-circuited)" : boolean_word(item)}"
+      end
+      outcome = value(vector, :outcome)
+      values << "decision = #{outcome.nil? ? "unavailable" : boolean_word(outcome)}"
+      values.join("; ")
+    end
+
+    def boolean_word(value)
+      value ? "true" : "false"
     end
 
     def readable_constraints(decision, constraint)
@@ -867,17 +997,6 @@ module Branchproof
       value(condition, :expression)
     end
 
-    def candidate_requirements(decision, candidate)
-      Array(value(candidate, :values)).each_with_index.map do |required, index|
-        expression = condition_expression(decision, index) || "condition #{index}"
-        if required.nil?
-          "#{expression} is not evaluated (short-circuited)"
-        else
-          "#{expression} is #{required ? "truthy" : "falsey"}"
-        end
-      end
-    end
-
     def vector_values(vector)
       Array(value(vector, :values)).map do |item|
         if item.nil?
@@ -888,16 +1007,6 @@ module Branchproof
           "F"
         end
       end.join
-    end
-
-    def existing_vector_context(existing)
-      return "no existing effective observation" unless existing
-
-      owner_ids = Array(value(existing, :test_ids))
-      owners = owner_ids.first(2).map { |id| test_label(id) }
-      owners << "#{owner_ids.length - 2} more" if owner_ids.length > 2
-      context = "[#{vector_values(existing)}] => #{value(existing, :outcome) ? "true" : "false"}"
-      owners.empty? ? context : "#{context} (#{owners.join(", ")})"
     end
 
     def existing_vector_for(constraint)
@@ -1161,6 +1270,32 @@ module Branchproof
       base.merge(@minimum_override || {})
     end
 
+    def normalize_minimum_changed(minimum)
+      return nil if minimum.nil? || minimum.empty?
+
+      CoveragePolicy.normalize(minimum)
+    end
+
+    def effective_minimum_changed
+      inherited = value(value(@saved_document, :changed_coverage_policy), :minimum_changed)
+      base = inherited.is_a?(Hash) ? normalize_minimum_changed(inherited) : {}
+      base.merge(@minimum_changed_override || {})
+    end
+
+    def changed_coverage_policy
+      @changed_coverage_policy ||= ChangedCoveragePolicy.new(minimum_changed: @minimum_changed).call(
+        document: policy_document, scope: @changed_scope
+      )
+    end
+
+    def changed_coverage_summary
+      @changed_coverage_summary ||= if @saved_document
+                                      value(@saved_document, :changed_coverage)
+                                    else
+                                      ChangedCoverage.call(document: policy_document, scope: @changed_scope)
+                                    end
+    end
+
     def coverage_available?
       analysis_available? && !value(@analysis, :coverage).nil?
     end
@@ -1402,7 +1537,8 @@ module Branchproof
       text.to_s.scrub.gsub(/[[:cntrl:]]/) { |character| "\\u{#{character.ord.to_s(16).upcase}}" }
     end
     public :condition_coverage_evidence, :changed_scope_lines, :coverage_ladder_lines, :coverage_policy_lines,
-           :coverage_policy, :coverage_status_label, :changed_coverage_available?, :display_scope_path,
+           :coverage_policy, :changed_coverage_policy, :coverage_status_label, :changed_coverage_available?,
+           :display_scope_path,
            :decision_table_requirement, :decision_table_reachability, :decision_table_expected_heading
   end
 end
