@@ -182,6 +182,9 @@ module Branchproof
   end
 
   class MinitestAdapter
+    def self.load_framework!: () -> Module
+    def self.active_adapter: () -> MinitestAdapter?
+    def self.active_adapter=: (MinitestAdapter?) -> MinitestAdapter?
     def initialize: (runtime: untyped) -> void
     def capabilities: () -> record
     def run: (test_files: Array[String], runner_args: Array[String], on_complete: ^(record) -> untyped, ?before_load: ^() -> untyped?) -> nil
@@ -219,7 +222,7 @@ module Branchproof
     def self.completion_result: (baseline: record, project: record, rails_metadata: record?, evidence: record, tests: Array[record], diagnostics: Array[record]) -> record
     def self.incomplete_evidence: (record evidence, Array[record] diagnostics) -> record
     def self.write_completion: (Hash[String, untyped] payload, record result) -> nil
-    def self.write_failure: (Hash[String, untyped] payload, String code, untyped details) -> nil
+    def self.write_failure: (Hash[String, untyped] payload, String code, untyped details, ?evidence: record?) -> nil
     def self.project_metadata_for: (Hash[String, untyped] payload) -> record
     def self.symbolize: (untyped value) -> untyped
     def self.normalize: (untyped value) -> untyped

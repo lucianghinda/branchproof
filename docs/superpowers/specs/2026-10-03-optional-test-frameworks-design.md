@@ -15,6 +15,11 @@ An unsupported version must yield `minitest_unsupported_version`, naming the
 detected version and supported range. The CLI exits 2 and preserves incomplete
 evidence for both cases. Do not claim Minitest 6 support.
 
+Use the activated gem specification's version when available, matching the old
+gemspec constraint; fall back to Minitest::VERSION only for a non-RubyGems load.
+Inspection found package version 5.27.0 with runtime constant 5.26.2, so assuming
+those version sources always agree would not preserve the installation contract.
+
 Catch only LoadError for the framework's own requested entry points. An unrelated
 dependency's LoadError must not be relabeled as a missing test framework. Keep
 RSpec's existing missing-framework behavior intact. Use one small shared loading

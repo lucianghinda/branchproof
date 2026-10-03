@@ -16,6 +16,23 @@ class TestMinitestAdapter < Minitest::Test
     assert_includes error.message, "unsupported"
   end
 
+  def test_run_rejects_unsupported_minitest_before_application_boot
+    with_minitest_version("6.0.0") do
+      adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
+      active_adapter = Branchproof::MinitestAdapter.active_adapter
+      before_load_called = false
+      error = assert_raises(ArgumentError) do
+        adapter.run(test_files: [], runner_args: [], on_complete: ->(_result) {},
+                    before_load: -> { before_load_called = true })
+      end
+
+      assert_equal "minitest_unsupported_version", error.diagnostic_code
+      assert_includes error.message, "6.0.0"
+      refute before_load_called
+      assert_same active_adapter, Branchproof::MinitestAdapter.active_adapter
+    end
+  end
+
   def test_before_load_runs_after_guards_are_installed
     adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
     events = []
@@ -57,5 +74,23 @@ class TestMinitestAdapter < Minitest::Test
     assert_equal "ERROR", result[:status]
     assert_equal false, result[:finalized]
     assert_equal "completion_callback", result[:diagnostics].first[:code]
+  end
+
+  private
+
+  def with_minitest_version(version)
+    specs = Gem.loaded_specs
+    original_spec = specs["minitest"]
+    specs["minitest"] = Gem::Specification.new("minitest", version)
+    had_version = Minitest.const_defined?(:VERSION, false)
+    original_version = Minitest.const_get(:VERSION, false) if had_version
+    Minitest.send(:remove_const, :VERSION) if had_version
+    Minitest.const_set(:VERSION, version)
+    yield
+  ensure
+    Minitest.send(:remove_const, :VERSION) if Minitest.const_defined?(:VERSION, false)
+    Minitest.const_set(:VERSION, original_version) if had_version
+    specs.delete("minitest")
+    specs["minitest"] = original_spec if original_spec
   end
 end
