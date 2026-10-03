@@ -2,7 +2,7 @@
 
 |  |  |
 | --- | --- |
-| **Extended by** | [Branchproof::DefaultRuntime](DefaultRuntime.md), [Branchproof::ExceptionRuntime](ExceptionRuntime.md), [Branchproof::ExtendedAlternativeRuntime](ExtendedAlternativeRuntime.md), [Branchproof::IterationRuntime](IterationRuntime.md), [Branchproof::RuntimeFlow](RuntimeFlow.md), [Branchproof::ValueRuntime](ValueRuntime.md) |
+| **Extended by** | [Branchproof::DefaultRuntime](DefaultRuntime.md), [Branchproof::ExceptionRuntime](ExceptionRuntime.md), [Branchproof::ExtendedAlternativeRuntime](ExtendedAlternativeRuntime.md), [Branchproof::FallbackRuntime](FallbackRuntime.md), [Branchproof::IterationRuntime](IterationRuntime.md), [Branchproof::RuntimeFlow](RuntimeFlow.md), [Branchproof::ValueRuntime](ValueRuntime.md) |
 | **Defined in** | lib/branchproof/runtime.rb |
 
 Process-local execution recorder. It deliberately never coerces or stores
@@ -51,6 +51,9 @@ Not documented.
 Not documented.
 
 ### `exception_value(decision_id, value, index)` <a id="method-c-exception_value"></a> <a id="exception_value-class_method"></a>
+Not documented.
+
+### `fallback_operand(decision_id, index, implicit, value)` <a id="method-c-fallback_operand"></a> <a id="fallback_operand-class_method"></a>
 Not documented.
 
 ### `finish(decision_id, value)` <a id="method-c-finish"></a> <a id="finish-class_method"></a>

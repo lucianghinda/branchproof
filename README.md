@@ -703,9 +703,11 @@ current `.branchproof.json`.
 New live JSON reports use schema `1.4` and include the required
 `coverage_policy` object with the normalized requested minima and recomputed
 gate results. The report validates those results from its exact coverage
-counts rather than trusting a persisted percentage. Readers continue to accept
-schemas `1.0` through `1.3`; an offline policy overlay is optional and
-preserves the input snapshot's schema version, including for legacy reports.
+counts rather than trusting a persisted percentage. Reports created with
+`--changed-since` use schema `1.5` and add the captured changed scope and its
+informational coverage. Readers accept schemas `1.0` through `1.5`; an offline
+policy overlay is optional and preserves the input snapshot's schema version,
+including for legacy reports.
 New snapshots retain the ladder at every level. Legacy snapshots without
 analysis can still be rendered at Level 1; levels 2 and 3 require analysis in
 the saved report.
@@ -713,6 +715,32 @@ The repository ignores `.branchproof/`; choose a different path and CI artifact
 policy when a project needs to retain reports.
 Saved JSON includes existing raw metadata such as test names and expressions;
 relative terminal labels do not mean every legacy JSON field is sanitized.
+
+### Informational changed scope
+
+The analyze-only `--changed-since REF` option resolves `REF` to a commit and compares that
+commit directly with the current tracked worktree, including staged and
+unstaged edits. It does not infer a merge base. Untracked files are excluded.
+The option adds informational coverage for current decisions mapped to changed
+source lines; it does not select or skip tests. Additions and renames include
+all current decisions in their files, deletions have no current decision
+obligation, and comment or spacing changes with no semantic decision change
+produce an empty scope. Invalid refs, non-Git projects, and observed source or
+Git drift fail with usage status 2 before tests start. Capture checks for drift
+but does not lock the checkout atomically.
+
+The full inventory, analysis, run metrics, thresholds, and exit gates remain
+whole-run. A minimum can fail even when changed-scope coverage is complete.
+Terminal focus and top filters intersect the changed decision IDs for display;
+they do not change either coverage denominator. JSON accepts the scope option,
+while its existing focus and top restrictions remain. Saved reports retain the
+captured scope for offline rendering without Git access. Their validation
+checks the scope's internal consistency, not the historical Git diff or
+cross-revision coverage.
+
+```sh
+bundle exec branchproof analyze 'lib/**/*.rb' --changed-since main
+```
 
 To compare two explicitly saved runs:
 
@@ -925,8 +953,8 @@ Ruby-defined custom `!` methods keep their runtime behavior;
 evidence that contradicts Boolean negation is rejected instead of proving
 coverage with an invalid logical model.
 
-New reports use schema `1.4`; saved schema `1.0`, `1.1`, `1.2`, and `1.3`
-reports remain readable. Comparison distinguishes decision-table coverage movement
+New live reports use schema `1.4`; `--changed-since` reports use schema `1.5`.
+Saved schema `1.0` through `1.5` reports remain readable. Comparison distinguishes decision-table coverage movement
 (`rule coverage gained`, `rule coverage lost`) from analysis movement
 (`rule reachability changed`), and treats a structurally changed decision as a
 changed decision-table context instead of guessing which old rule a new rule

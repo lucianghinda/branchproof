@@ -31,4 +31,17 @@ class TestComparisonReport < Minitest::Test
   def test_incomplete_comparison_returns_usage_exit
     assert_equal 2, Branchproof::ComparisonReport.new(document: document(status: "comparison incomplete")).exit_code
   end
+
+  def test_changed_scope_notice_keeps_comparison_whole_run
+    captured = document.merge("changed_scope" => {
+                                "before" => { "decision_ids" => ["old"] },
+                                "after" => { "decision_ids" => ["new"] },
+                                "notice" => "Changed scope is informational; comparison uses whole-run evidence."
+                              })
+    output = StringIO.new
+    Branchproof::ComparisonReport.new(document: captured).write(io: output, format: :terminal)
+
+    assert_includes output.string, "Changed scope is informational"
+    assert_includes output.string, "Full-run totals:"
+  end
 end

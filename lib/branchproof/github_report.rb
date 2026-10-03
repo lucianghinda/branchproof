@@ -24,6 +24,7 @@ module Branchproof
     def annotations(path_prefix: @path_prefix)
       path_prefix = path_prefix.to_s.empty? ? nil : path_prefix.to_s.delete_suffix("/")
       lines = error_lines
+      lines << command("notice", changed_scope_message, title: "Branchproof changed scope") if changed_scope?
       gaps, hidden = @selection.limit(ranked_gaps)
       gaps.each_with_index do |decision, position|
         lines << command("warning", annotation_message(decision),
@@ -38,9 +39,19 @@ module Branchproof
     def step_summary
       status = fetch(fetch(@document, :baseline) || {}, :status) || "INCOMPLETE"
       lines = ["## Branchproof coverage", "", "**Tests:** #{status}", ""]
+      if changed_scope?
+        focus_notice = changed_focus_notice
+        lines << focus_notice if focus_notice
+        lines << "**Whole-run coverage and policy**"
+        lines << ""
+      end
       ladder = ladder_lines
       unless ladder.empty?
         lines.concat(ladder.map { |line| "- #{line}" })
+        lines << ""
+      end
+      if changed_scope?
+        lines.concat(@coordinator.changed_scope_lines.map { |line| "- #{code(line)}" })
         lines << ""
       end
       render_diagnostics(lines)
@@ -50,6 +61,28 @@ module Branchproof
     end
 
     private
+
+    def changed_scope?
+      !fetch(@document, :changed_scope).nil?
+    end
+
+    def changed_scope_message
+      @coordinator.changed_scope_lines.join("\n")
+    end
+
+    def changed_scope_focus_empty?
+      changed_scope? && @selection.focus_active? && @selection.selected_decision_ids(@document).empty?
+    end
+
+    def changed_focus_notice
+      return unless changed_scope? && @selection.focus_active?
+
+      if changed_scope_focus_empty?
+        "**Focus:** no matching changed decisions for #{code(@selection.focus_label)}"
+      else
+        "**Focus:** #{code(@selection.focus_label)}"
+      end
+    end
 
     # Every non-zero exit status gets at least one error that names a reason.
     def error_lines
@@ -126,6 +159,10 @@ module Branchproof
     def notice_message(hidden)
       lines = ladder_lines
       lines = ["Coverage ladder unavailable"] if lines.empty?
+      focus_notice = changed_focus_notice
+      lines.unshift(focus_notice) if focus_notice
+      lines.unshift("Whole-run coverage and policy:") if changed_scope?
+      lines.concat(@coordinator.changed_scope_lines) if changed_scope?
       lines << if @ranking.available?
                  "Decisions with gaps: #{ranked_gaps.length}"
                else
@@ -162,7 +199,11 @@ module Branchproof
       end
       gaps = ranked_gaps
       if gaps.empty?
-        lines << "No missing coverage."
+        lines << if changed_scope? && (changed_scope_focus_empty? || !@coordinator.changed_coverage_available?)
+                   "Changed-scope gaps are unavailable from the captured evidence."
+                 else
+                   (changed_scope? ? "No changed-scope gaps found." : "No missing coverage.")
+                 end
         return
       end
       limit = @selection.top || MARKDOWN_ROWS

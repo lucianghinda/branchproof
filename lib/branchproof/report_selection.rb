@@ -6,19 +6,25 @@ module Branchproof
   # Validates and applies terminal-only report display filters.
   # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   class ReportSelection
-    attr_reader :focus, :top
+    attr_reader :focus, :top, :decision_ids
 
-    def initialize(focus: nil, top: nil)
+    def initialize(focus: nil, top: nil, decision_ids: nil)
       @focus = normalize_focus(focus)
       @top = normalize_top(top)
+      @decision_ids = decision_ids.nil? ? nil : Array(decision_ids).map(&:to_s).uniq.freeze
+      @decision_id_set = @decision_ids&.to_h { |id| [id, true] }
     end
 
     def active?
-      !@focus.nil? || !@top.nil?
+      !@focus.nil? || !@top.nil? || !@decision_ids.nil?
     end
 
     def focus_active?
       !@focus.nil?
+    end
+
+    def decision_filter_active?
+      focus_active? || !@decision_ids.nil?
     end
 
     def focus_label
@@ -37,11 +43,26 @@ module Branchproof
       end
     end
 
+    def selected_decision_ids(document)
+      ids = decision_ids
+      focus_ids = matching_decision_ids(document) if focus_active?
+      return focus_ids unless ids
+      return ids unless focus_active?
+
+      focus_set = focus_ids.to_h { |id| [id, true] }
+      ids.select { |id| focus_set.key?(id) }
+    end
+
     def filter_decisions(decisions, inventory: {})
-      return decisions unless focus_active?
+      return decisions unless decision_filter_active?
 
       sources = source_map(inventory)
-      decisions.select { |decision| matches_decision?(decision, sources) }
+      decisions.select do |decision|
+        id = fetch(decision, :id).to_s
+        in_scope = !@decision_id_set || @decision_id_set.key?(id)
+        in_focus = !focus_active? || matches_decision?(decision, sources)
+        in_scope && in_focus
+      end
     end
 
     def limit(items)

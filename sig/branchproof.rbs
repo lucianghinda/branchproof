@@ -227,10 +227,11 @@ module Branchproof
 
   class Report
     SCHEMA_VERSION: String
+    CHANGED_SCOPE_SCHEMA_VERSION: String
     CRITERION_VERSION: String
     VIEWS: Array[Symbol]
     FORMATS: Array[Symbol]
-    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> void
+    def initialize: (inventory: document, evidence: document, analysis: document?, minima: Array[document], baseline: document, diagnostics: Array[document], ?level: Integer, ?missing_only: bool, ?view: Symbol, ?run_metadata: document, ?saved_document: document?, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?, ?changed_scope: document?) -> void
     def self.from_document: (document: document, ?level: Integer?, ?view: Symbol, ?missing_only: bool, ?focus: String?, ?top: (Integer | String)?, ?minimum: document?) -> Report
     def diagnostic_message: (Hash[Symbol | String, untyped] diagnostic) -> String
     def condition_explanation: (decision_id: String, condition_id: String) -> String
@@ -239,10 +240,38 @@ module Branchproof
     def decision_table_expected_heading: (document decision) -> String
     def coverage_policy: () -> record
     def coverage_policy_lines: () -> Array[String]
+    def changed_scope_lines: () -> Array[String]
+    def changed_coverage_available?: () -> bool
+    def display_scope_path: (String path) -> String
     def rerun_command: (String test_id) -> String?
     def write: (io: _WriteIO, format: Symbol | String, ?path_prefix: String?) -> nil
     def step_summary: () -> String
     def exit_code: () -> Integer
+  end
+
+  class ChangedScope
+    def initialize: (root: String, ref: String) -> void
+    def call: (inventory: record) -> record
+  end
+
+  class GitChanges
+    def initialize: (root: String, ref: String) -> void
+    def call: (?include_patch_lines: bool) -> record
+  end
+
+  class ChangedDecisionMap
+    def call: (bytes: String, path: String, decisions: Array[record], hunks: Array[record], ?old_bytes: String) -> Array[String]
+  end
+
+  module ChangedCoverage
+    def self.call: (document: document, scope: record) -> record
+  end
+
+  module CoverageSummary
+    def self.call: (Array[record] decisions) -> record
+    def self.decision_table_aggregate: (Array[record] boolean_supported) -> record
+    def self.alternative_aggregate: (Array[record] decisions) -> record
+    def self.alternative_decision?: (record decision) -> bool
   end
 
   class CoverageIndex
@@ -330,11 +359,14 @@ module Branchproof
   class ReportSelection
     attr_reader focus: record?
     attr_reader top: Integer?
-    def initialize: (?focus: String?, ?top: (Integer | String)?) -> void
+    attr_reader decision_ids: Array[String]?
+    def initialize: (?focus: String?, ?top: (Integer | String)?, ?decision_ids: Array[String]?) -> void
     def active?: () -> bool
     def focus_active?: () -> bool
+    def decision_filter_active?: () -> bool
     def focus_label: () -> String?
-    def matching_decision_ids: (document: document) -> Array[String]
+    def matching_decision_ids: (document document) -> Array[String]
+    def selected_decision_ids: (document document) -> Array[String]?
     def filter_decisions: (Array[record] decisions, ?inventory: document) -> Array[record]
     def limit: (Array[record] items) -> [Array[record], Integer]
     def sort_key: (record decision, ?inventory: document) -> [String, Integer, Integer, String]

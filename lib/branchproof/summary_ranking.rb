@@ -85,11 +85,12 @@ module Branchproof
       alternatives = @index.alternatives.group_by { |row| row[:decision_id].to_s }
       tables = @index.decision_tables.to_h { |row| [row[:decision_id].to_s, row] }
       sources = inventory_sources
-      selected_ids = @selection.focus_active? ? @selection.matching_decision_ids(@document) : nil
+      selected_ids = @selection.decision_filter_active? ? @selection.selected_decision_ids(@document) : nil
+      selected_id_set = selected_ids&.to_h { |id| [id, true] }
       inventory_decisions.filter_map do |decision|
         id = fetch(decision, :id).to_s
         next if fetch(decision, :support_status).to_s == "UNSUPPORTED"
-        next if selected_ids && !selected_ids.include?(id)
+        next if selected_id_set && !selected_id_set.key?(id)
 
         condition_rows = conditions.fetch(id, [])
         alternative_rows = alternatives.fetch(id, [])

@@ -34,6 +34,8 @@ module Branchproof
 
     def terminal_document
       lines = ["Branchproof comparison", "Status: #{status}"]
+      changed_scope = value(:changed_scope)
+      lines << value_from(changed_scope, :notice).to_s if changed_scope
       reasons.each { |reason| lines << "Reason: #{reason}" }
       Array(value(:context)).each { |item| lines << "Context: #{item}" }
       lines << "Conditions: #{matching.fetch("matched_conditions",
