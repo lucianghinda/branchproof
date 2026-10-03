@@ -22,13 +22,32 @@ Or add it to a bundle:
 bundle add branchproof
 ```
 
-Branchproof requires CRuby 4.0 or newer, Minitest 5.x, RSpec 3.13, and Prism 1.x.
+Branchproof requires CRuby 4.0 or newer and Prism 1.x at runtime.
 CI tests CRuby 4.0, including Rails 8.1.x and rspec-rails 8.x integrations.
 Newer Ruby versions are allowed by the gem requirement but are not yet tested in CI.
-Rails and RSpec are optional dependencies supplied by the application.
-Minitest 5.x remains a runtime dependency of this gem.
+The application supplies the test framework selected for analysis: Minitest
+`>= 5.25.5, < 6` or RSpec 3.13. Branchproof does not install either framework;
+projects that use both can keep both in their test bundle.
 Unsupported syntax and incomplete observations remain visible in the report
 instead of being counted as coverage.
+
+For a Minitest application, keep the runner in the application bundle:
+
+```ruby
+gem "branchproof"
+gem "minitest", ">= 5.25.5", "< 6"
+```
+
+For an RSpec application, use its existing RSpec bundle:
+
+```ruby
+gem "branchproof"
+gem "rspec", "~> 3.13.0", require: false
+```
+
+`branchproof report` and `branchproof compare` read saved JSON without loading
+either test framework, so saved reports can be rendered and compared in a
+minimal deployment or offline environment.
 
 ## Analyze a test run
 

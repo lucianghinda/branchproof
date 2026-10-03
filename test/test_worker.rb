@@ -147,6 +147,26 @@ class TestWorker < Minitest::Test
     assert_equal "minitest", metadata[:framework]
   end
 
+  def test_minitest_project_metadata_uses_activated_package_version
+    with_minitest_versions("5.27.0", "5.26.2") do
+      metadata = Branchproof::Worker.project_metadata(
+        { kind: "ruby", framework: "minitest", root: Dir.pwd, load_paths: [] }, nil
+      )
+
+      assert_equal "5.27.0", metadata[:framework_version]
+    end
+  end
+
+  def test_minitest_project_metadata_falls_back_to_runtime_version
+    with_runtime_minitest_version("5.26.2") do
+      metadata = Branchproof::Worker.project_metadata(
+        { kind: "ruby", framework: "minitest", root: Dir.pwd, load_paths: [] }, nil
+      )
+
+      assert_equal "5.26.2", metadata[:framework_version]
+    end
+  end
+
   def test_project_metadata_preserves_selected_framework
     metadata = Branchproof::Worker.project_metadata(
       { kind: "rails", framework: "rspec", root: Dir.pwd, load_paths: [] },

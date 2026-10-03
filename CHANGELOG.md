@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+- Make Minitest and RSpec application-supplied optional dependencies. Branchproof
+  now needs only Prism at runtime; saved reports can be rendered and compared
+  without either test framework installed.
 - Render saved reports as self-contained offline HTML with `branchproof report
   snapshot.json --format html`. HTML preserves whole-run policy and exit status,
   supports display filters, and can be uploaded as a CI artifact without rerunning

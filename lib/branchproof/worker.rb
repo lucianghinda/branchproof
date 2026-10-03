@@ -133,8 +133,8 @@ module Branchproof
       framework = project[:framework].to_s.empty? ? "minitest" : project[:framework].to_s
       version = if framework == "rspec" && defined?(RSpec::Core::Version::STRING)
                   RSpec::Core::Version::STRING
-                elsif framework == "minitest" && defined?(Minitest::VERSION)
-                  Minitest::VERSION
+                elsif framework == "minitest"
+                  Gem.loaded_specs["minitest"]&.version&.to_s || (Minitest::VERSION if defined?(Minitest::VERSION))
                 end
       metadata = { kind: project[:kind].to_s, root: project[:root].to_s,
                    framework: framework, framework_version: version,

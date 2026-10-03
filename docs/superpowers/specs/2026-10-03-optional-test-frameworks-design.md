@@ -19,6 +19,9 @@ Use the activated gem specification's version when available, matching the old
 gemspec constraint; fall back to Minitest::VERSION only for a non-RubyGems load.
 Inspection found package version 5.27.0 with runtime constant 5.26.2, so assuming
 those version sources always agree would not preserve the installation contract.
+Report metadata uses that same package version, with the same constant fallback.
+Evidence merges preserve incoming analysis incompleteness so the CLI cannot
+turn a failed adapter startup back into a complete analysis snapshot.
 
 Catch only LoadError for the framework's own requested entry points. An unrelated
 dependency's LoadError must not be relabeled as a missing test framework. Keep

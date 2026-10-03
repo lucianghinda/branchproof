@@ -461,6 +461,7 @@ Branchproof::MinitestAdapter,Class,Branchproof/MinitestAdapter.md
 Branchproof::MinitestAdapter.initialize,Method,Branchproof/MinitestAdapter.md#method-i-initialize
 Branchproof::MinitestAdapter.run,Method,Branchproof/MinitestAdapter.md#method-i-run
 Branchproof::MinitestAdapter.validate_runner!,Method,Branchproof/MinitestAdapter.md#method-i-validate_runner-21
+Branchproof::MinitestAdapter.load_framework!,Method,Branchproof/MinitestAdapter.md#method-c-load_framework-21
 Branchproof::MinitestAdapter.active_adapter,Attribute,Branchproof/MinitestAdapter.md#attribute-c-active_adapter
 Branchproof::MinitestAdapter.tests,Attribute,Branchproof/MinitestAdapter.md#attribute-i-tests
 Branchproof::ReportSelection,Class,Branchproof/ReportSelection.md
