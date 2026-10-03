@@ -62,6 +62,7 @@ class TestCLI < Minitest::Test
     assert_equal 2, status
     assert_empty stdout.string
     refute_empty stderr.string
+    assert_includes stderr.string, "expected doctor, analyze, report, or compare"
   end
 
   def test_mutate_command_reports_unsupported_mutation_testing
@@ -73,7 +74,7 @@ class TestCLI < Minitest::Test
     assert_equal 2, status
     assert_empty stdout.string
     assert_includes stderr.string, "mutation testing is not supported yet"
-    refute_includes stderr.string, "expected analyze"
+    assert_includes stderr.string, "use doctor, analyze, report, or compare"
   end
 
   def test_level_outside_supported_range_is_usage_error

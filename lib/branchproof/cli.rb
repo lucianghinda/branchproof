@@ -29,10 +29,10 @@ module Branchproof
       return help if [["--help"], ["help"], ["analyze", "--help"]].include?(argv)
       return doctor_command(argv.drop(1)) if argv.first == "doctor"
       return offline(argv) if %w[report compare].include?(argv.first)
-      return usage_error("mutation testing is not supported yet; use analyze, report, or compare") if argv.first == "mutate"
+      return usage_error("mutation testing is not supported yet; use doctor, analyze, report, or compare") if argv.first == "mutate"
 
       options = parse(argv)
-      return usage_error("expected analyze, report, or compare; use branchproof --help") unless options
+      return usage_error("expected doctor, analyze, report, or compare; use branchproof --help") unless options
 
       inventory = build_inventory(options)
       changed_scope = if options[:changed_since]

@@ -178,7 +178,7 @@ module Branchproof
     end
   end
 
-  # Renders the doctor document for people while keeping checks independently testable.
+  # Checks static setup facts and renders diagnostics without executing project code.
   class Doctor
     # Formats the structured document as concise terminal output.
     class TerminalRenderer
