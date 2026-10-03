@@ -233,6 +233,17 @@ Branchproof::CLI,Class,Branchproof/CLI.md
 Branchproof::CLI.VIEWS,Constant,Branchproof/CLI.md#constant-VIEWS
 Branchproof::CLI.call,Method,Branchproof/CLI.md#method-i-call
 Branchproof::CLI.initialize,Method,Branchproof/CLI.md#method-i-initialize
+Branchproof::Doctor,Class,Branchproof/Doctor.md
+Branchproof::Doctor.LIMITATIONS,Constant,Branchproof/Doctor.md#constant-LIMITATIONS
+Branchproof::Doctor.FRAMEWORK_GEMS,Constant,Branchproof/Doctor.md#constant-FRAMEWORK_GEMS
+Branchproof::Doctor.ERROR_DOCUMENT,Constant,Branchproof/Doctor.md#constant-ERROR_DOCUMENT
+Branchproof::Doctor.document,Method,Branchproof/Doctor.md#method-i-document
+Branchproof::Doctor.initialize,Method,Branchproof/Doctor.md#method-i-initialize
+Branchproof::Doctor.error,Method,Branchproof/Doctor.md#method-c-error
+Branchproof::Doctor.terminal,Method,Branchproof/Doctor.md#method-c-terminal
+Branchproof::Doctor::TerminalRenderer,Class,Branchproof/Doctor/TerminalRenderer.md
+Branchproof::Doctor::TerminalRenderer.initialize,Method,Branchproof/Doctor/TerminalRenderer.md#method-i-initialize
+Branchproof::Doctor::TerminalRenderer.render,Method,Branchproof/Doctor/TerminalRenderer.md#method-i-render
 Branchproof::Loader,Class,Branchproof/Loader.md
 Branchproof::Loader.diagnostics,Method,Branchproof/Loader.md#method-i-diagnostics
 Branchproof::Loader.initialize,Method,Branchproof/Loader.md#method-i-initialize

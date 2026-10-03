@@ -30,7 +30,12 @@ class TestOptionalFrameworks < Minitest::Test
       assert_successful_analysis(minitest_report)
       assert_successful_analysis(rspec_report)
 
+      assert_doctor_ready_without_loading_framework(roots.fetch("minitest"), source, "test/consumer_test.rb", "minitest")
+      assert_doctor_ready_without_loading_framework(roots.fetch("rspec"), source, "spec/consumer_spec.rb", "rspec")
+
       assert_offline_commands_work(roots.fetch("none"), directory)
+      assert_doctor_reports_missing_framework(roots.fetch("none"), source, "test/consumer_test.rb", "minitest")
+      assert_doctor_reports_missing_framework(roots.fetch("none"), source, "spec/consumer_spec.rb", "rspec")
       assert_missing_minitest_is_reported(roots.fetch("none"), source, directory)
       assert_missing_rspec_is_reported(roots.fetch("none"), source, directory)
     end
@@ -185,6 +190,54 @@ class TestOptionalFrameworks < Minitest::Test
     test_ids = observations.map { |test| test["test_id"] || test["id"] }.compact
     attributed_ids = report.dig("observations", "vectors").flat_map { |vector| Array(vector["test_ids"]) }
     assert test_ids.intersect?(attributed_ids), "expected observation vectors attributed to a recorded test"
+  end
+
+  def assert_doctor_ready_without_loading_framework(install_root, source, test_file, framework)
+    document = run_installed_doctor(install_root, source, test_file, framework, expected_status: 0)
+
+    assert_equal "ready", document.fetch("status")
+    assert_equal framework, document.dig("framework", "name")
+    assert_equal "discoverable", document.dig("framework", "availability")
+  end
+
+  def assert_doctor_reports_missing_framework(install_root, source, test_file, framework)
+    document = run_installed_doctor(install_root, source, test_file, framework, expected_status: 2)
+
+    assert_equal "blocked", document.fetch("status")
+    assert_equal framework, document.dig("framework", "name")
+    assert_equal "missing", document.dig("framework", "availability")
+    assert(document.fetch("checks").any? { |check| check.fetch("code") == "framework" && check.fetch("status") == "error" })
+  end
+
+  def run_installed_doctor(install_root, source, test_file, framework, expected_status:)
+    project_root = File.dirname(source, 2)
+    library_path = Dir.glob(File.join(install_root, "gems", "branchproof-*", "lib")).fetch(0)
+    script = <<~RUBY
+      require "json"
+      require "stringio"
+      $LOAD_PATH.unshift(ARGV.shift)
+      require "branchproof"
+      abort "Minitest loaded before doctor" if Object.const_defined?(:Minitest, false)
+      abort "RSpec loaded before doctor" if Object.const_defined?(:RSpec, false)
+      before_features = $LOADED_FEATURES.dup
+      stdout = StringIO.new
+      stderr = StringIO.new
+      status = Branchproof::CLI.new(stdout: stdout, stderr: stderr).call(ARGV)
+      abort "doctor wrote to stderr: \#{stderr.string}" unless stderr.string.empty?
+      abort "doctor emitted invalid JSON" unless JSON.parse(stdout.string)
+      abort "doctor loaded Minitest" if Object.const_defined?(:Minitest, false)
+      abort "doctor loaded RSpec" if Object.const_defined?(:RSpec, false)
+      loaded_framework_features = ($LOADED_FEATURES - before_features).grep(%r{/lib/(?:minitest|rspec)(?:/|[.]rb\z)})
+      abort "doctor required a framework: \#{loaded_framework_features.inspect}" unless loaded_framework_features.empty?
+      print stdout.string
+      exit status
+    RUBY
+    args = [library_path, "doctor", "lib/**/*.rb", "--test", test_file, "--project", "ruby",
+            "--framework", framework, "--format", "json"]
+    stdout, stderr, status = Open3.capture3(clean_environment(install_root), RbConfig.ruby, "-e", script, *args,
+                                            chdir: project_root)
+    assert_equal expected_status, status.exitstatus, stderr
+    JSON.parse(stdout)
   end
 
   def assert_offline_commands_work(install_root, directory)

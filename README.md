@@ -49,6 +49,50 @@ gem "rspec", "~> 3.13.0", require: false
 either test framework, so saved reports can be rendered and compared in a
 minimal deployment or offline environment.
 
+## Check a project's setup
+
+Run `branchproof doctor` from the project root to check static setup facts before
+starting an analysis:
+
+```sh
+bundle exec branchproof doctor 'lib/**/*.rb' \
+  --test 'test/**/*_test.rb' \
+  --project ruby --framework minitest
+```
+
+Doctor accepts source globs followed by `--test GLOB`, `--project
+auto|ruby|rails`, `--framework auto|minitest|rspec`, `--config PATH` or
+`--no-config`, and `--format terminal|json`. It uses the same project detection,
+configuration precedence, framework selection, test discovery, and source
+safety exclusions as `analyze`. Command-line selections override matching
+`.branchproof.json` values. Default discovery excludes helper, support, and
+fixture test files; an explicit `--test` glob selects those files when requested.
+`--help` prints usage without inspecting the project.
+
+Doctor exits 0 when its static checks pass, including warning-only results, and
+2 when setup is blocked or the command is invalid. JSON is one document with
+`schema_version: 1`, `command: "doctor"`, a `ready` or `blocked` status,
+`runtime`, resolved `project` and `configuration`, `selection`, selected
+`framework` metadata, `checks`, and `limitations`. Each check has a stable code,
+`pass`, `warning`, or `error` status, and a message. Add `--format json` to get
+this document on both successful and blocked checks, including configuration
+and argument errors.
+
+Framework availability comes from RubyGems metadata. An `activated` version is
+already in the current process; a `discoverable` version is visible in the
+current RubyGems environment but has not been activated. Doctor checks only the
+selected framework, using Minitest `>= 5.25.5, < 6` or `rspec-core ~> 3.13.0`.
+Discoverable metadata does not prove that a framework can load successfully.
+
+Doctor is a static readiness check. It does not load source, helpers, tests,
+framework code, or Rails; run a test runner; or inspect Ruby syntax. A ready
+result does not verify Rails boot, actual framework test discovery, runner
+compatibility, instrumentation, coverage, or whether a selected file contains
+executable tests. It warns about Spring or Bootsnap only when already visible in
+loaded features. Configured coverage minima are shown but not evaluated. As with
+other Branchproof commands, Branchproof itself must load successfully, including
+its supported Ruby runtime and core dependencies.
+
 ## Analyze a test run
 
 Run `branchproof analyze` with the source files or globs to inspect, followed by
