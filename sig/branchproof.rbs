@@ -249,6 +249,11 @@ module Branchproof
     def exit_code: () -> Integer
   end
 
+  class HtmlReport
+    def initialize: (document: document, level: Integer, coordinator: Report, ?missing_only: bool, ?selection: ReportSelection) -> void
+    def render: () -> String
+  end
+
   class ChangedScope
     def initialize: (root: String, ref: String) -> void
     def call: (inventory: record) -> record

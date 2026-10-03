@@ -184,8 +184,9 @@ is unchanged. The Rails metadata in the report identifies the selected
 project and Rails version.
 
 `--output` writes the report through an atomic replacement. Without it, the
-report is written to standard output. `--format` accepts `terminal` (the
-default) or `json`. JSON includes source identities, criterion and schema
+report is written to standard output. `analyze` accepts `terminal` (the
+default), `json`, and `github`; `compare` accepts `terminal` and `json`.
+`report` also accepts `html` for a portable offline page. JSON includes source identities, criterion and schema
 versions, baseline status, diagnostics, completeness, observations, and
 analysis fields.
 
@@ -484,7 +485,7 @@ Decision tables fully covered: 13/18 decisions
 
 ### Find missing cases
 
-Use `--missing-only` to focus the terminal report on conditions that still
+Use `--missing-only` to focus terminal and HTML reports on conditions that still
 lack independence evidence:
 
 ```sh
@@ -574,9 +575,9 @@ execution. JSON output always contains the complete evidence document, so an
 explicit view cannot be combined with `--format json`. The `mcdc` executable
 accepts the same arguments for existing scripts.
 
-Terminal reports can be narrowed with `--focus PATH[:LINE]` and bounded with
+Terminal and HTML reports can be narrowed with `--focus PATH[:LINE]` and bounded with
 `--top N`, where `N` is a positive integer. These options are accepted by
-`analyze` and `report`, and are terminal-only. Focus matches the source spans
+`analyze` and `report`; for HTML they apply only to offline `report`. Focus matches the source spans
 captured in the report; rendering does not reopen or need the original source
 file. `--focus` and `--top` affect displayed detail only: the coverage summary,
 policy gates, diagnostics, exit status, and global counts remain unchanged.
@@ -685,6 +686,8 @@ bundle exec branchproof analyze 'lib/**/*.rb' --format json \
   --output .branchproof/baseline.json
 bundle exec branchproof report .branchproof/baseline.json --view conditions
 bundle exec branchproof report .branchproof/baseline.json --view tests
+bundle exec branchproof report .branchproof/baseline.json --format html \
+  --output .branchproof/coverage.html
 ```
 
 The output's parent directory must already exist. Replacing a baseline is an
@@ -699,6 +702,17 @@ default. Repeatable `--minimum criterion=threshold` options override matching
 saved policy entries for that rendering without changing the snapshot file;
 other saved thresholds remain inherited. Offline rendering never consults the
 current `.branchproof.json`.
+
+HTML is a single self-contained document with inline CSS, no JavaScript, external
+assets, source reads, or network requests. It can be written to a file with
+`--output` or streamed to stdout. The page keeps whole-run coverage and policy
+global even when `--focus`, `--top`, or `--missing-only` filters displayed
+decisions. Its status and exit code still reflect the saved run and its policy.
+HTML is available only from `report`; `analyze` and `compare` reject it. The
+integrated HTML layout does not accept `--view`. At level 1 it shows the summary
+and decision inventory; level 2 adds missing scenarios; level 3 also adds
+contributing tests. Legacy snapshots without analysis support only level 1,
+and HTML reports failed or incomplete runs with their existing exit status.
 
 New live JSON reports use schema `1.4` and include the required
 `coverage_policy` object with the normalized requested minima and recomputed
@@ -794,6 +808,25 @@ with `if: always()` so failed gates and failed test runs leave an artifact:
   with:
     name: branchproof-coverage
     path: .branchproof/coverage.json
+    if-no-files-found: warn
+```
+
+To attach a portable HTML report as well, render it from the saved JSON and
+upload both files. The report step is offline and does not run tests again:
+
+```yaml
+- name: Render Branchproof HTML
+  if: always() && hashFiles('.branchproof/coverage.json') != ''
+  run: >-
+    bundle exec branchproof report .branchproof/coverage.json --format html
+    --output .branchproof/coverage.html
+
+- name: Upload Branchproof reports
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: branchproof-coverage
+    path: .branchproof/coverage.*
     if-no-files-found: warn
 ```
 

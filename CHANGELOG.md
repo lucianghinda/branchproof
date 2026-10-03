@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+- Render saved reports as self-contained offline HTML with `branchproof report
+  snapshot.json --format html`. HTML preserves whole-run policy and exit status,
+  supports display filters, and can be uploaded as a CI artifact without rerunning
+  tests; HTML is unavailable for live analysis and comparison.
 - Add `analyze --changed-since REF` for informational coverage of current
   decisions affected by tracked staged and unstaged worktree changes. Tests,
   whole-run coverage, and minimum gates retain their existing scope; captured

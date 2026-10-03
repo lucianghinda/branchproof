@@ -146,6 +146,30 @@ class TestChangedCLIAcceptance < Minitest::Test
     end
   end
 
+  def test_saved_html_keeps_changed_scope_informational_and_whole_run_gate_global
+    Dir.mktmpdir("branchproof-html-policy-") do |offline_root|
+      snapshot = File.join(offline_root, "snapshot.json")
+      with_project(test_source: <<~RUBY) do |root, base|
+        class ChangedScopeMinimumTest < Minitest::Test
+          def test_changed_decision
+            assert_equal :yes, branchproof_value(true)
+            assert_equal :no, branchproof_value(false)
+          end
+        end
+      RUBY
+        captured = analyze(root, "--changed-since", base, "--minimum", "decision=100", "--output", snapshot)
+        assert_equal 1, captured[:status].exitstatus, captured[:stderr]
+      end
+
+      rendered = cli("report", snapshot, "--format", "html", chdir: offline_root)
+
+      assert_equal 1, rendered[:status].exitstatus, rendered[:stderr]
+      assert_includes rendered[:stdout], "Decision: 1/1 (100.0%)"
+      assert_includes rendered[:stdout], "D (Decision coverage): 50.0% (1/2 decisions)"
+      assert_includes rendered[:stdout], "Whole-run policy"
+    end
+  end
+
   def test_json_allows_scope_but_preserves_focus_and_top_rejections
     with_project do |root, base|
       scoped = analyze(root, "--changed-since", base)

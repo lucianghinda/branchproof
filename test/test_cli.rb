@@ -33,6 +33,24 @@ class TestCLI < Minitest::Test
     assert_equal 0, status
     assert_includes stdout.string, "branchproof report"
     assert_includes stdout.string, "branchproof compare"
+    assert_equal 1, stdout.string.scan("[--format terminal|json|github|html]").length
+    assert_equal 1, stdout.string.scan("[--format terminal|json|github]").length
+    assert_includes stdout.string, "HTML report output is self-contained and offline"
+    assert_includes stdout.string, "integrated layout, so --view is unavailable"
+  end
+
+  def test_html_format_is_offline_report_only_and_allows_html_selection_filters
+    cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+    options, paths = cli.send(:parse_offline, "report", %w[saved.json --format html --focus lib/a.rb --top 2 --missing-only])
+
+    assert_equal [:html, "saved.json", "lib/a.rb", "2", true],
+                 [options[:format], paths.first, options[:focus], options[:top], options[:missing_only]]
+    error = assert_raises(ArgumentError) do
+      cli.send(:parse_offline, "report", ["saved.json", "--format", "html", "--view", "tests"])
+    end
+    assert_includes error.message, "integrated layout"
+    assert_raises(ArgumentError) { cli.send(:parse_offline, "compare", %w[a.json b.json --format html]) }
+    assert_raises(ArgumentError) { cli.send(:parse, %w[analyze --format html]) }
   end
 
   FIXTURE_ROOT = File.expand_path("fixtures/cli", __dir__)

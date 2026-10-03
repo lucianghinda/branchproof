@@ -336,6 +336,10 @@ Branchproof::Constraints::Solver.initialize,Method,Branchproof/Constraints/Solve
 Branchproof::GitChanges,Class,Branchproof/GitChanges.md
 Branchproof::GitChanges.call,Method,Branchproof/GitChanges.md#method-i-call
 Branchproof::GitChanges.initialize,Method,Branchproof/GitChanges.md#method-i-initialize
+Branchproof::HtmlReport,Class,Branchproof/HtmlReport.md
+Branchproof::HtmlReport.STYLE,Constant,Branchproof/HtmlReport.md#constant-STYLE
+Branchproof::HtmlReport.initialize,Method,Branchproof/HtmlReport.md#method-i-initialize
+Branchproof::HtmlReport.render,Method,Branchproof/HtmlReport.md#method-i-render
 Branchproof::Instrumenter,Class,Branchproof/Instrumenter.md
 Branchproof::Instrumenter.RUNTIME,Constant,Branchproof/Instrumenter.md#constant-RUNTIME
 Branchproof::Instrumenter.rewrite,Method,Branchproof/Instrumenter.md#method-i-rewrite
