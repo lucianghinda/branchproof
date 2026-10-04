@@ -45,7 +45,8 @@ class TestCLI < Minitest::Test
     assert_equal 0, status
     assert_includes stdout.string, "branchproof report"
     assert_includes stdout.string, "branchproof compare"
-    assert_equal 1, stdout.string.scan("[--format terminal|json|github|html]").length
+    assert_includes stdout.string, "branchproof collate"
+    assert_equal 2, stdout.string.scan("[--format terminal|json|github|html]").length
     assert_equal 1, stdout.string.scan("[--format terminal|json|github]").length
     assert_includes stdout.string, "HTML report output is self-contained and offline"
     assert_includes stdout.string, "integrated layout, so --view is unavailable"
@@ -74,7 +75,7 @@ class TestCLI < Minitest::Test
     assert_equal 2, status
     assert_empty stdout.string
     refute_empty stderr.string
-    assert_includes stderr.string, "expected doctor, analyze, report, or compare"
+    assert_includes stderr.string, "expected doctor, analyze, report, compare, or collate"
   end
 
   def test_mutate_command_reports_unsupported_mutation_testing
@@ -86,7 +87,8 @@ class TestCLI < Minitest::Test
     assert_equal 2, status
     assert_empty stdout.string
     assert_includes stderr.string, "mutation testing is not supported yet"
-    assert_includes stderr.string, "use doctor, analyze, report, or compare"
+    assert_includes stderr.string, "or collate"
+    assert_includes stderr.string, "use doctor, analyze, report, compare, or collate"
   end
 
   def test_level_outside_supported_range_is_usage_error

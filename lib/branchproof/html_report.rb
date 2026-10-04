@@ -51,6 +51,7 @@ module Branchproof
       out << "<div class=\"layout\">#{navigation_html}<main id=\"report-content\">"
       out << overview_html
       out << changed_scope_html
+      out << collation_html
       out << decisions_html
       out << diagnostics_html
       out << "</main></div><footer>Generated from the saved Branchproof snapshot. This document works offline.</footer></body></html>\n"
@@ -144,6 +145,15 @@ module Branchproof
       out = +"<section class=\"overview\" aria-labelledby=\"changed-title\"><h2 id=\"changed-title\">Captured changed scope</h2>"
       out << "<p>Changed-scope ranking is informational. Whole-run policy above remains global.</p><ul>"
       lines.each { |line| out << "<li>#{escape(line.strip)}</li>" unless line.strip.empty? }
+      out << "</ul></section>"
+    end
+
+    def collation_html
+      lines = @coordinator.collation_lines
+      return "" if lines.empty?
+
+      out = +"<section class=\"overview\" aria-labelledby=\"collation-title\"><h2 id=\"collation-title\">Collation provenance</h2><ul>"
+      lines.each { |line| out << "<li>#{escape(line.strip)}</li>" }
       out << "</ul></section>"
     end
 

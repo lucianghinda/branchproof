@@ -34,6 +34,8 @@ module Branchproof
   autoload :GithubReport, "branchproof/github_report"
   autoload :SavedReport, "branchproof/saved_report"
   autoload :Comparison, "branchproof/comparison"
+  autoload :Collation, "branchproof/collation"
+  autoload :CollationManifest, "branchproof/collation_manifest"
   autoload :ComparisonReport, "branchproof/comparison_report"
   autoload :ChangedScope, "branchproof/changed_scope"
   autoload :GitChanges, "branchproof/git_changes"

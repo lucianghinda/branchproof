@@ -14,8 +14,8 @@ require_relative "decision_table"
 module Branchproof
   # Reads and validates a persisted JSON report without loading the project.
   class SavedReport
-    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4 1.5 1.6].freeze
-    STRICT_FLOW_SCHEMAS = %w[1.2 1.3 1.4 1.5 1.6].freeze
+    SUPPORTED_SCHEMAS = %w[1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7].freeze
+    STRICT_FLOW_SCHEMAS = %w[1.2 1.3 1.4 1.5 1.6 1.7].freeze
     DECISION_TABLE_STATUSES = %w[calculated not_calculated].freeze
     RULE_CONDITION_VALUES = DecisionTable::CONDITION_VALUES
     RULE_COVERAGE_STATUSES = DecisionTable::COVERAGE_STATUSES
@@ -50,7 +50,8 @@ module Branchproof
       @schema_version = @document["schema_version"]
       schema = @schema_version
       fail_with("unsupported schema version") unless SUPPORTED_SCHEMAS.include?(schema)
-      missing = REQUIRED_FIELDS.reject { |field| @document.key?(field) }
+      required_fields = REQUIRED_FIELDS + (@schema_version == "1.7" ? ["collation"] : [])
+      missing = required_fields.reject { |field| @document.key?(field) }
       fail_with("missing field: #{missing.first}") unless missing.empty?
       fail_with("criterion version mismatch") unless @document["criterion_version"] == CRITERION_VERSION
       fail_with("run_ids must be an array of strings") unless strings?(@document["run_ids"])
@@ -66,6 +67,11 @@ module Branchproof
       validate_changed_scope
       validate_changed_coverage_policy
       validate_optional_sections
+      if @schema_version == "1.7"
+        validate_collation
+      elsif @document.key?("collation")
+        fail_with("collation is unsupported by this report schema")
+      end
       validate_analysis_coverage
       @document
     end
@@ -223,7 +229,7 @@ module Branchproof
           fail_with("nonboolean condition results must be empty") unless results.empty?
           validate_nonboolean_analysis(decision, inventory_decision)
         elsif decision.key?("decision_table")
-          unless %w[1.3 1.4 1.5 1.6].include?(@schema_version)
+          unless %w[1.3 1.4 1.5 1.6 1.7].include?(@schema_version)
             fail_with("decision tables are unsupported in legacy report schemas")
           end
           validate_decision_table(decision["decision_table"], inventory_decision)
@@ -635,7 +641,7 @@ module Branchproof
 
     def validate_coverage_policy
       policy = @document["coverage_policy"]
-      fail_with("missing field: coverage_policy") if %w[1.4 1.5 1.6].include?(@schema_version) && !policy
+      fail_with("missing field: coverage_policy") if %w[1.4 1.5 1.6 1.7].include?(@schema_version) && !policy
       return if policy.nil?
 
       fail_with("coverage_policy must be an object") unless hash_with_string_keys?(policy)
@@ -658,7 +664,9 @@ module Branchproof
     def validate_changed_scope
       scope_present = @document.key?("changed_scope")
       summary_present = @document.key?("changed_coverage")
-      unless %w[1.5 1.6].include?(@schema_version)
+      return if @schema_version == "1.7" && !scope_present && !summary_present
+
+      unless %w[1.5 1.6 1.7].include?(@schema_version)
         fail_with("changed scope is unsupported by this report schema") if scope_present || summary_present
         return
       end
@@ -709,6 +717,10 @@ module Branchproof
       policy_present = @document.key?("changed_coverage_policy")
       if @schema_version == "1.6"
         fail_with("missing field: changed_coverage_policy") unless policy_present
+      elsif @schema_version == "1.7"
+        return unless policy_present
+
+        fail_with("changed policy requires captured scope") unless @document["changed_scope"]
       elsif policy_present
         fail_with("changed_coverage_policy is unsupported by this report schema")
       else
@@ -731,6 +743,176 @@ module Branchproof
       fail_with("changed_coverage_policy does not match captured analysis") unless actual == expected
     rescue ArgumentError => e
       fail_with(e.message.sub(/\Ainvalid saved report: /, ""))
+    end
+
+    def validate_collation
+      data = @document["collation"]
+      fail_with("collation must be an object") unless hash_with_string_keys?(data)
+      fail_with("collation version is unsupported") unless data["version"] == "1.0"
+      statuses = %w[complete incomplete unknown]
+      status = data["collection_status"]
+      fail_with("collation collection_status is invalid") unless statuses.include?(status)
+      expected = data["expected_shards"]
+      if !expected.nil? && (!strings?(expected) || expected.empty? || expected.any? { |id| !nonempty_string?(id) } ||
+                            expected.uniq.length != expected.length)
+        fail_with("collation expected_shards must be null or unique nonempty IDs")
+      end
+      missing = data["missing_shards"]
+      unless strings?(missing) && missing.uniq.length == missing.length
+        fail_with("collation missing_shards must be unique IDs")
+      end
+      shards = data["shards"]
+      fail_with("collation shards must be a nonempty array") unless shards.is_a?(Array) && !shards.empty?
+      ids = []
+      digests = []
+      run_ids = []
+      shard_baselines = []
+      shards.each do |shard|
+        fail_with("invalid collation shard") unless hash_with_string_keys?(shard)
+        id = shard["id"]
+        fail_with("collation shard ID must be a nonempty string") unless nonempty_string?(id)
+        ids << id
+        paths = shard["paths"]
+        valid_paths = strings?(paths) && !paths.empty? && paths.all? { |path| nonempty_string?(path) }
+        fail_with("collation shard paths must be nonempty strings") unless valid_paths
+        digest = shard["report_digest"]
+        unless digest.is_a?(String) && digest.match?(/\A[0-9a-f]{64}\z/)
+          fail_with("collation report digest must be SHA-256")
+        end
+        digests << digest
+        shard_runs = shard["run_ids"]
+        valid_run_ids = strings?(shard_runs) && !shard_runs.empty? &&
+                        shard_runs.all? { |value| nonempty_string?(value) } &&
+                        shard_runs.uniq.length == shard_runs.length
+        fail_with("collation shard run_ids must be nonempty unique IDs") unless valid_run_ids
+        run_ids.concat(shard_runs)
+        baseline = shard["baseline"]
+        fail_with("invalid collation shard baseline") unless hash_with_string_keys?(baseline)
+        fail_with("collation shard baseline status is invalid") unless %w[PASSED FAILED ERROR
+                                                                          INCOMPLETE].include?(baseline["status"])
+        %w[executed_tests failed_tests skipped_tests].each do |field|
+          unless baseline[field].is_a?(Integer) && baseline[field] >= 0
+            fail_with("collation shard baseline #{field} must be nonnegative")
+          end
+        end
+        fail_with("collation shard baseline finalized must be boolean") unless [true,
+                                                                                false].include?(baseline["finalized"])
+        fail_with("collation shard baseline status must be a string") unless baseline["status"].is_a?(String)
+        fail_with("collation shard failed and skipped counts exceed executed tests") if
+          baseline["failed_tests"] + baseline["skipped_tests"] > baseline["executed_tests"]
+        fail_with("PASSED collation shard cannot contain failures") if baseline["status"] == "PASSED" &&
+                                                                       baseline["failed_tests"].positive?
+        fail_with("zero-test collation shard cannot pass") if baseline["status"] == "PASSED" &&
+                                                              baseline["executed_tests"].zero?
+        completeness = shard["completeness"]
+        validate_completeness(completeness)
+        fail_with("collation shard run_metadata must be an object") unless hash_with_string_keys?(shard["run_metadata"])
+        shard_baselines << baseline
+      end
+      fail_with("duplicate collation shard ID") unless ids.uniq.length == ids.length
+      fail_with("duplicate collation report digest") unless digests.uniq.length == digests.length
+      fail_with("overlapping collation run IDs") unless run_ids.uniq.length == run_ids.length
+      fail_with("collation run IDs do not match report run_ids") unless @document["run_ids"].sort == run_ids.sort
+      observations = @document["observations"]
+      unless observations["run_ids"] == @document["run_ids"]
+        fail_with("collation observation run_ids do not match report run_ids")
+      end
+      validate_collated_test_statuses(observations)
+      expected_missing = expected ? expected - ids : []
+      fail_with("collation contains undeclared shard IDs") if expected && (ids - expected).any?
+      fail_with("collation missing_shards do not match expected IDs") unless missing == expected_missing
+      expected_status = if expected.nil?
+                          "unknown"
+                        elsif expected_missing.empty?
+                          "complete"
+                        else
+                          "incomplete"
+                        end
+      fail_with("collation collection status does not match shard IDs") unless status == expected_status
+      counts = %w[executed_tests failed_tests skipped_tests].to_h do |field|
+        [field, shard_baselines.sum { |baseline| baseline.fetch(field) }]
+      end
+      counts.each do |field, value|
+        next if @document.dig("baseline", field) == value
+
+        fail_with("collation aggregate #{field} does not match provenance")
+      end
+      forced_incomplete = status != "complete" || shard_baselines.any? do |baseline|
+        baseline["status"] == "INCOMPLETE" || baseline["finalized"] != true
+      end || shards.any? { |shard| shard.fetch("completeness").values.any? { |complete| complete != true } }
+      forced_error = shard_baselines.any? { |baseline| baseline["status"] == "ERROR" }
+      forced_failed = shard_baselines.any? do |baseline|
+        baseline["status"] == "FAILED"
+      end || counts.fetch("failed_tests").positive?
+      aggregate_status = if forced_error
+                           "ERROR"
+                         elsif forced_incomplete
+                           "INCOMPLETE"
+                         elsif forced_failed
+                           "FAILED"
+                         else
+                           "PASSED"
+                         end
+      fail_with("collation aggregate baseline status does not match provenance") unless
+        @document.dig("baseline", "status") == aggregate_status
+      fail_with("collation aggregate finalized does not match status") unless
+        @document.dig("baseline", "finalized") == %w[PASSED FAILED].include?(aggregate_status)
+      if status != "complete"
+        %w[completeness observations analysis].each do |section|
+          bits = if section == "completeness"
+                   @document[section]
+                 elsif section == "observations"
+                   observations["completeness"]
+                 else
+                   @document.dig(section, "completeness")
+                 end
+          if bits && bits["observation"] == true
+            fail_with("incomplete collection cannot claim observation completeness")
+          end
+        end
+      end
+      %w[observation attribution analysis].each do |field|
+        next unless shards.any? { |shard| shard.dig("completeness", field) == false }
+
+        completeness_restored = @document.dig("completeness", field) == true ||
+                                @document.dig("observations", "completeness", field) == true ||
+                                (@document["analysis"] && @document.dig("analysis", "completeness", field) == true)
+        fail_with("collation cannot restore false completeness") if completeness_restored
+      end
+    end
+
+    def validate_collated_test_statuses(observations)
+      test_statuses = lambda do |tests, section|
+        tests.each do |test|
+          status = test["status"]
+          unless %w[passed failed skipped unknown running].include?(status)
+            fail_with("collation #{section} test status is invalid")
+          end
+        end
+      end
+      observed_tests = observations.fetch("tests")
+      baseline_tests = @document.dig("baseline", "tests") || []
+      test_statuses.call(observed_tests, "observation")
+      test_statuses.call(baseline_tests, "baseline")
+      baseline_by_id = baseline_tests.to_h { |test| [test.fetch("id"), test] }
+      observed_tests.each do |test|
+        baseline_test = baseline_by_id[test.fetch("id")]
+        next unless baseline_test
+        next if baseline_test["status"] == test["status"]
+
+        fail_with("collation baseline and observation test statuses disagree")
+      end
+      failed = observed_tests.count { |test| test["status"] == "failed" }
+      skipped = observed_tests.count { |test| test["status"] == "skipped" }
+      baseline = @document.fetch("baseline")
+      if failed > baseline.fetch("failed_tests") || skipped > baseline.fetch("skipped_tests")
+        fail_with("collation observed failures or skips exceed baseline counts")
+      end
+      if baseline["status"] == "PASSED" && observed_tests.any? do |test|
+           !%w[passed skipped].include?(test["status"])
+         end
+        fail_with("PASSED collation cannot contain failed, unknown, or running tests")
+      end
     end
 
     def validate_changed_files(files)

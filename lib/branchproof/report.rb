@@ -17,6 +17,7 @@ module Branchproof
     SCHEMA_VERSION = "1.4"
     CHANGED_SCOPE_SCHEMA_VERSION = "1.5"
     CHANGED_POLICY_SCHEMA_VERSION = "1.6"
+    COLLATION_SCHEMA_VERSION = "1.7"
     CRITERION_VERSION = "masking_occurrence_v1"
     VIEWS = %i[decisions conditions tests decision_tables summary].freeze
     FORMATS = %i[terminal json github html].freeze
@@ -188,6 +189,31 @@ module Branchproof
       lines
     end
 
+    # Provenance summary for offline reports assembled from multiple shards.
+    def collation_lines
+      collation = value(@saved_document, :collation)
+      return [] unless collation.is_a?(Hash)
+
+      shards = Array(value(collation, :shards))
+      expected = value(collation, :expected_shards)
+      count = if expected.is_a?(Array)
+                "#{shards.length}/#{expected.length} expected"
+              else
+                "#{shards.length} (expected count unknown)"
+              end
+      missing = Array(value(collation, :missing_shards)).map { |id| scope_text(id) }
+      lines = ["Collation: #{scope_text(value(collation, :collection_status))}",
+               "Shards supplied: #{count}",
+               "Missing shards: #{missing.empty? ? "none" : missing.join(", ")}",
+               "Contributing shards:"]
+      shards.each do |shard|
+        id = scope_text(value(shard, :id))
+        paths = Array(value(shard, :paths)).map { |path| scope_text(path) }
+        lines << "  #{id}: #{paths.empty? ? "path unavailable" : paths.join(", ")}"
+      end
+      lines
+    end
+
     def changed_coverage_policy_lines
       policy = changed_coverage_policy
       return [] if (value(policy, :minimum_changed) || {}).empty?
@@ -258,7 +284,11 @@ module Branchproof
         document = normalize(@saved_document)
         document["coverage_policy"] = normalize(coverage_policy) if @minimum_override
         if @minimum_changed_override
-          document["schema_version"] = CHANGED_POLICY_SCHEMA_VERSION
+          document["schema_version"] = if document["schema_version"] == COLLATION_SCHEMA_VERSION
+                                         COLLATION_SCHEMA_VERSION
+                                       else
+                                         CHANGED_POLICY_SCHEMA_VERSION
+                                       end
           document["changed_coverage_policy"] = normalize(changed_coverage_policy)
         end
         return document
@@ -320,6 +350,7 @@ module Branchproof
       lines.concat(coverage_ladder_lines)
       lines.concat(coverage_policy_lines)
       lines.concat(changed_scope_lines)
+      lines.concat(collation_lines)
       lines << missing_summary_line if @missing_only
       selected_decisions, hidden = selected_decisions_for_display
       append_selection_lines(lines, hidden, "decision")
@@ -1536,8 +1567,9 @@ module Branchproof
     def scope_text(text)
       text.to_s.scrub.gsub(/[[:cntrl:]]/) { |character| "\\u{#{character.ord.to_s(16).upcase}}" }
     end
-    public :condition_coverage_evidence, :changed_scope_lines, :coverage_ladder_lines, :coverage_policy_lines,
-           :coverage_policy, :changed_coverage_policy, :coverage_status_label, :changed_coverage_available?,
+    public :condition_coverage_evidence, :changed_scope_lines, :collation_lines, :coverage_ladder_lines,
+           :coverage_policy_lines, :coverage_policy, :changed_coverage_policy, :coverage_status_label,
+           :changed_coverage_available?,
            :display_scope_path,
            :decision_table_requirement, :decision_table_reachability, :decision_table_expected_heading
   end

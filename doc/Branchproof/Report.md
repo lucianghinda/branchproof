@@ -14,6 +14,9 @@ Not documented.
 ### `CHANGED_SCOPE_SCHEMA_VERSION` <a id="constant-CHANGED_SCOPE_SCHEMA_VERSION"></a> <a id="CHANGED_SCOPE_SCHEMA_VERSION-constant"></a>
 Not documented.
 
+### `COLLATION_SCHEMA_VERSION` <a id="constant-COLLATION_SCHEMA_VERSION"></a> <a id="COLLATION_SCHEMA_VERSION-constant"></a>
+Not documented.
+
 ### `CRITERIA_LABELS` <a id="constant-CRITERIA_LABELS"></a> <a id="CRITERIA_LABELS-constant"></a>
 Not documented.
 
@@ -51,6 +54,9 @@ Not documented.
 
 ### `changed_scope_lines()` <a id="method-i-changed_scope_lines"></a> <a id="changed_scope_lines-instance_method"></a>
 Shared informational changed-scope header for all terminal and GitHub views.
+
+### `collation_lines()` <a id="method-i-collation_lines"></a> <a id="collation_lines-instance_method"></a>
+Provenance summary for offline reports assembled from multiple shards.
 
 ### `condition_coverage_evidence(decision_id:, condition_id:)` <a id="method-i-condition_coverage_evidence"></a> <a id="condition_coverage_evidence-instance_method"></a>
 Returns condition-value evidence for focused renderers without exposing the

@@ -24,6 +24,11 @@ module Branchproof
     def annotations(path_prefix: @path_prefix)
       path_prefix = path_prefix.to_s.empty? ? nil : path_prefix.to_s.delete_suffix("/")
       lines = error_lines
+      if @coordinator.collation_lines.any?
+        status = fetch(fetch(@document, :collation), :collection_status)
+        lines << command("notice", @coordinator.collation_lines.join("\n"),
+                         title: "Branchproof collation: #{status}")
+      end
       lines << command("notice", changed_scope_message, title: "Branchproof changed scope") if changed_scope?
       gaps, hidden = @selection.limit(ranked_gaps)
       gaps.each_with_index do |decision, position|
@@ -52,6 +57,11 @@ module Branchproof
       end
       if changed_scope?
         lines.concat(@coordinator.changed_scope_lines.map { |line| "- #{code(line)}" })
+        lines << ""
+      end
+      collation = @coordinator.collation_lines
+      unless collation.empty?
+        lines.concat(collation.map { |line| "- #{code(line.strip)}" })
         lines << ""
       end
       render_diagnostics(lines)

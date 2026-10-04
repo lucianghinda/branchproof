@@ -253,6 +253,7 @@ Branchproof::Report,Class,Branchproof/Report.md
 Branchproof::Report.SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-SCHEMA_VERSION
 Branchproof::Report.CHANGED_SCOPE_SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-CHANGED_SCOPE_SCHEMA_VERSION
 Branchproof::Report.CHANGED_POLICY_SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-CHANGED_POLICY_SCHEMA_VERSION
+Branchproof::Report.COLLATION_SCHEMA_VERSION,Constant,Branchproof/Report.md#constant-COLLATION_SCHEMA_VERSION
 Branchproof::Report.CRITERION_VERSION,Constant,Branchproof/Report.md#constant-CRITERION_VERSION
 Branchproof::Report.VIEWS,Constant,Branchproof/Report.md#constant-VIEWS
 Branchproof::Report.FORMATS,Constant,Branchproof/Report.md#constant-FORMATS
@@ -263,6 +264,7 @@ Branchproof::Report.changed_coverage_available?,Method,Branchproof/Report.md#met
 Branchproof::Report.changed_coverage_policy,Method,Branchproof/Report.md#method-i-changed_coverage_policy
 Branchproof::Report.changed_coverage_policy_lines,Method,Branchproof/Report.md#method-i-changed_coverage_policy_lines
 Branchproof::Report.changed_scope_lines,Method,Branchproof/Report.md#method-i-changed_scope_lines
+Branchproof::Report.collation_lines,Method,Branchproof/Report.md#method-i-collation_lines
 Branchproof::Report.condition_coverage_evidence,Method,Branchproof/Report.md#method-i-condition_coverage_evidence
 Branchproof::Report.condition_explanation,Method,Branchproof/Report.md#method-i-condition_explanation
 Branchproof::Report.coverage_ladder_lines,Method,Branchproof/Report.md#method-i-coverage_ladder_lines
@@ -312,6 +314,11 @@ Branchproof::Evidence.snapshot,Method,Branchproof/Evidence.md#method-i-snapshot
 Branchproof::Evidence.test_phase_counts,Method,Branchproof/Evidence.md#method-i-test_phase_counts
 Branchproof::Evidence.inventory,Attribute,Branchproof/Evidence.md#attribute-i-inventory
 Branchproof::Evidence.run_id,Attribute,Branchproof/Evidence.md#attribute-i-run_id
+Branchproof::Collation,Class,Branchproof/Collation.md
+Branchproof::Collation.SCHEMA_VERSIONS,Constant,Branchproof/Collation.md#constant-SCHEMA_VERSIONS
+Branchproof::Collation.STATUS_ORDER,Constant,Branchproof/Collation.md#constant-STATUS_ORDER
+Branchproof::Collation.call,Method,Branchproof/Collation.md#method-i-call
+Branchproof::Collation.initialize,Method,Branchproof/Collation.md#method-i-initialize
 Branchproof::Minimizer,Class,Branchproof/Minimizer.md
 Branchproof::Minimizer.call,Method,Branchproof/Minimizer.md#method-i-call
 Branchproof::Minimizer.initialize,Method,Branchproof/Minimizer.md#method-i-initialize
@@ -502,6 +509,13 @@ Branchproof::ComparisonReport.RULE_LABELS,Constant,Branchproof/ComparisonReport.
 Branchproof::ComparisonReport.exit_code,Method,Branchproof/ComparisonReport.md#method-i-exit_code
 Branchproof::ComparisonReport.initialize,Method,Branchproof/ComparisonReport.md#method-i-initialize
 Branchproof::ComparisonReport.write,Method,Branchproof/ComparisonReport.md#method-i-write
+Branchproof::CollationManifest,Class,Branchproof/CollationManifest.md
+Branchproof::CollationManifest.initialize,Method,Branchproof/CollationManifest.md#method-i-initialize
+Branchproof::CollationManifest.path_identity,Method,Branchproof/CollationManifest.md#method-c-path_identity
+Branchproof::CollationManifest.declared_identities,Attribute,Branchproof/CollationManifest.md#attribute-i-declared_identities
+Branchproof::CollationManifest.declared_paths,Attribute,Branchproof/CollationManifest.md#attribute-i-declared_paths
+Branchproof::CollationManifest.expected_ids,Attribute,Branchproof/CollationManifest.md#attribute-i-expected_ids
+Branchproof::CollationManifest.inputs,Attribute,Branchproof/CollationManifest.md#attribute-i-inputs
 Branchproof::ChangedDecisionMap,Class,Branchproof/ChangedDecisionMap.md
 Branchproof::ChangedDecisionMap.CONTROL_NODES,Constant,Branchproof/ChangedDecisionMap.md#constant-CONTROL_NODES
 Branchproof::ChangedDecisionMap.call,Method,Branchproof/ChangedDecisionMap.md#method-i-call

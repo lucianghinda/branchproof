@@ -45,8 +45,8 @@ gem "branchproof"
 gem "rspec", "~> 3.13.0", require: false
 ```
 
-`branchproof report` and `branchproof compare` read saved JSON without loading
-either test framework, so saved reports can be rendered and compared in a
+`branchproof report`, `branchproof compare`, and `branchproof collate` read saved
+JSON without loading either test framework, so reports can be used in a
 minimal deployment or offline environment.
 
 ## Check a project's setup
@@ -787,7 +787,7 @@ assets, source reads, or network requests. It can be written to a file with
 `--output` or streamed to stdout. The page keeps whole-run coverage and policy
 global even when `--focus`, `--top`, or `--missing-only` filters displayed
 decisions. Its status and exit code still reflect the saved run and its policy.
-HTML is available only from `report`; `analyze` and `compare` reject it. The
+HTML is available from `report` and `collate`; `analyze` and `compare` reject it. The
 integrated HTML layout does not accept `--view`. At level 1 it shows the summary
 and decision inventory; level 2 adds missing scenarios; level 3 also adds
 contributing tests. Legacy snapshots without analysis support only level 1,
@@ -799,9 +799,11 @@ gate results. The report validates those results from its exact coverage
 counts rather than trusting a persisted percentage. Reports created with
 `--changed-since` use schema `1.5` and add the captured changed scope and its
 informational coverage. A changed policy adds `changed_coverage_policy` and uses
-schema `1.6`. Readers accept schemas `1.0` through `1.6`. A whole-run policy
-overlay preserves the input schema; adding a changed policy to a `1.5` snapshot
+schema `1.6`. Collated reports use schema `1.7` and record their contributing
+shards and collection completeness. Readers accept schemas `1.0` through `1.7`.
+A whole-run policy overlay preserves the input schema; adding a changed policy to a `1.5` snapshot
 upgrades the output to `1.6` without changing the input file.
+Policy overlays on collated reports preserve schema `1.7` and its provenance.
 New snapshots retain the ladder at every level. Legacy snapshots without
 analysis can still be rendered at Level 1; levels 2 and 3 require analysis in
 the saved report.
@@ -809,6 +811,66 @@ The repository ignores `.branchproof/`; choose a different path and CI artifact
 policy when a project needs to retain reports.
 Saved JSON includes existing raw metadata such as test names and expressions;
 relative terminal labels do not mean every legacy JSON field is sanitized.
+
+### Combine serial test shards
+
+When CI splits tests into separate jobs, save a JSON report from each serial
+run and combine their observations offline:
+
+```sh
+bundle exec branchproof collate unit.json integration.json \
+  --manifest shards.json --output combined.json
+bundle exec branchproof report combined.json --format html --output coverage.html
+```
+
+Collation recalculates coverage, supporting sets, missing evidence, and gates.
+For example, a true decision in one shard and a matching false decision in
+another can together prove a condition's effect. Shard coverage percentages
+are never averaged. No application code or tests run during collation, and the
+original checkout does not need to exist.
+
+Declare the expected artifacts in `shards.json`:
+
+```json
+{
+  "shards": [
+    { "id": "unit", "report": "unit.json" },
+    { "id": "integration", "report": "integration.json" }
+  ]
+}
+```
+
+Manifest paths are relative to the manifest file. Pass the artifacts actually
+received as command arguments; omitted entries stay missing even if their
+files happen to exist. Unknown inputs and duplicate manifest IDs or paths are
+rejected. One artifact cannot satisfy two different shard IDs.
+
+The manifest is optional. Without it, collation displays the supplied evidence
+but marks collection completeness unknown and exits **2**. Missing declared
+shards also produce an incomplete report and exit 2. A complete manifest proves
+only that every declared artifact arrived; it does not prove those artifacts
+selected every test in the application. Failed or incomplete input runs cannot
+become a passing collection.
+
+Inputs must be raw schema `1.4`–`1.6` reports from the current Branchproof and
+Ruby runtime, with matching report schema, source inventory/digests, framework,
+limits, reachability settings, analysis level, and coverage thresholds. Captured
+changed scope and changed thresholds must also match. Different test selections,
+seeds, and checkout roots are allowed; per-shard metadata and relative test
+locations are retained. Missing reconstruction metadata is an error. Collated
+reports cannot themselves be collated in this first version.
+
+An identical report supplied twice is counted once. Conflicting or partially
+overlapping run IDs are rejected. A test executed in different runs contributes
+each execution to baseline counts and phase counts, while retaining its existing
+test identity; any failure takes precedence over a later pass.
+
+Collate defaults to JSON and supports `--format terminal|json|github|html`.
+Use `report` for views, display filters, or threshold overrides on the saved
+result. Output is written atomically and cannot replace input reports, declared
+artifacts, or the manifest. Combined evidence exceeding storage limits is
+rejected; bounded analysis that cannot finish remains incomplete. Schema `1.7`
+requires an updated reader. Collation does not enable threaded or forked runners.
 
 ### Changed-decision coverage and gates
 
@@ -1247,8 +1309,8 @@ The default development bundle keeps Minitest 5 for the full suite. CI runs eigh
 jobs on CRuby 4.0: the core suite, Minitest 5.26.2/6.0.0/6.0.6 consumer
 compatibility, RSpec Core 3.13.0/3.13.6 compatibility, Rails 8.1 integration, and
 rspec-rails integration. The Minitest compatibility jobs select an exact version
-with `BRANCHPROOF_MINITEST_VERSION` and run adapter, CLI, lifecycle, doctor, and
-packaged-consumer checks. They do not require the mock library removed from
+with `BRANCHPROOF_MINITEST_VERSION` and run adapter, CLI, lifecycle, doctor,
+collation, and packaged-consumer checks. They do not require the mock library removed from
 Minitest 6.
 Lint runs once in the core job. Pull requests and pushes to main trigger CI.
 
