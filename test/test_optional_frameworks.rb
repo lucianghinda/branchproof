@@ -101,7 +101,8 @@ class TestOptionalFrameworks < Minitest::Test
     profile ||= frameworks.empty? ? "none" : frameworks.first
     install_root = File.join(directory, "gems", profile)
     FileUtils.mkdir_p(install_root)
-    (["prism"] + frameworks).each { |name| stage_dependency(name, install_root, {}) }
+    staged = {}
+    (["prism"] + frameworks).each { |name| stage_dependency(name, install_root, staged) }
     install_root
   end
 
@@ -309,7 +310,7 @@ class TestOptionalFrameworks < Minitest::Test
     assert_equal false, document.dig("baseline", "finalized")
     diagnostic = document["diagnostics"].find { |entry| entry.fetch("code") == "minitest_missing" }
     refute_nil diagnostic
-    assert_includes diagnostic.fetch("message"), "add minitest >= 5.25.5, < 6 to the application's test bundle"
+    assert_includes diagnostic.fetch("message"), "add minitest >= 5.25.5, < 7 to the application's test bundle"
     assert_equal false, document.dig("completeness", "observation")
     assert_equal false, document.dig("completeness", "analysis")
     assert_saved_report_valid(install_root, report, expected_status: "ERROR")

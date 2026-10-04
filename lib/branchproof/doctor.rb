@@ -13,7 +13,7 @@ module Branchproof
       "remain unverified."
     ].freeze
     FRAMEWORK_GEMS = {
-      "minitest" => { name: "minitest", requirement: Gem::Requirement.new(">= 5.25.5", "< 6") },
+      "minitest" => { name: "minitest", requirement: Gem::Requirement.new(">= 5.25.5", "< 7") },
       "rspec" => { name: "rspec-core", requirement: Gem::Requirement.new("~> 3.13.0") }
     }.freeze
 

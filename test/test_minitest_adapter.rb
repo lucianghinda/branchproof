@@ -16,21 +16,59 @@ class TestMinitestAdapter < Minitest::Test
     assert_includes error.message, "unsupported"
   end
 
-  def test_run_rejects_unsupported_minitest_before_application_boot
+  def test_run_accepts_minitest_6_before_application_boot
     with_minitest_version("6.0.0") do
       adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
-      active_adapter = Branchproof::MinitestAdapter.active_adapter
       before_load_called = false
-      error = assert_raises(ArgumentError) do
-        adapter.run(test_files: [], runner_args: [], on_complete: ->(_result) {},
-                    before_load: -> { before_load_called = true })
-      end
+      adapter.run(test_files: [], runner_args: [], on_complete: ->(_result) {},
+                  before_load: -> { before_load_called = true })
 
-      assert_equal "minitest_unsupported_version", error.diagnostic_code
-      assert_includes error.message, "6.0.0"
-      refute before_load_called
-      assert_same active_adapter, Branchproof::MinitestAdapter.active_adapter
+      assert before_load_called
+      assert_same adapter, Branchproof::MinitestAdapter.active_adapter
     end
+  end
+
+  def test_minitest_six_run_order_parallel_marker_is_rejected
+    adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
+    parallel_test = Class.new(Minitest::Test) do
+      def self.run_order = :parallel
+    end
+
+    error = assert_raises(ArgumentError) { adapter.validate_runner! }
+    assert_includes error.message, "parallel test scheduling"
+  ensure
+    Minitest::Runnable.runnables.delete(parallel_test) if parallel_test
+  end
+
+  def test_bisect_and_server_runner_options_are_rejected
+    adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
+    %w[-b --bisect --bisect=1 --server --server=123].each do |argument|
+      error = assert_raises(ArgumentError) do
+        adapter.run(test_files: [], runner_args: [argument], on_complete: ->(_result) {})
+      end
+      assert_includes error.message, "unsupported"
+    end
+  end
+
+  def test_active_minitest_server_integration_is_rejected
+    adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
+    previous_server = Minitest.instance_variable_get(:@server)
+    Minitest.instance_variable_set(:@server, 123)
+    error = assert_raises(ArgumentError) { adapter.validate_runner! }
+    assert_includes error.message, "server"
+  ensure
+    Minitest.instance_variable_set(:@server, previous_server)
+  end
+
+  def test_minitest_server_environment_switch_is_rejected
+    adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
+    previous_server_env = ENV.fetch("MINITEST_SERVER", nil)
+    ENV["MINITEST_SERVER"] = "1"
+
+    error = assert_raises(ArgumentError) { adapter.validate_runner! }
+    assert_includes error.message, "server"
+  ensure
+    previous_server_env ? ENV["MINITEST_SERVER"] = previous_server_env : ENV.delete("MINITEST_SERVER")
   end
 
   def test_before_load_runs_after_guards_are_installed
@@ -60,6 +98,17 @@ class TestMinitestAdapter < Minitest::Test
     assert_includes error.message, "parallel test scheduling"
   ensure
     Minitest::Runnable.runnables.delete(parallel_test) if parallel_test
+  end
+
+  def test_minitest_6_serial_suite_without_parallel_executor_is_allowed
+    adapter = Branchproof::MinitestAdapter.new(runtime: RuntimeSpy.new([]))
+    serial_test = Class.new(Minitest::Test) do
+      def self.run_order = :alpha
+    end
+
+    assert_nil adapter.validate_runner!
+  ensure
+    Minitest::Runnable.runnables.delete(serial_test) if serial_test
   end
 
   def test_completion_callback_errors_are_reported_as_error

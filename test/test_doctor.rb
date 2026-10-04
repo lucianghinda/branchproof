@@ -196,7 +196,7 @@ class TestDoctor < Minitest::Test
     message = result.fetch(:checks).find { |check| check[:code] == "framework" }[:message]
 
     assert_equal "blocked", result.fetch(:status)
-    assert_includes message, ">= 5.25.5, < 6"
+    assert_includes message, ">= 5.25.5, < 7"
     assert_includes message, "current test bundle"
   end
 
@@ -216,7 +216,7 @@ class TestDoctor < Minitest::Test
   def test_doctor_blocks_runtimes_and_framework_versions_outside_exact_supported_ranges
     cases = [
       ["ruby", "3.4.7", "minitest", "5.27.0", "minitest"],
-      ["ruby", "4.0.1", "minitest", "6.0.0", "minitest"],
+      ["ruby", "4.0.1", "minitest", "7.0.0", "minitest"],
       ["ruby", "4.0.1", "rspec", "3.14.0", "rspec-core"],
       ["ruby", "4.0.1", "rspec", "3.14.0.pre", "rspec-core"],
       ["jruby", "4.0.1", "minitest", "5.27.0", "minitest"]
@@ -232,6 +232,18 @@ class TestDoctor < Minitest::Test
 
       assert_equal "blocked", result.fetch(:status), "#{engine} #{ruby_version} with #{framework} #{gem_version}"
     end
+  end
+
+  def test_doctor_accepts_minitest_six
+    doctor = Branchproof::Doctor.new(options: doctor_options(framework: "minitest"),
+                                     runtime: { engine: "ruby", version: "4.0.1" },
+                                     gem_sources: { activated: { "minitest" => framework_spec("minitest", "6.0.6") },
+                                                    discoverable: ->(_name) { [] } })
+
+    result = doctor.document(source_files: ["lib/app.rb"], test_files: ["test/app_test.rb"])
+
+    assert_equal "ready", result.fetch(:status)
+    assert_equal "6.0.6", result.dig(:framework, :version)
   end
 
   def test_analyze_source_selection_keeps_sorted_unique_canonical_safety_exclusions
