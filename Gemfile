@@ -8,7 +8,11 @@ gemspec
 gem "irb"
 gem "rake", "~> 13.0"
 
-gem "minitest", ">= 5.25.5", "< 6"
+if ENV["BRANCHPROOF_MINITEST_VERSION"]
+  gem "minitest", ENV.fetch("BRANCHPROOF_MINITEST_VERSION")
+else
+  gem "minitest", ">= 5.25.5", "< 6"
+end
 gem "rspec", "~> 3.13.0", require: false
 rspec_core_version = ENV.fetch("BRANCHPROOF_RSPEC_CORE_VERSION", ">= 3.13.0")
 gem "rspec-core", rspec_core_version, require: false

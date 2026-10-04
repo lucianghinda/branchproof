@@ -17,6 +17,37 @@ jobs:
           bundler-cache: true
       - run: bundle exec rake
 
+  minitest-compatibility:
+    name: Minitest ${{ matrix.minitest }} on Ruby 4.0
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        minitest: ["5.26.2", "6.0.0", "6.0.6"]
+    env:
+      BRANCHPROOF_MINITEST_VERSION: ${{ matrix.minitest }}
+      BUNDLE_FROZEN: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: false
+      - run: bundle update minitest
+      - name: Verify resolved Minitest version
+        env:
+          EXPECTED_MINITEST_VERSION: ${{ matrix.minitest }}
+        run: >-
+          bundle exec ruby -rminitest -e 'actual = Gem.loaded_specs.fetch("minitest").version.to_s; expected = ENV.fetch("EXPECTED_MINITEST_VERSION"); abort "unexpected Minitest #{actual}" unless actual == expected'
+      - name: Run Minitest compatibility acceptance suites
+        run: >-
+          bundle exec ruby -Itest -e 'files = ARGV.dup; ARGV.clear; files.each { |file| require File.expand_path(file) }'
+          test/test_minitest_adapter.rb
+          test/test_cli_acceptance.rb
+          test/test_minitest_compatibility.rb
+          test/test_doctor_acceptance.rb
+          test/test_optional_frameworks.rb
+
   rspec-compatibility:
     name: RSpec core ${{ matrix.rspec_core }} on Ruby 4.0
     runs-on: ubuntu-latest

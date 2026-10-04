@@ -36,7 +36,7 @@ class TestWorker < Minitest::Test
       assert_equal "minitest_missing", error.diagnostic_code
       assert_includes error.message, "minitest"
       assert_includes error.message, "application's test bundle"
-      assert_includes error.message, ">= 5.25.5, < 6"
+      assert_includes error.message, ">= 5.25.5, < 7"
     end
   end
 
@@ -69,7 +69,7 @@ class TestWorker < Minitest::Test
       end
       assert_equal "minitest_unsupported_version", error.diagnostic_code
       assert_includes error.message, "5.25.4"
-      assert_includes error.message, ">= 5.25.5, < 6"
+      assert_includes error.message, ">= 5.25.5, < 7"
     end
   end
 
@@ -80,19 +80,19 @@ class TestWorker < Minitest::Test
     end
   end
 
-  def test_minitest_six_is_not_supported
-    with_minitest_version("6.0.0") do
+  def test_minitest_seven_is_not_supported
+    with_minitest_version("7.0.0") do
       error = assert_raises(ArgumentError) do
         Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
       end
       assert_equal "minitest_unsupported_version", error.diagnostic_code
-      assert_includes error.message, "6.0.0"
+      assert_includes error.message, "7.0.0"
     end
   end
 
   def test_unsupported_minitest_version_is_reported_before_test_entrypoint_load
     missing_test_entrypoint = load_error("minitest/test")
-    with_minitest_version("6.0.0") do
+    with_minitest_version("7.0.0") do
       stub_framework_require("minitest/test", missing_test_entrypoint) do
         error = assert_raises(ArgumentError) do
           Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
@@ -103,14 +103,14 @@ class TestWorker < Minitest::Test
     end
   end
 
-  def test_loaded_minitest_six_is_rejected_even_when_runtime_version_is_supported
-    with_minitest_versions("6.0.0", "5.27.0") do
+  def test_unsupported_loaded_minitest_is_rejected_even_when_runtime_version_is_supported
+    with_minitest_versions("7.0.0", "5.27.0") do
       error = assert_raises(ArgumentError) do
         Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
       end
 
       assert_equal "minitest_unsupported_version", error.diagnostic_code
-      assert_includes error.message, "6.0.0"
+      assert_includes error.message, "7.0.0"
     end
   end
 
@@ -126,10 +126,29 @@ class TestWorker < Minitest::Test
   end
 
   def test_supported_loaded_minitest_is_accepted_when_runtime_constant_is_stale
-    with_minitest_versions("5.25.5", "6.0.0") do
+    with_minitest_versions("6.0.0", "7.0.0") do
       adapter = Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
 
       assert_instance_of Branchproof::MinitestAdapter, adapter
+    end
+  end
+
+  def test_minitest_six_patch_release_is_supported
+    with_minitest_version("6.0.6") do
+      adapter = Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+
+      assert_instance_of Branchproof::MinitestAdapter, adapter
+    end
+  end
+
+  def test_minitest_seven_is_rejected_even_when_runtime_constant_is_supported
+    with_minitest_versions("7.0.0", "6.0.6") do
+      error = assert_raises(ArgumentError) do
+        Branchproof::Worker.adapter_for({ framework: "minitest" }, Object.new)
+      end
+
+      assert_equal "minitest_unsupported_version", error.diagnostic_code
+      assert_includes error.message, "7.0.0"
     end
   end
 

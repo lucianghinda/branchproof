@@ -213,7 +213,8 @@ class TestDoctorAcceptance < Minitest::Test
         abort "doctor loaded Minitest" if Object.const_defined?(:Minitest, false) && !before_constants.include?(:Minitest)
         abort "doctor loaded RSpec" if Object.const_defined?(:RSpec, false) && !before_constants.include?(:RSpec)
         after_framework_features = $LOADED_FEATURES - before_features
-        abort "doctor required a framework: \#{after_framework_features.grep(/(?:minitest|rspec)/).inspect}" if after_framework_features.any? { |path| path.match?(%r{(?:minitest|rspec)}) }
+        framework_features = after_framework_features.grep(%r{(?:^|/)(?:minitest|rspec)(?:/|[.]rb)})
+        abort "doctor required a framework: \#{framework_features.inspect}" unless framework_features.empty?
         puts JSON.generate(status: status, document: JSON.parse(stdout.string))
       RUBY
       stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-I#{File.join(ROOT, "lib")}", "-e", script, chdir: project)

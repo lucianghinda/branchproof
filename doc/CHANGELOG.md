@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+- Support serial plain Ruby applications using Minitest 6 while retaining
+  Minitest 5.25.5 and later. Doctor accepts the same `>= 5.25.5, < 7` range.
+  Recognize Minitest 6 parallel scheduling and reject bisect/server execution
+  before test bodies run. Frameworks remain application-supplied dependencies.
 - Add independent changed-decision gates with `--minimum-changed`, paired with
   `analyze --changed-since` or a saved report's captured scope. Terminal, GitHub,
   and HTML show changed-policy results; JSON schema `1.6` records and validates

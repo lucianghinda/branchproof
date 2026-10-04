@@ -26,7 +26,7 @@ Branchproof requires CRuby 4.0 or newer and Prism 1.x at runtime.
 CI tests CRuby 4.0, including Rails 8.1.x and rspec-rails 8.x integrations.
 Newer Ruby versions are allowed by the gem requirement but are not yet tested in CI.
 The application supplies the test framework selected for analysis: Minitest
-`>= 5.25.5, < 6` or RSpec 3.13. Branchproof does not install either framework;
+`>= 5.25.5, < 7` or RSpec 3.13. Branchproof does not install either framework;
 projects that use both can keep both in their test bundle.
 Unsupported syntax and incomplete observations remain visible in the report
 instead of being counted as coverage.
@@ -35,7 +35,7 @@ For a Minitest application, keep the runner in the application bundle:
 
 ```ruby
 gem "branchproof"
-gem "minitest", ">= 5.25.5", "< 6"
+gem "minitest", ">= 5.25.5", "< 7"
 ```
 
 For an RSpec application, use its existing RSpec bundle:
@@ -81,7 +81,7 @@ and argument errors.
 Framework availability comes from RubyGems metadata. An `activated` version is
 already in the current process; a `discoverable` version is visible in the
 current RubyGems environment but has not been activated. Doctor checks only the
-selected framework, using Minitest `>= 5.25.5, < 6` or `rspec-core ~> 3.13.0`.
+selected framework, using Minitest `>= 5.25.5, < 7` or `rspec-core ~> 3.13.0`.
 Discoverable metadata does not prove that a framework can load successfully.
 
 Doctor is a static readiness check. It does not load source, helpers, tests,
@@ -1129,6 +1129,17 @@ the serial Minitest runner. This is useful for seeds and name filters:
 branchproof analyze 'lib/**/*.rb' --level 1 -- --seed 9001 -n /checkout/
 ```
 
+Minitest 5 and 6 both accept `-n`/`--name`. Minitest 6 also accepts
+`-i`/`--include`. Minitest 6 plugins must be loaded explicitly by the application;
+Branchproof preserves the framework's plugin-loading behavior. Bisect and server
+modes are unsupported because they do not execute one serial local test run.
+
+Plain Ruby compatibility is tested with Minitest 5.26.2, 5.27.0, 6.0.0, and
+6.0.6. Rails integration continues to be tested with Minitest 5; Minitest 6
+support does not extend the verified Rails compatibility matrix.
+Minitest's own Ruby requirements also apply: Minitest 5.25.5 excludes Ruby 4,
+so it cannot be selected in Branchproof's Ruby 4 bundle.
+
 The first release supports serial Minitest and RSpec execution in plain Ruby
 projects and Rails applications. Rails lazy and eager loading are supported
 when the application does not enable reloading for the test run. Transactions
@@ -1231,9 +1242,14 @@ the core suite does not require Rails. Bootsnap is disabled for the child
 Rails process so its compilation cache cannot own the load path during an
 analysis.
 
-Run the commands with CRuby 4.0 or newer and the declared Minitest 5.x and Prism 1.x
-dependencies. CI runs five jobs on CRuby 4.0: the core suite, RSpec Core 3.13.0
-and 3.13.6 compatibility, Rails 8.1 integration, and rspec-rails integration.
+Run the commands with CRuby 4.0 or newer and the declared Prism 1.x dependency.
+The default development bundle keeps Minitest 5 for the full suite. CI runs eight
+jobs on CRuby 4.0: the core suite, Minitest 5.26.2/6.0.0/6.0.6 consumer
+compatibility, RSpec Core 3.13.0/3.13.6 compatibility, Rails 8.1 integration, and
+rspec-rails integration. The Minitest compatibility jobs select an exact version
+with `BRANCHPROOF_MINITEST_VERSION` and run adapter, CLI, lifecycle, doctor, and
+packaged-consumer checks. They do not require the mock library removed from
+Minitest 6.
 Lint runs once in the core job. Pull requests and pushes to main trigger CI.
 
 The repeatable native-versus-instrumented adapter benchmark and its captured

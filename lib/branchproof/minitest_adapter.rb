@@ -10,10 +10,10 @@ module Branchproof
         require_framework!("minitest")
 
         version = Gem.loaded_specs["minitest"]&.version || Gem::Version.new(Minitest::VERSION)
-        requirement = Gem::Requirement.new(">= 5.25.5", "< 6")
+        requirement = Gem::Requirement.new(">= 5.25.5", "< 7")
         unless requirement.satisfied_by?(Gem::Version.new(version))
           failure = ArgumentError.new(
-            "Minitest #{version} is unsupported; supported version range is >= 5.25.5, < 6"
+            "Minitest #{version} is unsupported; supported version range is >= 5.25.5, < 7"
           )
           def failure.diagnostic_code = "minitest_unsupported_version"
           raise failure
@@ -32,7 +32,7 @@ module Branchproof
 
         failure = ArgumentError.new(
           "Minitest entrypoint #{entrypoint} is unavailable; " \
-          "add minitest >= 5.25.5, < 6 to the application's test bundle"
+          "add minitest >= 5.25.5, < 7 to the application's test bundle"
         )
         def failure.diagnostic_code = "minitest_missing"
         raise failure
@@ -75,6 +75,8 @@ module Branchproof
 
     def validate_runner!
       runnables = defined?(Minitest::Runnable) ? Minitest::Runnable.runnables : []
+      raise ArgumentError, "Minitest server runner integration is unsupported" if server_integration_active?
+
       parallel = parallel_executor_active? || runnables.any? { |runnable| parallel_runnable?(runnable) }
       raise ArgumentError, "parallel test scheduling is unsupported" if parallel
 
@@ -143,7 +145,14 @@ module Branchproof
       parallel_module = defined?(Minitest::Parallel::Test) && Minitest::Parallel::Test
       return true if parallel_module && runnable.ancestors.include?(parallel_module)
 
-      runnable.respond_to?(:test_order) && runnable.test_order == :parallel
+      (runnable.respond_to?(:test_order) && runnable.test_order == :parallel) ||
+        (runnable.respond_to?(:run_order) && runnable.run_order == :parallel)
+    end
+
+    def server_integration_active?
+      ENV["MINITEST_SERVER"] || Minitest.instance_variable_get(:@server) ||
+        (Minitest.respond_to?(:reporter) && defined?(Minitest::ServerReporter) &&
+         Minitest.reporter&.reporters&.any?(Minitest::ServerReporter))
     end
 
     def begin_test(test)
@@ -262,8 +271,8 @@ module Branchproof
 
     def reject_runner_args!(args)
       forbidden = Array(args).select do |arg|
-        %w[--parallel --parallelize --fork --processes
-           --runner].include?(arg.to_s) || arg.to_s.start_with?("--parallel=", "--fork=", "--processes=")
+        %w[--parallel --parallelize --fork --processes --runner -b --bisect --server].include?(arg.to_s) ||
+          arg.to_s.start_with?("--parallel=", "--fork=", "--processes=", "--bisect=", "--server=")
       end
       raise ArgumentError, "parallel, forked, and custom runners are unsupported" unless forbidden.empty?
     end
