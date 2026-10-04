@@ -26,13 +26,14 @@ module Branchproof
 
     def call(argv)
       argv = Array(argv)
-      return help if [["--help"], ["help"], ["analyze", "--help"]].include?(argv)
+      return help if [["--help"], ["help"], ["analyze", "--help"], ["collate", "--help"]].include?(argv)
       return doctor_command(argv.drop(1)) if argv.first == "doctor"
+      return collate_command(argv.drop(1)) if argv.first == "collate"
       return offline(argv) if %w[report compare].include?(argv.first)
-      return usage_error("mutation testing is not supported yet; use doctor, analyze, report, or compare") if argv.first == "mutate"
+      return usage_error("mutation testing is not supported yet; use doctor, analyze, report, compare, or collate") if argv.first == "mutate"
 
       options = parse(argv)
-      return usage_error("expected doctor, analyze, report, or compare; use branchproof --help") unless options
+      return usage_error("expected doctor, analyze, report, compare, or collate; use branchproof --help") unless options
 
       inventory = build_inventory(options)
       changed_scope = if options[:changed_since]
@@ -115,6 +116,7 @@ module Branchproof
             [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--minimum-changed CRITERION=THRESHOLD] [--focus PATH[:LINE]] [--top N]
             [--format terminal|json|github|html] [--output PATH]
           branchproof compare BEFORE AFTER [--format terminal|json] [--output PATH] [--fail-on-regression]
+          branchproof collate REPORT... [--manifest PATH] [--format terminal|json|github|html] [--output PATH]
         mcdc accepts the same commands as a compatibility alias.
         JSON always contains full evidence; --view requires terminal output.
         github prints Actions annotations for the summary ranking and appends Markdown to $GITHUB_STEP_SUMMARY.
@@ -227,6 +229,82 @@ module Branchproof
         write_step_summary(report, options)
         report.exit_code
       end
+    end
+
+    def collate_command(args)
+      options, paths = parse_collate(args)
+      manifest = if options[:manifest]
+                   require_relative "collation_manifest"
+                   CollationManifest.new(path: options[:manifest], supplied_paths: paths)
+                 end
+      protected_paths = paths.map { File.expand_path(_1) }
+      if manifest
+        protected_paths.concat(manifest.declared_paths)
+        protected_paths << File.expand_path(options[:manifest])
+      end
+      reject_collation_output_collision!(protected_paths, options[:output]) if options[:output]
+
+      supplied = if manifest
+                   manifest.inputs
+                 else
+                   paths.map { |path| { id: nil, path: File.expand_path(path) } }
+                 end
+      inputs = supplied.map do |input|
+        input.merge(document: SavedReport.read(input.fetch(:path)))
+      end
+      document = Collation.new(inputs: inputs, expected_shards: manifest&.expected_ids).call
+      report = Report.from_document(document: document, level: document.dig("run_metadata", "requested_level"))
+      output_report(report, options)
+      write_step_summary(report, options)
+      report.exit_code
+    end
+
+    def parse_collate(args)
+      options = { format: :json }
+      paths = []
+      seen = {}
+      until args.empty?
+        token = args.shift
+        case token
+        when "--format"
+          argument = collate_option_value(args, seen, token)
+          raise ArgumentError, "format must be terminal, json, github, or html" unless %w[terminal json github html].include?(argument)
+
+          options[:format] = argument.to_sym
+        when "--output", "--manifest"
+          argument = collate_option_value(args, seen, token)
+          options[token == "--output" ? :output : :manifest] = argument
+        else
+          raise ArgumentError, "unknown option: #{token}" if token.start_with?("-")
+
+          paths << token
+        end
+      end
+      raise ArgumentError, "collate requires at least one saved report" if paths.empty?
+
+      [options, paths]
+    end
+
+    def collate_option_value(args, seen, token)
+      raise ArgumentError, "#{token} may be specified only once" if seen[token]
+
+      seen[token] = true
+      argument = args.shift
+      raise ArgumentError, "#{token} requires a value" if argument.to_s.empty? || argument.start_with?("-")
+
+      argument
+    end
+
+    def reject_collation_output_collision!(protected_paths, output)
+      require_relative "collation_manifest"
+      output_path = File.expand_path(output)
+      output_identity = CollationManifest.path_identity(output_path)
+      collision = protected_paths.any? do |path|
+        File.expand_path(path) == output_path ||
+          CollationManifest.path_identity(path) == output_identity ||
+          (File.exist?(path) && File.exist?(output_path) && File.identical?(path, output_path))
+      end
+      raise ArgumentError, "output must not overwrite an input, declared report, or manifest" if collision
     end
 
     def parse_offline(command, args)

@@ -247,6 +247,7 @@ module Branchproof
     SCHEMA_VERSION: String
     CHANGED_SCOPE_SCHEMA_VERSION: String
     CHANGED_POLICY_SCHEMA_VERSION: String
+    COLLATION_SCHEMA_VERSION: String
     CRITERION_VERSION: String
     VIEWS: Array[Symbol]
     FORMATS: Array[Symbol]
@@ -259,6 +260,7 @@ module Branchproof
     def decision_table_expected_heading: (document decision) -> String
     def coverage_policy: () -> record
     def coverage_policy_lines: () -> Array[String]
+    def collation_lines: () -> Array[String]
     def changed_coverage_policy: () -> record
     def changed_scope_lines: () -> Array[String]
     def changed_coverage_available?: () -> bool
@@ -399,6 +401,20 @@ module Branchproof
 
   class SavedReport
     def self.read: (String path) -> document
+  end
+
+  class Collation
+    def initialize: (inputs: Array[Hash[Symbol | String, untyped]], ?expected_shards: Array[String]?) -> void
+    def call: () -> Hash[String, untyped]
+  end
+
+  class CollationManifest
+    attr_reader expected_ids: Array[String]
+    attr_reader declared_paths: Array[String]
+    attr_reader declared_identities: Array[String]
+    attr_reader inputs: Array[Hash[Symbol, String]]
+    def self.path_identity: (String path) -> String
+    def initialize: (path: String, supplied_paths: Array[String]) -> void
   end
 
   class Comparison

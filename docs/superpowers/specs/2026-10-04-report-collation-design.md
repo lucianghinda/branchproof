@@ -33,8 +33,9 @@ inputs are the artifacts actually supplied; the manifest does not load omitted
 artifacts implicitly. IDs and resolved paths must be unique. Undeclared inputs
 are errors. Omitted declared inputs become missing shards, including when the
 named file exists but was not supplied. An explicitly supplied unreadable input
-is an IO error. Output must not overwrite an input or manifest, including inode
-aliases; output replacement is atomic using the existing CLI writer.
+is an IO error. Output must not overwrite an input, a manifest-declared artifact,
+or the manifest itself, including inode aliases; output replacement is atomic
+using the existing CLI writer.
 
 Without a manifest, collection completeness is unknown. Recompute and display
 the supplied evidence, but mark baseline INCOMPLETE/unfinalized, observation
@@ -92,8 +93,10 @@ Only collated outputs use schema 1.7; normal analyze writers stay on 1.4–1.6.
 A required `collation` record has version `1.0`, collection_status
 (`complete`, `incomplete`, or `unknown`), expected_shards (IDs or null),
 missing_shards, and a nonempty shards array. Each unique shard records its ID,
-input paths, canonical report digest, run IDs, original baseline, completeness,
-and run metadata. Run IDs and baseline counters must agree with provenance.
+input paths, canonical report digest, run IDs, original baseline status/counts/
+finalized flag, completeness, and run metadata. Do not embed redundant baseline
+evidence, analysis, or minima in provenance. Run IDs and baseline counters must
+agree with provenance.
 The validator enforces collection status, missing IDs, uniqueness, and the
 inability of incomplete inputs/collections to claim passing completeness.
 Schema 1.7 permits optional matching changed scope/policy and retains their

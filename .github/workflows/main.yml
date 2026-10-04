@@ -46,6 +46,7 @@ jobs:
           test/test_cli_acceptance.rb
           test/test_minitest_compatibility.rb
           test/test_doctor_acceptance.rb
+          test/test_collation_acceptance.rb
           test/test_optional_frameworks.rb
 
   rspec-compatibility:

@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+- Combine compatible serial reports with `branchproof collate`, recomputing
+  coverage and gates from merged observations. An optional expected-shard
+  manifest distinguishes complete collections from missing or unknown inputs;
+  incomplete collections cannot pass. Schema `1.7` retains shard provenance,
+  while existing analyze schemas remain unchanged. Terminal, GitHub, and HTML
+  output disclose collection status. No application boot or test run is needed.
 - Support serial plain Ruby applications using Minitest 6 while retaining
   Minitest 5.25.5 and later. Doctor accepts the same `>= 5.25.5, < 7` range.
   Recognize Minitest 6 parallel scheduling and reject bisect/server execution

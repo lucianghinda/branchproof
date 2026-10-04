@@ -96,6 +96,7 @@ module Branchproof
       lines.concat(@coordinator.coverage_ladder_lines)
       lines.concat(@coordinator.coverage_policy_lines)
       lines.concat(@coordinator.changed_scope_lines) if @selection.decision_ids
+      lines.concat(@coordinator.collation_lines)
       if @ranking.available?
         render_ranking(lines)
       else

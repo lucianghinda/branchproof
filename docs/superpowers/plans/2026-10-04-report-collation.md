@@ -1,6 +1,6 @@
 # Report collation implementation plan
 
-> **For agentic workers:** Use superpowers-ruby:subagent-driven-development with Luna implementers and independent spec then quality reviews. One implementation writer at a time. Parent owns documentation, commits, and delivery.
+> **For agentic workers:** Use superpowers-ruby:subagent-driven-development with Luna implementers and independent spec then quality reviews. Parallel work uses disjoint ownership: core/schema, manifest, CLI/acceptance, and renderers. Integrate and review before delivery. Parent owns documentation, commits, and delivery.
 
 **Goal:** Recompute trustworthy combined coverage from compatible serial reports.
 
@@ -19,7 +19,7 @@ Files: new `lib/branchproof/collation.rb`, optional focused
 `lib/branchproof/comparison.rb`, `lib/branchproof/report.rb` (schema preservation
 only), `sig/branchproof.rbs`, and saved-report/comparison tests.
 
-- [ ] Write a RED core test using serialized real Report documents:
+- [x] Write a RED core test using serialized real Report documents:
 
   ```ruby
   result = Branchproof::Collation.new(
@@ -33,24 +33,24 @@ only), `sig/branchproof.rbs`, and saved-report/comparison tests.
   Branchproof::SavedReport.new(result).validate!
   ```
 
-- [ ] Implement the constructor above; `.call` returns a validated string-key
+- [x] Implement the constructor above; `.call` returns a validated string-key
   JSON-compatible document. Each input wrapper has symbol keys. Optional IDs
   default to a canonical report digest when no manifest exists. Normalize and
   copy input documents; never mutate originals. Match the design compatibility
   fields explicitly and use real input run IDs when constructing Evidence.
-- [ ] Test and implement exact duplicate idempotency, overlap rejection,
+- [x] Test and implement exact duplicate idempotency, overlap rejection,
   repeated-test phase sums/failure precedence, and summed baseline executions.
   Compare reversed input order after normalizing presentation timestamps.
-- [ ] Rerun analysis/minimization using symbolized persisted inventory and
+- [x] Rerun analysis/minimization using symbolized persisted inventory and
   captured limits/reachability/level. Carry identical thresholds and changed
   scope into Report. Preserve every false input completeness bit. Cover a
   witness only available across runs, failed/incomplete collections, and both
   aggregate storage limits and analysis search limits.
-- [ ] Emit and validate schema 1.7 provenance with contributor input paths,
+- [x] Emit and validate schema 1.7 provenance with contributor input paths,
   canonical digest, run IDs, baseline, completeness, and original run metadata.
   Keep normal writers unchanged, permit optional strict changed scope/policy,
   preserve schema during offline overrides, and enable existing Comparison.
-- [ ] Run focused tests, RBS as appropriate, and lint; obtain spec then quality
+- [x] Run focused tests, RBS as appropriate, and lint; obtain spec then quality
   review before starting the next implementation writer.
 
 ## Task 2: Manifest, CLI, views, and real consumers
@@ -60,29 +60,29 @@ Files: new `lib/branchproof/collation_manifest.rb`, manifest unit tests, and
 terminal/GitHub/HTML coordinators, `lib/branchproof.rb`, signatures, and their
 focused tests.
 
-- [ ] Add RED command tests for `collate REPORT... [--manifest PATH]
+- [x] Add RED command tests for `collate REPORT... [--manifest PATH]
   [--format terminal|json|github|html] [--output PATH]`, default JSON. Reject
   unknown/missing arguments and require at least one supplied report.
-- [ ] Resolve manifest report paths relative to its directory; validate exact
+- [x] Resolve manifest report paths relative to its directory; validate exact
   shape, nonempty IDs/paths, duplicate IDs/paths, undeclared inputs, missing
   declared artifacts, aliases, and artifact reuse across declared IDs.
-- [ ] Protect all inputs plus manifest from output collisions before writing;
+- [x] Protect all inputs plus manifest from output collisions before writing;
   use existing `output_report` atomic replacement. Read only supplied reports
   and pass wrappers/expected IDs to Collation. Preserve code 2 for malformed,
   incompatible, unknown, or incomplete collections.
-- [ ] Add shared collation summary lines and reuse them in each renderer with
+- [x] Add shared collation summary lines and reuse them in each renderer with
   its existing escaping, including focused/summary views and GitHub summaries.
-- [ ] Generate actual Minitest and RSpec shard reports from serial selections,
+- [x] Generate actual Minitest and RSpec shard reports from serial selections,
   collate them, and compare normalized coverage/ownership with a full run.
   Delete project sources/tests before collating. Test cross-shard MC/DC,
   filtering, repeated tests, failure/missing inputs, JSON/HTML saved roundtrip,
   comparison, policy overrides, output collision and preservation on failure.
-- [ ] Run focused CLI/rendering/acceptance checks and lint; resolve independent
+- [x] Run focused CLI/rendering/acceptance checks and lint; resolve independent
   spec then quality reviews.
 
 ## Task 3: Documentation and delivery
 
-- [ ] Document command, manifest example, default incomplete behavior, duplicate
+- [x] Document command, manifest example, default incomplete behavior, duplicate
   and repeated-test counting, compatibility requirements, schema 1.7 reader
   requirements, and serial-only scope in README/CHANGELOG. Regenerate docs.
 - [ ] Run full `bundle exec rake`, RBS validation with temporary Rake signature
