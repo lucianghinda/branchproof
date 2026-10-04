@@ -10,6 +10,9 @@ require "branchproof/instrumenter"
 require "branchproof/source"
 require "branchproof/evidence"
 require "branchproof/limits"
+require "json"
+require "open3"
+require "rbconfig"
 
 class TestExceptionCoverage < Minitest::Test
   class SourceHarness
@@ -265,6 +268,230 @@ class TestExceptionCoverage < Minitest::Test
                     instrumented_object.else_return(false), instrumented_object.else_return(true),
                     instrumented_object.handler_return]
     assert_equal native, instrumented
+  end
+
+  def test_method_rescue_with_early_return_rewrites_under_branch_coverage
+    source = <<~RUBY
+      class CoverageFixture
+        def call(active, error, events)
+          return :active if active
+          events << :work
+          raise error if error
+          :normal
+        rescue IOError => exception
+          events << :handled
+          [:handled, exception.message]
+        ensure
+          events << :ensure
+        end
+
+        def block_next
+          begin
+            [1].each { next }
+          rescue StandardError
+            :rescued
+          end
+        end
+
+        def block_break
+          begin
+            [1].each { break :broken }
+          rescue StandardError
+            :rescued
+          end
+        end
+
+        def block_redo
+          attempts = 0
+          begin
+            [1].each do
+              attempts += 1
+              redo if attempts == 1
+            end
+          rescue StandardError
+            :rescued
+          end
+        end
+
+        def nested_scopes
+          begin
+            -> do
+              def nested_method
+                return :method_return
+              end
+              return :lambda_return
+            end
+          rescue StandardError
+            :rescued
+          end
+        end
+
+        def nonlocal_return
+          begin
+            [1].each { return :returned }
+          rescue StandardError
+            :rescued
+          end
+        end
+
+        def conditional_return(active)
+          begin
+            return :returned if active
+            :normal
+          rescue StandardError
+            :rescued
+          end
+        end
+
+        def final_return_if(active)
+          begin
+            if active
+              return :returned
+            else
+              :normal
+            end
+          rescue StandardError
+            # __EXCEPTION_LOCAL_COLLISION__
+            :rescued
+          end
+        end
+
+        def final_postfix_return_if(active)
+          begin
+            return :returned if active
+          rescue StandardError
+            :rescued
+          end
+        end
+      end
+    RUBY
+    collision_offset = source.index("begin", source.index("def final_return_if"))
+    collision_local = "__branchproof_exception_value_#{collision_offset}"
+    collision_local_with_suffix = "#{collision_local}_"
+    source = source.sub("__EXCEPTION_LOCAL_COLLISION__", collision_local)
+    Dir.mktmpdir("branchproof-coverage-rescue") do |directory|
+      path = File.join(directory, "fixture.rb")
+      File.write(path, source)
+      script = <<~RUBY
+        require "coverage"
+        Coverage.start(lines: true, branches: true)
+        $LOAD_PATH.unshift #{File.expand_path("../lib", __dir__).inspect}
+        require "branchproof"
+
+        path = ARGV.fetch(0)
+        source = File.binread(path)
+        RubyVM::InstructionSequence.compile(source, path)
+        inventory = Branchproof::Source.new(root: File.dirname(path), limits: Branchproof::Limits.default)
+                                        .inventory(paths: [path])
+        unit = inventory.fetch(:source_units).fetch(0)
+        result = Branchproof::Instrumenter.new.rewrite(unit: unit)
+        report = { changed: result.fetch(:changed), diagnostics: result.fetch(:diagnostics) }
+        report[:collision_local_generated] = result.fetch(:bytes).include?(#{collision_local_with_suffix.inspect})
+        if result.fetch(:diagnostics).empty?
+          RubyVM::InstructionSequence.compile(result.fetch(:bytes), path)
+          report[:instrumented_compiles] = true
+          eval(source, TOPLEVEL_BINDING, path, 1)
+          native_active_events = []
+          report[:native_active] = [CoverageFixture.new.call(true, nil, native_active_events), native_active_events]
+          error = RuntimeError.new("unhandled")
+          begin
+            CoverageFixture.new.call(false, error, [])
+          rescue RuntimeError => raised
+            report[:native_backtrace] = raised.backtrace
+          end
+          evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
+                                               run_id: "card417-coverage")
+          Branchproof::Runtime.boot(evidence: evidence)
+          eval(result.fetch(:bytes), TOPLEVEL_BINDING, path, 1)
+          Branchproof::Runtime.context(test_id: "test-card417", phase: "body")
+          active_events = []
+          report[:active] = [CoverageFixture.new.call(true, nil, active_events), active_events]
+          events = []
+          report[:normal] = [CoverageFixture.new.call(false, nil, events), events]
+          events = []
+          report[:handled] = [CoverageFixture.new.call(false, IOError.new("handled"), events), events]
+          error = RuntimeError.new("unhandled")
+          begin
+            CoverageFixture.new.call(false, error, [])
+          rescue RuntimeError => raised
+            report[:unhandled] = [raised.equal?(error), raised.message, raised.backtrace]
+          end
+          report[:block_next] = CoverageFixture.new.block_next
+          report[:block_break] = CoverageFixture.new.block_break
+          report[:block_redo] = CoverageFixture.new.block_redo
+          report[:nested_lambda] = CoverageFixture.new.nested_scopes.call
+          report[:nested_method] = CoverageFixture.new.nested_method
+          report[:nonlocal_return] = CoverageFixture.new.nonlocal_return
+          report[:conditional_return] = [CoverageFixture.new.conditional_return(true),
+                                         CoverageFixture.new.conditional_return(false)]
+          report[:final_return_if] = [CoverageFixture.new.final_return_if(true),
+                                      CoverageFixture.new.final_return_if(false)]
+          report[:final_postfix_return_if] = [CoverageFixture.new.final_postfix_return_if(true),
+                                              CoverageFixture.new.final_postfix_return_if(false)]
+          state = Thread.current[Branchproof::Runtime::FRAME_STATE_KEY]
+          report[:frames_clean] = state.nil? || state.fetch(:frames).empty?
+          snapshot = evidence.snapshot
+          report[:diagnostics] = snapshot.fetch(:diagnostics)
+          report[:normal_paths] = snapshot.fetch(:vectors).count do |vector|
+            vector[:values] == [true, nil, nil]
+          end
+          report[:normal_attribution] = snapshot.fetch(:vectors).select do |vector|
+            vector[:values] == [true, nil, nil]
+          end.map { |vector| [vector[:test_ids], vector[:phases_by_test]] }
+          report[:aborts] = snapshot.fetch(:abort_counts).values.sum
+          report[:final_transfer_aborts] = %w[final_return_if final_postfix_return_if].map do |method_name|
+            method_start = source.index("def \#{method_name}")
+            body_start = source.index("begin", method_start)
+            decision = inventory.fetch(:decisions).find do |candidate|
+              candidate[:kind] == "exception" && candidate[:byte_start] == body_start
+            end
+            snapshot.fetch(:abort_counts).fetch(decision.fetch(:id), 0)
+          end
+          exception_id = inventory.fetch(:decisions).find { |decision| decision[:kind] == "exception" }.fetch(:id)
+          report[:exception_vectors] = evidence.snapshot.fetch(:vectors).select do |vector|
+            vector[:decision_id] == exception_id
+          end.map do |vector|
+            [vector[:values], vector[:test_ids], vector[:phases_by_test]]
+          end
+          Branchproof::Runtime.context(test_id: nil, phase: "unattributed")
+        end
+        puts JSON.generate(report)
+      RUBY
+      output, error, status = Open3.capture3(RbConfig.ruby, "-I", File.expand_path("../lib", __dir__), "-e", script, path)
+
+      assert status.success?, error
+      report = JSON.parse(output.lines.last)
+      assert report.fetch("changed"), report.inspect
+      assert report.fetch("collision_local_generated"), report.inspect
+      assert_empty report.fetch("diagnostics"), report.inspect
+      assert report.fetch("instrumented_compiles"), report.inspect
+      assert_equal report.fetch("native_active"), report.fetch("active")
+      assert_equal ["normal", %w[work ensure]], report.fetch("normal")
+      assert_equal [%w[handled handled], %w[work handled ensure]], report.fetch("handled")
+      assert_equal true, report.fetch("unhandled").first
+      assert_equal "unhandled", report.fetch("unhandled")[1]
+      assert_equal report.fetch("native_backtrace").first, report.fetch("unhandled")[2].first
+      assert_equal [1], report.fetch("block_next")
+      assert_equal "broken", report.fetch("block_break")
+      assert_equal [1], report.fetch("block_redo")
+      assert_equal "method_return", report.fetch("nested_method")
+      assert_equal "lambda_return", report.fetch("nested_lambda")
+      assert_equal "returned", report.fetch("nonlocal_return")
+      assert_equal %w[returned normal], report.fetch("conditional_return")
+      assert_equal %w[returned normal], report.fetch("final_return_if")
+      assert_equal ["returned", nil], report.fetch("final_postfix_return_if")
+      assert_equal 8, report.fetch("normal_paths")
+      assert_equal Array.new(8) { [["test-card417"], { "test-card417" => ["body"] }] },
+                   report.fetch("normal_attribution")
+      assert_equal 5, report.fetch("aborts")
+      assert_equal [1, 1], report.fetch("final_transfer_aborts")
+      assert report.fetch("frames_clean")
+      assert_equal [[[true, nil, nil], ["test-card417"], { "test-card417" => ["body"] }],
+                    [[false, true, nil], ["test-card417"], { "test-card417" => ["body"] }],
+                    [[false, false, true], ["test-card417"], { "test-card417" => ["body"] }]],
+                   report.fetch("exception_vectors")
+      assert_empty report.fetch("diagnostics"), report.inspect
+    end
   end
 
   def test_return_argument_that_raises_does_not_record_normal_path

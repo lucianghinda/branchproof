@@ -41,9 +41,10 @@ module Branchproof
           replacements << { start: transfer.fetch(:insert_at), length: 0,
                             text: "#{runtime}.exception_path(#{identifier}, 0); " }
         end
-      elsif metadata[:normal_body] && metadata[:normal_body][:byte_length].positive?
-        replacements << flow_replacement(bytes, metadata.fetch(:normal_body), nested, encloses) do |body|
-          "#{runtime}.exception_value(#{identifier}, (begin; #{body}; end), 0)"
+      elsif metadata[:normal_value] && metadata[:normal_value][:byte_length].positive?
+        local = metadata.fetch(:normal_value_local)
+        replacements << flow_replacement(bytes, metadata.fetch(:normal_value), nested, encloses) do |value|
+          "begin; #{local} = (#{value}); #{runtime}.exception_value(#{identifier}, #{local}, 0); end"
         end
       end
       metadata.fetch(:clauses).each do |clause|
