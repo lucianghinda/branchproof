@@ -53,7 +53,8 @@ module Branchproof
         type: "exception",
         range: byte_range(node.location),
         normal_insert_at: exception_normal_insert_at(node),
-        normal_body: node.statements && byte_range(node.statements.location),
+        normal_value: exception_normal_value(node.statements),
+        normal_value_local: exception_normal_value_local(node, bytes),
         normal_transfer: exception_transfer_metadata(node.statements),
         implicit: node.begin_keyword_loc.nil?,
         normal_empty: node.begin_keyword_loc.nil? && exception_body_empty?(node),
@@ -135,6 +136,19 @@ module Branchproof
 
     def transfer_node?(node)
       [Prism::ReturnNode, Prism::BreakNode, Prism::NextNode, Prism::RedoNode].any? { |klass| node.is_a?(klass) }
+    end
+
+    def exception_normal_value(statements)
+      value = Array(statements&.body).last
+      return unless value
+
+      byte_range(value.location)
+    end
+
+    def exception_normal_value_local(node, bytes)
+      name = "__branchproof_exception_value_#{node.location.start_offset}"
+      name += "_" while bytes.include?(name)
+      name
     end
 
     def exception_body_empty?(node)
