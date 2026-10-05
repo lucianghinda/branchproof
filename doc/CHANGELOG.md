@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-05
+
+- Fix compilation of instrumented rescue bodies with early returns when Ruby
+  branch coverage is enabled, preserving return values, exception handling,
+  and `ensure` behavior.
 - Combine compatible serial reports with `branchproof collate`, recomputing
   coverage and gates from merged observations. An optional expected-shard
   manifest distinguishes complete collections from missing or unknown inputs;
@@ -62,8 +67,6 @@
   set in the Rakefile. Unset options keep the CLI and `.branchproof.json`
   defaults, and a non-zero CLI exit status fails the Rake process with the
   same status.
-
-## [0.12.0] - 2026-09-29
 
 - Report value-context `||` chains that end in a string, symbol, or numeric
   literal (including interpolated strings and symbols), such as
