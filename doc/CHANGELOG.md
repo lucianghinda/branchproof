@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-05
+
+### Fixed
+
+- Preserve Ruby source encoding when compiling instrumented files. UTF-8 strings without an explicit encoding comment now retain their encoding, preventing emoji comparison failures and incompatible-encoding errors in Rails helpers and views.
+
 ## [0.12.0] - 2026-10-05
 
 - Fix compilation of instrumented rescue bodies with early returns when Ruby

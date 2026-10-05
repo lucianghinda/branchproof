@@ -18,6 +18,43 @@ class TestLoader < Minitest::Test
     end
   end
 
+  {
+    "default_utf8" => "if true then ['📦', __ENCODING__] end\n",
+    "declared_utf8" => "# encoding: UTF-8\nif true then ['📦', __ENCODING__] end\n",
+    "latin1" => "# encoding: ISO-8859-1\nif true then ['café', __ENCODING__] end\n".encode("ISO-8859-1"),
+    "shebang" => "#!/usr/bin/env ruby\n# encoding: ISO-8859-1\nif true then ['café', __ENCODING__] end\n"
+                 .encode("ISO-8859-1"),
+    "bom" => "\uFEFFif true then ['📦', __ENCODING__] end\n"
+  }.each do |name, source|
+    [{}, { frozen_string_literal: true }].each do |options|
+      define_method("test_source_encoding_#{name}_#{options.empty? ? "reused" : "recompiled"}") do
+        Dir.mktmpdir("branchproof-encoding") do |directory|
+          path = File.join(directory, "fixture.rb")
+          File.binwrite(path, source)
+          expected = RubyVM::InstructionSequence.compile_file(path, options).eval
+          inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default)
+                                         .inventory(paths: [path])
+          inventory = inventory.merge(source_units: inventory[:source_units].map do |unit|
+            unit.merge(compile_options: options)
+          end)
+          evidence = Branchproof::Evidence.new(inventory: inventory, limits: Branchproof::Limits.default,
+                                               run_id: "encoding-run")
+          Branchproof::Runtime.boot(evidence: evidence)
+          loader = Branchproof::Loader.new(inventory: inventory, instrumenter: Branchproof::Instrumenter.new)
+          @installed_loader = loader
+          assert_equal "installed", loader.install[:status]
+
+          actual = loader.load_iseq(path).eval
+
+          assert_equal expected, actual
+          assert_equal expected.first.encoding, actual.first.encoding
+          assert_equal expected.first.frozen?, actual.first.frozen?
+          assert_empty loader.diagnostics
+        end
+      end
+    end
+  end
+
   def test_unchanged_sources_explain_absent_and_unsupported_conditions
     { "plain.rb" => ["VALUE = 1\n", "no supported conditions to instrument"],
       "limited.rb" => ["if a && b\n  true\nend\n", "conditions cannot be instrumented: condition_limit_exceeded"],

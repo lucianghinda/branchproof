@@ -40,13 +40,15 @@ module Branchproof
       end
 
       rewritten = apply_edits(bytes, edits)
+      # Edit byte offsets in binary, then compile with Ruby's detected source encoding.
+      rewritten.force_encoding(unit[:encoding] || unit[:original_bytes].encoding)
       begin
         iseq = RubyVM::InstructionSequence.compile(rewritten, unit[:absolute_path] || "(branchproof)",
                                                    unit[:real_path] || unit[:absolute_path] || "(branchproof)", 1)
       rescue SyntaxError => e
         return result(rewritten, diagnostics: [diagnostic("invalid_rewrite", e.message)])
       end
-      result(rewritten.force_encoding(unit[:original_bytes].encoding), changed: edits.any?, iseq: iseq)
+      result(rewritten, changed: edits.any?, iseq: iseq)
     end
 
     private
