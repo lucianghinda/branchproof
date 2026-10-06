@@ -1,0 +1,11 @@
+inherit_from: ../../.rubocop.yml
+
+# Keep the runnable examples identical to the README's teaching example.
+Naming/PredicateMethod:
+  Exclude:
+    - access.rb
+
+Style/Documentation:
+  Exclude:
+    - access_test.rb
+    - suspension_test.rb

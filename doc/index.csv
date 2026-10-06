@@ -1,5 +1,6 @@
 name,type,path
 README.md,File,README.md
+docs/usage.md,File,docs/usage.md
 CHANGELOG.md,File,CHANGELOG.md
 Branchproof,Module,Branchproof.md
 Branchproof.VERSION,Constant,Branchproof.md#constant-VERSION

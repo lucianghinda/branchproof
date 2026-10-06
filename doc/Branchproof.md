@@ -87,3 +87,4 @@ Not documented.
 - [Branchproof/Worker.md](Branchproof/Worker.md)
 - [CHANGELOG.md](CHANGELOG.md)
 - [README.md](README.md)
+- [docs/usage.md](docs/usage.md)
