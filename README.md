@@ -1067,6 +1067,7 @@ applies to the following forms:
 | Standalone `value in pattern` | `boolean` | `pattern_in` |
 | Evaluated pattern guard predicate | `boolean` | `pattern_guard` |
 | Standalone `&&`, `||`, `and`, `or` | `boolean` | `short_circuit` |
+| Value-context `predicate || raise(...)`, `fail(...)`, or a jump | `boolean` | `guard` |
 
 Prism determines precedence. `!` and `not` appear as NOT nodes in the Boolean
 tree; their operands remain the conditions. Short-circuited operands remain
@@ -1078,6 +1079,29 @@ returns true ends the loop. Every predicate evaluation receives an execution
 ID. Repeated equivalent executions aggregate into a vector's `count`, retaining
 the supporting tests. Ternary outcomes likewise describe the predicate, not
 the value returned by the chosen branch.
+
+For a value-context guard such as `storage || raise(ArgumentError, "missing")`
+or `storage || return`, the reported decision is `storage`, with context
+`guard`. Its true outcome skips the right-hand side; its false outcome selects
+it. Evidence is completed before the right-hand side executes, so a test that
+expects the exception or early return contributes the false outcome. Testing
+both paths can prove decision, condition, MC/DC, and decision-table coverage
+without a manual disposition. For `a || b || raise(...)`, the guard predicate
+is `a || b`, so both conditions retain their independent-effect obligations.
+
+Guard coverage proves this branch choice, not the value returned by the entire
+`||` expression or successful completion of the right-hand side. An application
+may redefine `raise` or `fail` to return a value; that does not change what the
+guard measures. Decisions inside the call's arguments remain separate.
+
+This classification recognizes receiverless `raise`/`fail` calls and
+`return`, `break`, `next`, `redo`, and `retry`, optionally inside single-expression
+parentheses. Predicate contexts (`if storage || raise(...)`), keyword `or`,
+explicit receivers (`receiver.raise(...)`), and compound right-hand-side blocks
+keep their existing classification. This does not change how aborted traces
+from arbitrary predicates are counted. Guard decision IDs differ from the old
+whole-expression `short_circuit` IDs; regenerate saved baselines and dispositions
+that reference those IDs when adopting this behavior.
 
 Value decisions remain enabled by default. For each decision, evidence caches
 the most recent successful completed trace, keyed by its observations, outcome,
