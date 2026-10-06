@@ -40,6 +40,12 @@ MC/DC: 50.0% (1/2 conditions proven)
 These are excerpts from the real output for the example below.
 The next test is concrete: **a paid, suspended member must be denied**.
 
+Watch the code, the missing evidence, and the additional test:
+
+![Terminal demo: two passing tests leave suspension unproven; adding a suspended paid member test reaches 100% MC/DC.](https://raw.githubusercontent.com/lucianghinda/branchproof/main/docs/demos/mcdc.gif)
+
+[Replay or edit the VHS tapes](https://github.com/lucianghinda/branchproof/tree/main/docs/demos).
+
 ## Why line and branch coverage miss this
 
 Line coverage tells you which lines ran. Branch coverage tells you which branches ran.
@@ -74,6 +80,13 @@ For the same example, Branchproof reports:
 `T` means truthy, `F` means falsey, and `-` means short-circuited.
 Ruby skips `suspended` when `paid` is false. Those inputs share one execution rule.
 `Result` is the Boolean decision outcome, not the method's returned symbol.
+
+<details>
+<summary>Watch the decision table go from 2/3 to 3/3 covered rules</summary>
+
+![Terminal demo: the paid and suspended rule is missing, then covered by an additional test.](https://raw.githubusercontent.com/lucianghinda/branchproof/main/docs/demos/decision-table.gif)
+
+</details>
 
 Here, one additional test closes both gaps. Larger decisions can distinguish the two criteria:
 MC/DC proves independent effects; decision tables expose untested logical rules.
