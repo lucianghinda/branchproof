@@ -190,6 +190,13 @@ module Branchproof
         next if inventoried_boolean_nodes[node]
         next if within_defined_expression?(node, defined_ranges) && !node.is_a?(Prism::DefinedNode)
 
+        if (predicate = guard_predicate(node))
+          specs << { node: nil, predicate: predicate, context: "guard" }
+          inventoried_boolean_nodes[node] = true
+          mark_semantic_boolean_nodes(predicate, inventoried_boolean_nodes)
+          next
+        end
+
         if fallback_chain?(node)
           fallback_nodes << node
           mark_semantic_boolean_nodes(node, inventoried_boolean_nodes)

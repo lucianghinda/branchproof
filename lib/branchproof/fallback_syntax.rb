@@ -4,6 +4,7 @@ module Branchproof
   # A value-context `||` chain that ends in an always-truthy literal returns
   # the first truthy operand and is never false. It is inventoried as
   # alternatives (which operand supplied the value), not as a Boolean decision.
+  # Terminal guards instead measure the left predicate that selects the RHS.
   module FallbackSyntax
     # A jump never supplies a value, so it cannot be a fallback operand.
     JUMP_NODES = [Prism::ReturnNode, Prism::BreakNode, Prism::NextNode, Prism::RedoNode,
@@ -11,6 +12,19 @@ module Branchproof
     private_constant :JUMP_NODES
 
     private
+
+    def guard_predicate(node)
+      return unless symbolic_or?(node)
+
+      operand = unwrap_predicate(node.right)
+      jump = JUMP_NODES.any? { |type| operand.is_a?(type) }
+      call = operand.is_a?(Prism::CallNode) && operand.receiver.nil? && %i[raise fail].include?(operand.name)
+      return unless jump || call
+
+      # This records RHS selection, not whether the call returns. A custom
+      # `raise` or `fail` may return any value without invalidating this model.
+      unwrap_predicate(node.left)
+    end
 
     def fallback_chain?(node)
       return false unless symbolic_or?(node)

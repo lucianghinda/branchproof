@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+- Measure value-context `||` guards ending in receiverless `raise`/`fail` or a
+  control-flow jump by their left predicate. Both branch choices now contribute
+  coverage before the right-hand side raises or transfers control, without
+  assigning impossible Boolean obligations to the terminal operand. Guard
+  decision IDs change; predicate-context and generic aborted-trace behavior is
+  unchanged.
+
 ## [0.12.1] - 2026-10-05
 
 ### Fixed
