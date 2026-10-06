@@ -1,17 +1,16 @@
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-06
+
+### Fixed
+
+- Preserve Ruby source encoding when compiling instrumented files. UTF-8 strings without an explicit encoding comment now retain their encoding, preventing emoji comparison failures and incompatible-encoding errors in Rails helpers and views.
 - Measure value-context `||` guards ending in receiverless `raise`/`fail` or a
   control-flow jump by their left predicate. Both branch choices now contribute
   coverage before the right-hand side raises or transfers control, without
   assigning impossible Boolean obligations to the terminal operand. Guard
   decision IDs change; predicate-context and generic aborted-trace behavior is
   unchanged.
-
-## [0.12.1] - 2026-10-05
-
-### Fixed
-
-- Preserve Ruby source encoding when compiling instrumented files. UTF-8 strings without an explicit encoding comment now retain their encoding, preventing emoji comparison failures and incompatible-encoding errors in Rails helpers and views.
 
 ## [0.12.0] - 2026-10-05
 
