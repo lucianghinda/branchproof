@@ -19,6 +19,7 @@ class TestPackaging < Minitest::Test
       capture_io { Gem::Package.build(specification, false, true, archive) }
       package = Gem::Package.new(archive)
       %w[branchproof mcdc].each { |name| assert_includes package.contents, "exe/#{name}" }
+      assert_includes package.contents, "doc/docs/usage.md"
       %w[decision_syntax flow_instrumentation runtime_flow decision_table constraints].each do |name|
         assert_includes package.contents, "lib/branchproof/#{name}.rb"
       end
@@ -61,18 +62,23 @@ class TestPackaging < Minitest::Test
     assert_includes readme, "(LICENSE.txt)"
   end
 
-  def test_readme_documents_real_command_surface
+  def test_readme_links_to_the_detailed_command_reference
     readme = File.read(File.join(ROOT, "README.md"))
+    usage = File.read(File.join(ROOT, "docs/usage.md"))
+
+    assert_includes readme, "docs/usage.md"
+    %w[analyze --test --level --minimum].each { |token| assert_includes readme, token }
 
     %w[mcdc analyze --project --level --format --output --limits].each do |token|
-      assert_includes readme, token
+      assert_includes usage, token
     end
-    assert_includes readme, "-- --seed"
-    assert_includes readme, "test/**/*_test.rb"
-    assert_includes readme, "test/**/test_*.rb"
-    assert_includes readme, "DISABLE_BOOTSNAP=1"
-    assert_includes readme, "Rails 8.1"
+    assert_includes usage, "-- --seed"
+    assert_includes usage, "test/**/*_test.rb"
+    assert_includes usage, "test/**/test_*.rb"
+    assert_includes usage, "DISABLE_BOOTSNAP=1"
+    assert_includes usage, "Rails 8.1"
     refute_includes readme, "TODO:"
+    refute_includes usage, "TODO:"
   end
 
   def test_rails_is_not_a_runtime_dependency
