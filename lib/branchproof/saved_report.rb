@@ -1077,7 +1077,8 @@ module Branchproof
         fail_with("run_metadata #{field} must be a string") if metadata.key?(field) &&
                                                                !metadata[field].nil? && !metadata[field].is_a?(String)
       end
-      array_fields = %w[source_patterns test_patterns test_files runner_args selected_test_files selected_example_ids]
+      array_fields = %w[source_patterns test_patterns test_files runner_args selected_test_files
+                        selected_example_ids load_paths]
       array_fields.each do |field|
         if metadata.key?(field) && !strings?(metadata[field])
           fail_with("run_metadata #{field} must be an array of strings")

@@ -36,7 +36,7 @@ module Branchproof
     MODES: Array[String]
     FRAMEWORKS: Array[String]
     RAILS_ENVIRONMENT: record
-    def initialize: (root: String, ?mode: String, ?framework: String) -> void
+    def initialize: (root: String, ?mode: String, ?framework: String, ?includes: Array[String]) -> void
     def to_h: () -> record
   end
 

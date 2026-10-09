@@ -133,6 +133,33 @@ class TestDoctorAcceptance < Minitest::Test
     end
   end
 
+  def test_include_paths_are_resolved_for_doctor_and_cli_paths_override_configuration
+    Dir.mktmpdir("branchproof-doctor-") do |directory|
+      project = File.join(directory, "project")
+      create_project(project)
+      project = File.realpath(project)
+      write(project, ".branchproof.json", JSON.generate(schema_version: 1, include: ["configured/lib"]))
+
+      configured = run_doctor(project, "--format", "json")
+      assert_equal 0, configured.fetch(:status).exitstatus, configured.fetch(:stderr)
+      configured_document = JSON.parse(configured.fetch(:stdout))
+      assert_equal [File.join(project, "lib"), File.join(project, "test"), File.join(project, "configured/lib")],
+                   configured_document.dig("project", "load_paths")
+
+      override = run_doctor(project, "-I", "engine/dummy/lib", "--format", "json")
+      assert_equal 0, override.fetch(:status).exitstatus, override.fetch(:stderr)
+      paths = JSON.parse(override.fetch(:stdout)).dig("project", "load_paths")
+      assert_equal [File.join(project, "lib"), File.join(project, "test"), File.join(project, "engine/dummy/lib")], paths
+
+      terminal = run_doctor(project, "--include", "engine/dummy/lib")
+      assert_includes terminal.fetch(:stdout), "Load paths: #{[File.join(project, "lib"), File.join(project, "test"),
+                                                               File.join(project, "engine/dummy/lib")].join(File::PATH_SEPARATOR)}"
+
+      invalid = run_doctor(project, "--include", "", "--format", "json")
+      assert_blocked_json(invalid, expected_check: "setup")
+    end
+  end
+
   def test_doctor_blocks_empty_selection_ambiguous_framework_and_invalid_rails_layout
     Dir.mktmpdir("branchproof-doctor-") do |directory|
       project = File.join(directory, "project")

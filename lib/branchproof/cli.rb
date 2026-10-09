@@ -104,9 +104,9 @@ module Branchproof
     def help
       @stdout.write(<<~HELP)
         Usage:
-          branchproof doctor [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
+          branchproof doctor [SOURCE_GLOB ...] [--test TEST_GLOB] [--include PATH|-I PATH] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--config PATH|--no-config] [--format terminal|json]
-          branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
+          branchproof analyze [SOURCE_GLOB ...] [--test TEST_GLOB] [--include PATH|-I PATH] [--project auto|ruby|rails] [--framework auto|minitest|rspec]
             [--view decisions|conditions|tests|decision-tables|summary] [--level 1|2|3] [--missing-only] [--minimum CRITERION=THRESHOLD] [--minimum-changed CRITERION=THRESHOLD]
             [--changed-since REF]
             [--focus PATH[:LINE]] [--top N]
@@ -151,7 +151,7 @@ module Branchproof
     end
 
     def doctor_analyze_args(args)
-      allowed_with_value = %w[--test --project --framework --config --format]
+      allowed_with_value = %w[--test --include -I --project --framework --config --format]
       allowed_without_value = ["--no-config"]
       analyze = ["analyze"]
       until args.empty?
@@ -393,6 +393,7 @@ module Branchproof
         seed: value(baseline, :seed), limits: options[:limits], test_locations: locations,
         reachability: options[:reachability]
       }
+      metadata[:load_paths] = Array(value(project_metadata, :load_paths)).map { |path| relative_path(path, root) }
       if options[:configuration]
         metadata[:excluded_files] = Array(options[:excluded_files]).map { |path| relative_path(path, root) }
         metadata[:selected_source_files] = Array(options[:selected_source_files]).map do |path|
@@ -425,10 +426,10 @@ module Branchproof
       delimiter = args.index("--")
       runner_args = delimiter ? args[(delimiter + 1)..] : []
       args = args[0...delimiter] if delimiter
-      options = { level: 3, format: :terminal, output: nil, tests: [], source_paths: [], limits: Limits.default,
+      options = { level: 3, format: :terminal, output: nil, tests: [], includes: [], source_paths: [], limits: Limits.default,
                   runner_args: runner_args, project: nil, missing_only: false, view: :decisions,
                   reachability: true, project_mode: "auto", framework: "auto", explicit_tests: false,
-                  explicit_project: false, explicit_framework: false, explicit_sources: false,
+                  explicit_project: false, explicit_framework: false, explicit_sources: false, explicit_includes: false,
                   config_path: nil, config_disabled: false, minimum_overrides: {}, minimum_changed_overrides: {} }
       until args.empty?
         token = args.shift
@@ -473,6 +474,12 @@ module Branchproof
           raise ArgumentError, "--test requires a glob" if options[:tests].last.nil? || options[:tests].last.empty?
 
           options[:explicit_tests] = true
+        when "--include", "-I"
+          include_path = args.shift
+          raise ArgumentError, "#{token} requires a non-option path" if include_path.to_s.empty? || include_path.start_with?("-")
+
+          options[:includes] << include_path
+          options[:explicit_includes] = true
         when "--framework"
           options[:framework] = args.shift
           raise ArgumentError, "--framework requires auto, minitest, or rspec" if options[:framework].nil? || options[:framework].empty?
@@ -522,6 +529,7 @@ module Branchproof
           options[:tests] = configuration[:tests].dup
           options[:explicit_tests] = true
         end
+        options[:includes] = configuration[:include].dup if !options[:explicit_includes] && configuration.key?(:include)
         options[:exclude] = Array(configuration[:exclude]).dup
         options[:minimum] = configuration.fetch(:minimum, {}).dup.merge(options[:minimum_overrides])
         options[:minimum_changed] = configuration.fetch(:minimum_changed, {}).dup.merge(options[:minimum_changed_overrides])
@@ -534,7 +542,8 @@ module Branchproof
         raise ArgumentError, "--minimum-changed requires --changed-since REF"
       end
 
-      options[:project] = Project.new(root: root, mode: options[:project_mode], framework: options[:framework]).to_h
+      options[:project] = Project.new(root: root, mode: options[:project_mode], framework: options[:framework],
+                                      includes: options[:includes]).to_h
       validate_view!(options)
       validate_selection!(options)
       if options[:missing_only] && (options[:format] != :terminal || options[:level] == 1)
