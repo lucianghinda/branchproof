@@ -635,10 +635,13 @@ module Branchproof
         payload = worker_payload(options, inventory, evidence, directory)
         File.binwrite(config, JSON.generate(normalize(payload)))
         script = "require 'branchproof'; exit(Branchproof::Worker.child_process(ARGV.fetch(0)).to_i)"
-        stderr, child_status = stream_worker(options, script, config)
+        stdout, stderr, child_status = stream_worker(options, script, config)
         unless File.file?(payload[:marker_path]) && File.file?(payload[:result_path])
           return { status: "ERROR", executed_tests: 0, failed_tests: 0, skipped_tests: 0, finalized: false,
-                   diagnostics: [{ code: "worker_incomplete", severity: "error", message: stderr.to_s.strip }] }
+                   diagnostics: [{ code: "worker_incomplete", severity: "error",
+                                   message: worker_failure_summary(stdout, stderr, options[:project][:root],
+                                                                   child_status),
+                                   details: { stderr: stderr, stdout: stdout } }] }
         end
         result = JSON.parse(File.binread(payload[:result_path]))
         result["exit_status"] = child_status.exitstatus
@@ -656,11 +659,11 @@ module Branchproof
     end
 
     def stream_worker(options, script, config)
-      diagnostic_output = +""
       Open3.popen3(options[:project][:environment], RbConfig.ruby, "-I",
                    File.expand_path("..", __dir__), "-e", script, config,
                    chdir: options[:project][:root]) do |input, output, errors, child|
         input.close
+        captured = { output => +"", errors => +"" }
         streams = [output, errors]
         until streams.empty?
           IO.select(streams).first.each do |stream|
@@ -670,13 +673,61 @@ module Branchproof
             elsif chunk != :wait_readable
               @stderr.write(chunk)
               @stderr.flush if @stderr.respond_to?(:flush)
-              diagnostic_output << chunk
-              diagnostic_output = diagnostic_output.byteslice(-16_384, 16_384) if diagnostic_output.bytesize > 16_384
+              tail = captured.fetch(stream)
+              tail << chunk
+              captured[stream] = tail.byteslice(-16_384, 16_384) if tail.bytesize > 16_384
             end
           end
         end
-        [diagnostic_output, child.value]
+        [captured.fetch(output).dup.force_encoding(Encoding::UTF_8).scrub(""),
+         captured.fetch(errors).dup.force_encoding(Encoding::UTF_8).scrub(""), child.value]
       end
+    end
+
+    def worker_failure_summary(stdout, stderr, root, status)
+      output_lines = [stderr, stdout].flat_map { |output| output.to_s.scrub.lines.map(&:strip) }
+      lines = output_lines.reject(&:empty?).grep_v(/\A.+:\d+(?::\d+)?:\s*warning:/)
+      exception = lines.filter_map { |line| worker_exception(line) }.first
+      frame = lines.filter_map do |line|
+        match = line.match(/\A(?:from\s+)?(.+?):(\d+):in .+\z/)
+        next unless match
+
+        path = File.expand_path(match[1], root)
+        next unless path.start_with?("#{File.expand_path(root)}/")
+
+        "#{Pathname.new(path).relative_path_from(Pathname.new(File.expand_path(root)))}:#{match[2]}"
+      end.first
+
+      message = if exception
+                  "#{exception.fetch(:class)}: #{exception.fetch(:message)}"
+                elsif lines.first
+                  lines.first
+                elsif status.signaled?
+                  "worker exited with signal #{Signal.signame(status.termsig)} without completing"
+                else
+                  "worker exited with status #{status.exitstatus} without completing"
+                end
+      message = truncate_worker_message(message, 400)
+      frame = truncate_worker_message(frame, 240) if frame
+      frame ? "#{message}\n  at #{frame}" : message
+    end
+
+    def worker_exception(line)
+      class_match = line.match(/\(([A-Z]\w*(?:::[A-Z]\w*)*)\)\z/)
+      return unless class_match
+
+      prefix = line[0...class_match.begin(0)]
+      location = prefix.match(/\A.+?:\d+:in (?:'[^']*'|`[^']*'): (.*)\z/)
+      message = location && location[1]
+      return unless message
+
+      { class: class_match[1], message: message.strip }
+    end
+
+    def truncate_worker_message(message, limit)
+      characters = message.to_s.each_char
+      truncated = characters.take(limit).join
+      truncated.length < message.to_s.length ? "#{truncated}…" : truncated
     end
 
     def output_report(report, options)

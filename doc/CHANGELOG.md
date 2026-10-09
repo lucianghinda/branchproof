@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Keep worker startup diagnostics concise when warnings precede an exception,
+  while retaining bounded stdout and stderr tails in JSON details.
+
 ## [0.12.1] - 2026-10-06
 
 ### Fixed

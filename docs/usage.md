@@ -273,6 +273,11 @@ examples. These selectors apply to the recorded spec revision. Comparisons
 require matching spec and declaration digests before matching example owners;
 changed specs and older reports without digests are treated conservatively.
 Runner output streams to stderr while JSON reports remain on stdout.
+If the worker exits before completing, the `worker_incomplete` diagnostic
+summarizes its exception and first project frame; JSON keeps the bounded worker
+output tails under `details.stderr` and `details.stdout` for investigation.
+Malformed UTF-8 bytes are dropped from these text fields so the report stays
+valid JSON.
 Pending, skipped, fixed-pending, and failed examples map to the corresponding
 baseline statuses; suite and context lifecycle events remain visible, and
 observations without a test owner are counted as unattributed. The same levels
