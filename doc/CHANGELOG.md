@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+- Clarify that `branchproof doctor` readiness covers static setup checks only.
+  Terminal output and JSON identify application boot, dependency loading, and
+  test execution as unchecked; run `analyze` to verify those runtime steps.
+
 ## [0.12.1] - 2026-10-06
 
 ### Fixed
@@ -38,7 +42,7 @@
 - Add `branchproof doctor` for static setup checks of the Ruby runtime, selected
   test framework metadata, project configuration, and source/test file selection.
   The command reports terminal or JSON results without loading project code or
-  running tests; it exits 2 when setup is blocked. See the README for its
+  running tests; it exits 2 when setup is blocked. See the usage guide for its
   readiness limits and JSON shape.
 - Make Minitest and RSpec application-supplied optional dependencies. Branchproof
   now needs only Prism at runtime; saved reports can be rendered and compared

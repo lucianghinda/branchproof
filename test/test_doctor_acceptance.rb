@@ -34,6 +34,7 @@ class TestDoctorAcceptance < Minitest::Test
         assert_equal 0, result.fetch(:status).exitstatus, result.fetch(:stderr)
         document = JSON.parse(result.fetch(:stdout))
         assert_equal "ready", document.fetch("status")
+        assert_equal ["application boot", "dependency loading", "test execution"], document.fetch("not_checked")
         assert_equal framework, document.dig("framework", "name")
         assert_equal project_kind, document.dig("project", "kind")
       end
@@ -45,6 +46,8 @@ class TestDoctorAcceptance < Minitest::Test
       assert_includes terminal.fetch(:stdout), "Sources: 2 files"
       assert_includes terminal.fetch(:stdout), "Tests: 1 files"
       assert_includes terminal.fetch(:stdout), "Static-only: Static checks only:"
+      assert_includes terminal.fetch(:stdout),
+                      "Not checked: application boot, dependency loading, test execution. Run analyze to verify those."
 
       refute File.exist?(marker), "doctor executed a project source, helper, test, or Rails boot file"
       assert_equal snapshot, tree_snapshot(project), "doctor changed project files or directory contents"

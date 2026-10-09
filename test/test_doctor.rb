@@ -38,6 +38,7 @@ class TestDoctor < Minitest::Test
       assert_equal "minitest", document.dig("framework", "name")
       assert_equal 1, document.dig("selection", "source_count")
       assert_equal 1, document.dig("selection", "test_count")
+      assert_equal ["application boot", "dependency loading", "test execution"], document.fetch("not_checked")
       assert_includes document.fetch("limitations").join(" "), "boot"
     end
   end
@@ -120,6 +121,7 @@ class TestDoctor < Minitest::Test
     assert_empty stderr.string
     document = JSON.parse(stdout.string)
     assert_equal "blocked", document.fetch("status")
+    assert_equal ["application boot", "dependency loading", "test execution"], document.fetch("not_checked")
     assert(document.fetch("checks").any? { |check| check.fetch("status") == "error" })
   end
 
@@ -183,6 +185,8 @@ class TestDoctor < Minitest::Test
       assert_includes stdout.string, "WARNING: Bootsnap already loaded"
       assert_includes stdout.string, "Static-only: Static checks only:"
       assert_includes stdout.string, "application boot"
+      assert_includes stdout.string,
+                      "Not checked: application boot, dependency loading, test execution. Run analyze to verify those."
     ensure
       $LOADED_FEATURES.delete(feature)
     end
