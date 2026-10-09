@@ -7,6 +7,8 @@ require "rbconfig"
 require "tmpdir"
 require "fileutils"
 require "timeout"
+require "branchproof"
+require "branchproof/cli"
 
 class WorkerAcceptanceTest < Minitest::Test
   GEM_ROOT = File.expand_path("..", __dir__)
@@ -96,6 +98,116 @@ class WorkerAcceptanceTest < Minitest::Test
     refute document.dig("baseline", "finalized")
     assert_includes diagnostic_codes(document), "source_drift"
     assert_equal false, document.dig("completeness", "observation")
+  ensure
+    cleanup_project(project)
+  end
+
+  def test_incomplete_worker_summarizes_exception_and_preserves_stderr_tail
+    project = build_project
+    write_file(project, "test/test_helper.rb", <<~RUBY)
+      80.times { warn "#{__FILE__}:1: warning: Bundler warning #{"x" * 80}" }
+      require "pstore/test_helper"
+    RUBY
+    write_test_file(project)
+
+    result = run_project(project)
+    diagnostic = result.fetch(:json).fetch("diagnostics").find { |item| item["code"] == "worker_incomplete" }
+
+    assert_equal 2, result[:status].exitstatus, result[:stderr]
+    assert_match(%r{LoadError.*pstore/test_helper}, diagnostic.fetch("message"))
+    assert_includes diagnostic.fetch("message"), "test/test_helper.rb"
+    refute_includes diagnostic.fetch("message"), "Bundler warning"
+    assert_operator diagnostic.dig("details", "stderr").bytesize, :>, 4_000
+    assert_operator diagnostic.dig("details", "stderr").bytesize, :<=, 16_384
+    assert_includes diagnostic.dig("details", "stderr"), "Bundler warning"
+  ensure
+    cleanup_project(project)
+  end
+
+  def test_incomplete_worker_uses_stdout_when_stderr_contains_only_warnings
+    project = build_project
+    write_file(project, "test/test_helper.rb", <<~RUBY)
+      puts "startup stopped before tests loaded"
+      warn "#{__FILE__}:1: warning: Bundler warning"
+      exit 1
+    RUBY
+    write_test_file(project)
+
+    result = run_project(project)
+    diagnostic = result.fetch(:json).fetch("diagnostics").find { |item| item["code"] == "worker_incomplete" }
+
+    assert_equal 2, result[:status].exitstatus
+    assert_equal "startup stopped before tests loaded", diagnostic.fetch("message")
+    assert_equal "startup stopped before tests loaded\n", diagnostic.dig("details", "stdout")
+    assert_includes diagnostic.dig("details", "stderr"), "Bundler warning"
+  ensure
+    cleanup_project(project)
+  end
+
+  def test_incomplete_worker_keeps_scrubbed_utf8_tail_within_byte_limit
+    project = build_project
+    write_file(project, "test/test_helper.rb", <<~RUBY)
+      STDERR.binmode
+      STDERR.write("z".b + ("é" * 9_000).b + "\\xFF".b + ("x" * 100))
+      exit 1
+    RUBY
+    write_test_file(project)
+
+    result = run_project(project)
+    diagnostic = result.fetch(:json).fetch("diagnostics").find { |item| item["code"] == "worker_incomplete" }
+    stderr = diagnostic.dig("details", "stderr")
+
+    assert_equal 2, result[:status].exitstatus
+    assert_equal result[:json], JSON.parse(result[:stdout])
+    assert_operator stderr.bytesize, :<=, 16_384
+    assert_predicate stderr, :valid_encoding?
+  ensure
+    cleanup_project(project)
+  end
+
+  def test_worker_failure_summary_uses_first_from_prefixed_application_frame
+    Dir.mktmpdir("branchproof project with spaces") do |root|
+      status = Open3.capture3(RbConfig.ruby, "-e", "exit 2").last
+      stderr = <<~ERROR
+        /ruby/lib/bundled_gems.rb:60:in 'Demo::Boot.start': cannot load pstore: expected bundled helper: got missing file (LoadError)
+        \tfrom #{root}/test/test_helper.rb:2:in 'require'
+      ERROR
+      cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+
+      summary = cli.send(:worker_failure_summary, "", stderr, root, status)
+
+      assert_equal "LoadError: cannot load pstore: expected bundled helper: got missing file\n  at test/test_helper.rb:2",
+                   summary
+    end
+  end
+
+  def test_worker_failure_summary_does_not_treat_parenthetical_log_as_exception
+    Dir.mktmpdir do |root|
+      status = Open3.capture3(RbConfig.ruby, "-e", "exit 2").last
+      stderr = "#{root}/test/test_helper.rb:8: Cache warming complete (RuntimeError)\n"
+      cli = Branchproof::CLI.new(stdout: StringIO.new, stderr: StringIO.new)
+
+      summary = cli.send(:worker_failure_summary, "", stderr, root, status)
+
+      assert_equal stderr.strip, summary
+    end
+  end
+
+  def test_incomplete_worker_reports_signal_exit_when_no_output_exists
+    project = build_project
+    write_file(project, "test/test_helper.rb", <<~RUBY)
+      Process.kill("TERM", Process.pid)
+      sleep
+    RUBY
+    write_test_file(project)
+
+    result = run_project(project)
+    diagnostic = result.fetch(:json).fetch("diagnostics").find { |item| item["code"] == "worker_incomplete" }
+
+    assert_equal 2, result[:status].exitstatus
+    assert_equal "worker exited with signal TERM without completing", diagnostic.fetch("message")
+    assert_equal "", diagnostic.dig("details", "stderr")
+    assert_equal "", diagnostic.dig("details", "stdout")
   ensure
     cleanup_project(project)
   end
