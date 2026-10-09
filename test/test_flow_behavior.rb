@@ -7,6 +7,23 @@ require "rbconfig"
 require "tempfile"
 
 class TestFlowBehavior < Minitest::Test
+  class HeredocPresence
+    def initialize(value) = (@value = value)
+
+    def presence = @value.to_s.empty? ? nil : @value
+  end
+
+  class HeredocSpeakerNames < Array
+    def map(&) = self.class.new(super)
+    def join(separator) = HeredocPresence.new(super)
+  end
+
+  class HeredocSpeakers < Array
+    def map(&) = HeredocSpeakerNames.new(super)
+  end
+
+  HeredocTalk = Struct.new(:description, :summary, :speakers)
+
   def test_case_keeps_native_matching_order_and_distinguishes_candidates
     source = <<~APP
       def self.exercise(value)
@@ -363,6 +380,45 @@ class TestFlowBehavior < Minitest::Test
     values = evidence[:vectors].select { |vector| vector[:decision_id] == decision[:id] }.map { |v| v[:values] }
 
     assert_equal([[true, false], [false, true]], values.sort_by { |pair| pair.index(true) })
+  end
+
+  def test_heredoc_fallbacks_and_enclosing_iteration_produce_coverage_rows
+    source = <<~'APP'
+      def self.exercise(talks)
+        talks.map do |talk|
+          <<~"TALK"
+            #{talk.description.presence || "N/A"}
+            #{talk.summary.presence || "N/A"}
+            #{talk.speakers.map(&:name).join(", ").presence || "N/A"}
+          TALK
+        end
+      end
+    APP
+    empty = HeredocTalk.new(HeredocPresence.new(nil), HeredocPresence.new("Summary"), HeredocSpeakers.new)
+    full = HeredocTalk.new(HeredocPresence.new("Description"), HeredocPresence.new(nil),
+                           HeredocSpeakers.new([Struct.new(:name).new("Ada")]))
+    inventory, evidence = compare(source, [[], [empty], [full]])
+
+    fallbacks = inventory[:decisions].select { |decision| decision[:context] == "fallback" }
+    iteration = inventory[:decisions].find { |decision| decision[:context] == "iteration" }
+    assert_equal 3, fallbacks.length
+    assert_equal "SUPPORTED", iteration[:support_status]
+
+    fallbacks.each do |fallback|
+      vectors = evidence[:vectors].select { |vector| vector[:decision_id] == fallback[:id] }
+      assert_equal([[false, true], [true, false]],
+                   vectors.map { |vector| vector[:values] }.sort_by { |values| values.map(&:to_s) })
+      analysis = Branchproof::Analyzer.new(inventory: inventory, evidence: evidence,
+                                           limits: Branchproof::Limits.default).call
+      row = analysis[:decisions].find { |decision| decision[:decision_id] == fallback[:id] }
+      assert_equal "covered", row.dig(:coverage, :alternative, :status)
+      assert(row.dig(:coverage, :alternative, :alternatives).all? { |alternative| alternative[:selected][:observed] })
+    end
+
+    iteration_row = Branchproof::Analyzer.new(inventory: inventory, evidence: evidence,
+                                              limits: Branchproof::Limits.default).call[:decisions]
+                                         .find { |decision| decision[:decision_id] == iteration[:id] }
+    assert_equal "covered", iteration_row.dig(:coverage, :alternative, :status)
   end
 
   def test_chain_with_a_jump_operand_stays_short_circuit_and_rewrites_safely

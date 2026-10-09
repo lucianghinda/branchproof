@@ -51,10 +51,10 @@ module Branchproof
       decisions = units.flat_map { |unit| unit[:decisions] }
                        .sort_by { |decision| [decision[:source_id], decision[:byte_start]] }
       diagnostics = units.flat_map { |unit| unit[:diagnostics] }
+      units_by_source_id = units.to_h { |unit| [unit[:source_id], unit] }
       diagnostics += decisions.flat_map do |decision|
         decision[:support_reasons].map do |reason|
-          Records.diagnostic(code: reason, message: "Unsupported source syntax: #{reason}",
-                             source_id: decision[:source_id], decision_id: decision[:id])
+          support_diagnostic(decision, reason, units_by_source_id[decision[:source_id]])
         end
       end
       supported = decisions.count { |decision| decision[:support_status] == "SUPPORTED" }
@@ -68,6 +68,25 @@ module Branchproof
     end
 
     private
+
+    def support_diagnostic(decision, reason, unit)
+      unless reason == "unsupported_heredoc"
+        return Records.diagnostic(code: reason, message: "Unsupported source syntax: #{reason}",
+                                  source_id: decision[:source_id], decision_id: decision[:id])
+      end
+
+      path = unit && (unit[:relative_path] || unit[:absolute_path])
+      line = decision[:line]
+      column = decision[:column].is_a?(Integer) ? decision[:column] + 1 : nil
+      construct = decision[:expression].to_s.lines.first.to_s.strip
+      location = [path, line, column].compact.join(":")
+      message = "Unsupported source syntax: unsupported_heredoc"
+      message += " at #{location} (heredoc predicate #{construct})" unless location.empty?
+      details = { path: path, line: line, column: column, construct: construct,
+                  byte_start: decision[:byte_start] }.compact
+      Records.diagnostic(code: reason, message: message, source_id: decision[:source_id],
+                         decision_id: decision[:id], details: details)
+    end
 
     def expand(path)
       pattern = File.expand_path(path.to_s, @root)
