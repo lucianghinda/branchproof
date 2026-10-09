@@ -12,6 +12,7 @@ module Branchproof
       "A discovered test file may contain no executable tests; runtime loader conflicts and application behavior " \
       "remain unverified."
     ].freeze
+    NOT_CHECKED = ["application boot", "dependency loading", "test execution"].freeze
     FRAMEWORK_GEMS = {
       "minitest" => { name: "minitest", requirement: Gem::Requirement.new(">= 5.25.5", "< 7") },
       "rspec" => { name: "rspec-core", requirement: Gem::Requirement.new("~> 3.13.0") }
@@ -44,7 +45,7 @@ module Branchproof
 
     ERROR_DOCUMENT = {
       schema_version: 1, command: "doctor", status: "blocked", project: nil, configuration: nil,
-      selection: nil, framework: nil, limitations: LIMITATIONS
+      selection: nil, framework: nil, limitations: LIMITATIONS, not_checked: NOT_CHECKED
     }.freeze
 
     private
@@ -63,7 +64,7 @@ module Branchproof
         runtime: { engine: @runtime_engine, version: @runtime_version }, project: @options[:project],
         configuration: configuration_info(@options[:configuration], @options),
         selection: selection_info(source_files, test_files), framework: framework,
-        checks: checks, limitations: LIMITATIONS
+        checks: checks, limitations: LIMITATIONS, not_checked: NOT_CHECKED
       }
     end
 
@@ -190,6 +191,7 @@ module Branchproof
       def render
         lines = header_lines
         lines.concat(project_lines, configuration_lines, selection_lines, check_lines, limitation_lines)
+        lines << not_checked_line
         "#{lines.join("\n")}\n"
       end
 
@@ -235,6 +237,10 @@ module Branchproof
 
       def limitation_lines
         @document[:limitations].map { |limitation| "Static-only: #{limitation}" }
+      end
+
+      def not_checked_line
+        "Not checked: #{@document.fetch(:not_checked).join(", ")}. Run analyze to verify those."
       end
     end
   end

@@ -70,10 +70,13 @@ fixture test files; an explicit `--test` glob selects those files when requested
 `--help` prints usage without inspecting the project.
 
 Doctor exits 0 when its static checks pass, including warning-only results, and
-2 when setup is blocked or the command is invalid. JSON is one document with
+2 when setup is blocked or the command is invalid. `ready` means the static
+setup checks passed; it does not promise that `analyze` can boot the application
+or run its tests. JSON is one document with
 `schema_version: 1`, `command: "doctor"`, a `ready` or `blocked` status,
 `runtime`, resolved `project` and `configuration`, `selection`, selected
-`framework` metadata, `checks`, and `limitations`. Each check has a stable code,
+`framework` metadata, `checks`, `limitations`, and `not_checked`, an array with
+`application boot`, `dependency loading`, and `test execution`. Each check has a stable code,
 `pass`, `warning`, or `error` status, and a message. Add `--format json` to get
 this document on both successful and blocked checks, including configuration
 and argument errors.
@@ -84,14 +87,17 @@ current RubyGems environment but has not been activated. Doctor checks only the
 selected framework, using Minitest `>= 5.25.5, < 7` or `rspec-core ~> 3.13.0`.
 Discoverable metadata does not prove that a framework can load successfully.
 
-Doctor is a static readiness check. It does not load source, helpers, tests,
-framework code, or Rails; run a test runner; or inspect Ruby syntax. A ready
-result does not verify Rails boot, actual framework test discovery, runner
-compatibility, instrumentation, coverage, or whether a selected file contains
-executable tests. It warns about Spring or Bootsnap only when already visible in
-loaded features. Configured coverage minima are shown but not evaluated. As with
-other Branchproof commands, Branchproof itself must load successfully, including
-its supported Ruby runtime and core dependencies.
+Doctor is a static setup check. Terminal output explicitly says:
+> Not checked: application boot, dependency loading, test execution. Run analyze to verify those.
+
+It does not load source, helpers, tests, framework code, or Rails; run a test
+runner; or inspect Ruby syntax. A ready result does not verify
+Rails boot, actual framework test discovery, runner compatibility,
+instrumentation, coverage, or whether a selected file contains executable
+tests. It warns about Spring or Bootsnap only when already visible in loaded
+features. Configured coverage minima are shown but not evaluated. As with other
+Branchproof commands, Branchproof itself must load successfully, including its
+supported Ruby runtime and core dependencies.
 
 ## Analyze a test run
 
