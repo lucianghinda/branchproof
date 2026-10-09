@@ -45,6 +45,21 @@ class TestConfiguration < Minitest::Test
     end
   end
 
+  def test_loads_include_paths_and_rejects_invalid_values
+    Dir.mktmpdir do |root|
+      path = File.join(root, ".branchproof.json")
+      File.write(path, JSON.generate(schema_version: 1, include: ["test/dummy/lib"]))
+
+      assert_equal ["test/dummy/lib"], Branchproof::Configuration.load(path: path, root: root).fetch(:include)
+
+      [[], [""], [1], "test/dummy/lib"].each do |includes|
+        File.write(path, JSON.generate(schema_version: 1, include: includes))
+        error = assert_raises(ArgumentError) { Branchproof::Configuration.load(path: path, root: root) }
+        assert_includes error.message, "include"
+      end
+    end
+  end
+
   def test_missing_default_configuration_is_absent_but_missing_explicit_configuration_is_an_error
     Dir.mktmpdir do |root|
       assert_nil Branchproof::Configuration.load(path: File.join(root, ".branchproof.json"), root: root)

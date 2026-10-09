@@ -10,7 +10,7 @@ module Branchproof
     PROJECTS = %w[auto ruby rails].freeze
     FRAMEWORKS = %w[auto minitest rspec].freeze
     MINIMUM_CRITERIA = CoveragePolicy::CRITERIA.keys.freeze
-    FIELDS = %w[schema_version project framework sources tests exclude minimum minimum_changed].freeze
+    FIELDS = %w[schema_version project framework sources tests include exclude minimum minimum_changed].freeze
 
     class << self
       def load(path:, root:, explicit: false, disabled: false)
@@ -74,7 +74,7 @@ module Branchproof
       def validate_values!(payload)
         validate_enum(payload, "project", PROJECTS)
         validate_enum(payload, "framework", FRAMEWORKS)
-        %w[sources tests].each { |field| validate_nonempty_strings(payload, field) if payload.key?(field) }
+        %w[sources tests include].each { |field| validate_nonempty_strings(payload, field) if payload.key?(field) }
         validate_strings(payload, "exclude") if payload.key?("exclude")
         validate_minimum(payload["minimum"]) if payload.key?("minimum")
         validate_minimum_changed(payload["minimum_changed"]) if payload.key?("minimum_changed")

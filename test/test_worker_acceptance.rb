@@ -100,6 +100,40 @@ class WorkerAcceptanceTest < Minitest::Test
     cleanup_project(project)
   end
 
+  def test_include_path_loads_engine_dummy_helper_and_is_saved_in_run_metadata
+    project = build_project
+    write_file(project, "test/dummy/lib/dummy.rb", "module Dummy; end\n")
+    write_file(project, "test/dummy/test/test_helper.rb", "require \"dummy\"\nrequire \"minitest/autorun\"\n")
+    write_file(project, "test/dummy/test/dummy_test.rb", <<~RUBY)
+      require "test_helper"
+
+      class DummyTest < Minitest::Test
+        def test_helper_loaded
+          assert_equal Module, Dummy.class
+        end
+      end
+    RUBY
+    write_file(project, ".branchproof.json", JSON.generate(schema_version: 1, include: ["test/dummy/lib", "test/dummy/test"]))
+    args = ["analyze", project.fetch(:source), "--format", "json", "--test", "test/dummy/test/dummy_test.rb"]
+    stdout, stderr, status = Open3.capture3({ "MT_NO_PLUGINS" => "1" }, RbConfig.ruby, EXECUTABLE, *args,
+                                            chdir: project.fetch(:root))
+    document = JSON.parse(stdout)
+
+    assert_equal 0, status.exitstatus, stderr
+    assert_equal "PASSED", document.dig("baseline", "status")
+    assert_equal ["lib", "test", "test/dummy/lib", "test/dummy/test"], document.dig("run_metadata", "load_paths")
+
+    write_file(project, ".branchproof.json", JSON.generate(schema_version: 1, include: ["missing/path"]))
+    args.push("-I", "test/dummy/lib", "--include", "test/dummy/test")
+    stdout, stderr, status = Open3.capture3({ "MT_NO_PLUGINS" => "1" }, RbConfig.ruby, EXECUTABLE, *args,
+                                            chdir: project.fetch(:root))
+    document = JSON.parse(stdout)
+    assert_equal 0, status.exitstatus, stderr
+    assert_equal ["lib", "test", "test/dummy/lib", "test/dummy/test"], document.dig("run_metadata", "load_paths")
+  ensure
+    cleanup_project(project)
+  end
+
   private
 
   def build_project
