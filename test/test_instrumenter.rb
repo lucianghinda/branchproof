@@ -150,6 +150,136 @@ class TestInstrumenter < Minitest::Test
     end
   end
 
+  def test_heredoc_iteration_receivers_remain_unsupported
+    Dir.mktmpdir("branchproof-heredoc-receiver") do |directory|
+      path = File.join(directory, "receiver.rb")
+      source = <<~'RUBY'
+        def render
+          <<~TEXT.lines.map do |line|
+            #{line || "N/A"}
+          TEXT
+          end
+        end
+      RUBY
+      File.binwrite(path, source)
+      inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
+      iteration = inventory[:decisions].find { |decision| decision[:context] == "iteration" }
+
+      assert_equal "UNSUPPORTED", iteration[:support_status]
+      assert_includes iteration[:support_reasons], "unsupported_heredoc"
+    end
+  end
+
+  def test_interpolated_heredoc_instrumentation_preserves_crlf_bytes
+    Dir.mktmpdir("branchproof-heredoc-crlf") do |directory|
+      path = File.join(directory, "crlf.rb")
+      source = ["def render(values)", "  values.map do |value|", "    <<~\"TEXT\"",
+                "      \#{value || \"N/A\"}", "    TEXT", "  end", "end", ""].join("\r\n")
+      File.binwrite(path, source)
+      inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
+      rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
+
+      assert rewritten[:changed], rewritten.inspect
+      assert_empty rewritten[:diagnostics]
+      assert_equal source.count("\r\n"), rewritten[:bytes].count("\r\n")
+      assert_equal source.count("\n"), rewritten[:bytes].count("\n")
+    end
+  end
+
+  def test_instruments_fallbacks_inside_an_interpolated_heredoc_and_its_iteration
+    Dir.mktmpdir("branchproof-heredoc-interpolation") do |directory|
+      path = File.join(directory, "heredoc.rb")
+      source = <<~'RUBY'
+                class String
+                  def presence = { "" => nil }.fetch(self, self)
+                end
+                class NilClass
+                  def presence = nil
+                end
+                Speaker = Struct.new(:name)
+                Talk = Struct.new(:description, :summary, :speakers)
+                def render(talks)
+                  talks.map do |talk|
+                    <<~"TALK"
+                      #{talk.description.presence || "N/A"}
+                      #{talk.summary.presence || "N/A"}
+                      #{talk.speakers.map(&:name).join(", ").presence || "N/A"}
+                    TALK
+                  end
+                end
+                def render_plain(talks)
+                  talks.map do |talk|
+                    <<TEXT
+                      #{talk.description.presence || "N/A"}
+        TEXT
+                  end
+                end
+                def render_raw(talks)
+                  talks.map do |_talk|
+                    <<'RAW'
+                      #{never || "N/A"}
+        RAW
+                  end
+                end
+                def render_chained(talks)
+                  talks.map do |talk|
+                    <<~"CHAIN".strip
+                      #{talk.description.presence || "N/A"}
+                    CHAIN
+                  end
+                end
+      RUBY
+      File.binwrite(path, source)
+      inventory = Branchproof::Source.new(root: directory, limits: Branchproof::Limits.default).inventory(paths: [path])
+      decisions = inventory[:decisions]
+      heredoc_end = source.index("def render_plain")
+      fallbacks = decisions.select do |decision|
+        decision[:context] == "fallback" && decision[:byte_start] < heredoc_end
+      end
+      iteration = decisions.find { |decision| decision[:context] == "iteration" }
+
+      assert_equal 3, fallbacks.length
+      assert(fallbacks.all? { |decision| decision[:support_status] == "SUPPORTED" }, fallbacks.inspect)
+      assert_equal "SUPPORTED", iteration[:support_status]
+
+      rewritten = Branchproof::Instrumenter.new.rewrite(unit: inventory[:source_units].first)
+      assert rewritten[:changed], rewritten.inspect
+      assert_empty rewritten[:diagnostics]
+      assert_equal source.count("\n"), rewritten[:bytes].count("\n")
+
+      harness = <<~RUBY
+        module Branchproof
+          module Runtime
+            def self.enter(*) = nil
+            def self.condition(_, _, value) = value
+            def self.finish(_, value) = value
+            def self.leave(*) = nil
+            def self.flow_iteration_begin(_, value, *) = value
+            def self.flow_iteration_finish(_, value, *) = value
+            def self.flow_iteration_leave(*) = nil
+            def self.flow_iteration_callback(*) = nil
+            def self.set_alternative_count(*) = nil
+            def self.value_path(_, value, *) = value
+            def self.flow_finish(_, value, *) = value
+            def self.fallback_operand(_, _, _, value) = value
+          end
+        end
+        load ARGV.fetch(0)
+        talks = [Talk.new(nil, "Summary", [Speaker.new("Ada"), Speaker.new("Lin")]),
+                 Talk.new("Description", nil, [])]
+        p [render(talks), render_plain(talks), render_raw(talks), render_chained(talks)]
+      RUBY
+      original = run_fixture_output(harness, path, source)
+      instrumented = run_fixture_output(harness, path, rewritten[:bytes])
+      assert_equal original, instrumented
+      assert_equal [["N/A\nSummary\nAda, Lin\n", "Description\nN/A\nN/A\n"],
+                    ["              N/A\n", "              Description\n"],
+                    ["              \#{never || \"N/A\"}\n", "              \#{never || \"N/A\"}\n"],
+                    ["N/A", "Description"]].inspect,
+                   original.strip
+    end
+  end
+
   def test_control_transfers_leave_clean_following_evaluations
     Dir.mktmpdir("branchproof-transfers") do |directory|
       path = File.join(directory, "transfers.rb")

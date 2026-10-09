@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "tmpdir"
+require "branchproof/analyzer"
 
 class TestSource < Minitest::Test
   def test_inventory_finds_ordered_if_elsif_unless_and_modifiers
@@ -211,6 +212,27 @@ class TestSource < Minitest::Test
       assert(decisions.all? { |d| d[:support_status] == "UNSUPPORTED" })
       refute(decisions.any? { |d| d[:support_reasons].include?("unsupported_keyword_boolean") })
       assert(decisions.any? { |d| d[:support_reasons].include?("unsupported_data_section") })
+    end
+  end
+
+  def test_unsupported_heredoc_diagnostics_name_the_source_location_and_construct
+    Dir.mktmpdir do |root|
+      path = File.join(root, "unsupported.rb")
+      File.write(path, "if <<~TEXT\n  value\nTEXT\nend\n")
+      inventory = Branchproof::Source.new(root: root, limits: Branchproof::Limits.default).inventory(paths: [path])
+      decision = inventory[:decisions].first
+      source_diagnostic = inventory[:diagnostics].find { |item| item[:code] == "unsupported_heredoc" }
+      analysis = Branchproof::Analyzer.new(inventory: inventory, evidence: { vectors: [] },
+                                           limits: Branchproof::Limits.default).call
+      analysis_diagnostic = analysis[:diagnostics].find { |item| item[:code] == "unsupported_decision" }
+
+      assert_equal "UNSUPPORTED", decision[:support_status]
+      assert_includes source_diagnostic[:message], "unsupported.rb:1:4"
+      assert_includes source_diagnostic[:message], "heredoc predicate <<~TEXT"
+      assert_equal({ path: "unsupported.rb", line: 1, column: 4, construct: "<<~TEXT" },
+                   source_diagnostic[:details].slice(:path, :line, :column, :construct))
+      assert_equal "unsupported_decision: unsupported_heredoc at unsupported.rb:1:4 (heredoc predicate <<~TEXT)",
+                   analysis_diagnostic[:message]
     end
   end
 
