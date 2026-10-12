@@ -62,7 +62,9 @@ bundle exec branchproof doctor 'lib/**/*.rb' \
 
 Doctor accepts source globs followed by `--test GLOB`, `--project
 auto|ruby|rails`, `--framework auto|minitest|rspec`, `--config PATH` or
-`--no-config`, and `--format terminal|json`. It uses the same project detection,
+`--no-config`, repeatable `--include PATH` or `-I PATH`, and `--format terminal|json`.
+The resolved project in JSON and the terminal output list the effective load paths.
+It uses the same project detection,
 configuration precedence, framework selection, test discovery, and source
 safety exclusions as `analyze`. Command-line selections override matching
 `.branchproof.json` values. Default discovery excludes helper, support, and
@@ -177,6 +179,7 @@ Project defaults can be checked into `.branchproof.json` at the project root:
   "framework": "minitest",
   "sources": ["app/**/*.rb"],
   "tests": ["test/**/*_test.rb"],
+  "include": ["test/dummy/lib", "test/dummy/test"],
   "exclude": ["app/generated/**/*.rb"],
   "minimum": { "mcdc": 80 }
 }
@@ -185,7 +188,11 @@ Project defaults can be checked into `.branchproof.json` at the project root:
 `project` accepts `auto`, `ruby`, or `rails`; `framework` accepts `auto`,
 `minitest`, or `rspec`. `sources` and `tests` replace their corresponding
 defaults, while `exclude` removes matching source files before inventory. A
-configuration file may live elsewhere when passed with `--config PATH`; its
+repeatable `--include PATH` or `-I PATH` adds paths to the child worker's Ruby
+load path; relative paths are resolved from the project root. The configuration
+`include` array supplies the same paths, and command-line includes replace it.
+Defaults remain `lib` plus `test` (or `spec` for RSpec), before added paths.
+Configuration files may live elsewhere when passed with `--config PATH`; their
 patterns are still resolved from the project root. Use `--no-config` to disable
 the default file. Command-line project, framework, source, and test selections
 take precedence over the file. Configured `exclude` patterns are applied

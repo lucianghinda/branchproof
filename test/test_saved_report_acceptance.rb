@@ -19,12 +19,14 @@ class TestSavedReportAcceptance < Minitest::Test
         assert_includes stdout, "lib/decision.rb:2"
         assert_equal before + 1, marker_count(root)
       end
-      _, stderr, status = command(root, "analyze", "lib/**/*.rb", "--format", "json", "--output", "saved.json")
+      _, stderr, status = command(root, "analyze", "lib/**/*.rb", "--include", "engines/dummy/lib", "--format", "json",
+                                  "--output", "saved.json")
       assert_equal 0, status, stderr
       document = JSON.parse(File.read(File.join(root, "saved.json")))
       assert_equal "1.4", document["schema_version"]
       assert_equal ["lib/**/*.rb"], document.dig("run_metadata", "source_patterns")
       assert_equal ["test/decision_test.rb"], document.dig("run_metadata", "test_files")
+      assert_equal %w[lib test engines/dummy/lib], document.dig("run_metadata", "load_paths")
       count = marker_count(root)
       FileUtils.rm_rf(File.join(root, "lib"))
       FileUtils.rm_rf(File.join(root, "test"))

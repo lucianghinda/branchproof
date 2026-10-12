@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Added
+
+- Add repeatable `--include` / `-I` paths and an `include` configuration option
+  for test helpers in nested engine and application directories. Doctor reports
+  effective load paths, which are also stored in saved report run metadata.
+
 ### Fixed
 
 - Instrument fallback decisions inside interpolated heredocs without losing
