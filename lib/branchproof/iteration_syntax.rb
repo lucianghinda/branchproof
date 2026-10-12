@@ -45,14 +45,32 @@ module Branchproof
                    insert_at: iteration_insert_at(body, closing),
                    empty: body.nil? }
       metadata[:receiver] = byte_range(node.receiver.location) if node.is_a?(Prism::CallNode) && node.receiver
+      # Callback instrumentation inserts at the body boundary, so a heredoc
+      # expression inside the callback does not make this flow range unsafe.
+      reasons = unsupported_reasons(node, bytes)
+      reasons.reject! { |reason| reason == "unsupported_heredoc" } unless heredoc_receiver?(node, bytes)
       [lazy ? "multiway" : "implicit", context, labels.map { |label| iteration_alternative(node, label) },
-       metadata, unsupported_reasons(node, bytes)]
+       metadata, reasons]
     end
 
     # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     def lazy_receiver?(node)
       node.is_a?(Prism::CallNode) && (node.name == :lazy || lazy_receiver?(node.receiver))
+    end
+
+    def heredoc_receiver?(node, bytes)
+      return false unless node.is_a?(Prism::CallNode)
+
+      contains_heredoc?(node.receiver, bytes)
+    end
+
+    def contains_heredoc?(node, bytes)
+      return false unless node
+      return true if node.respond_to?(:opening_loc) && node.opening_loc &&
+                     bytes.byteslice(node.opening_loc.start_offset, node.opening_loc.length).start_with?("<<")
+
+      node.child_nodes.compact.any? { |child| contains_heredoc?(child, bytes) }
     end
 
     # Prism gives a block-level rescue/ensure BeginNode a location beginning at

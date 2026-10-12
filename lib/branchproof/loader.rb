@@ -88,7 +88,19 @@ module Branchproof
     def unchanged_reason(unit)
       decisions = Array(unit[:decisions])
       reasons = decisions.flat_map { |decision| Array(decision[:support_reasons]) }.uniq
-      return "conditions cannot be instrumented: #{reasons.join(", ")}" unless reasons.empty?
+      unless reasons.empty?
+        heredocs = decisions.filter_map do |decision|
+          next unless Array(decision[:support_reasons]).include?("unsupported_heredoc")
+
+          line = decision[:line]
+          column = decision[:column].is_a?(Integer) ? decision[:column] + 1 : nil
+          construct = decision[:expression].to_s.lines.first.to_s.strip
+          location = [unit[:relative_path] || unit[:absolute_path], line, column].compact.join(":")
+          "#{location} (heredoc predicate #{construct})"
+        end
+        detail = heredocs.empty? ? "" : " (#{heredocs.join(", ")})"
+        return "conditions cannot be instrumented: #{reasons.join(", ")}#{detail}"
+      end
 
       "no supported conditions to instrument"
     end

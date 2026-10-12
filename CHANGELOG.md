@@ -6,6 +6,13 @@
   for test helpers in nested engine and application directories. Doctor reports
   effective load paths, which are also stored in saved report run metadata.
 
+### Fixed
+
+- Instrument fallback decisions inside interpolated heredocs without losing
+  callback-entry coverage for the enclosing iteration. Unsupported heredoc
+  predicates now identify their source location and heredoc opener in
+  diagnostics.
+
 ## [0.12.1] - 2026-10-06
 
 ### Fixed
