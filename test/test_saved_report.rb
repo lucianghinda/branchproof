@@ -263,7 +263,8 @@ class TestSavedReport < Minitest::Test
     invalid_documents = [
       valid_document.tap { |doc| doc["run_metadata"] = { "rails_version" => 8.1 } },
       valid_document.tap { |doc| doc["run_metadata"] = { "selected_test_files" => "spec/a_spec.rb" } },
-      valid_document.tap { |doc| doc["run_metadata"] = { "selected_example_ids" => ["ok", 1] } }
+      valid_document.tap { |doc| doc["run_metadata"] = { "selected_example_ids" => ["ok", 1] } },
+      valid_document.tap { |doc| doc["run_metadata"] = { "load_paths" => ["lib", 1] } }
     ]
 
     invalid_documents.each do |document|
