@@ -59,7 +59,8 @@ class TestLoader < Minitest::Test
     { "plain.rb" => ["VALUE = 1\n", "no supported conditions to instrument"],
       "limited.rb" => ["if a && b\n  true\nend\n", "conditions cannot be instrumented: condition_limit_exceeded"],
       "unsupported.rb" => ["if <<~TEXT\n  value\nTEXT\nend\n",
-                           "conditions cannot be instrumented: unsupported_heredoc"] }.each do |name, (bytes, reason)|
+                           "conditions cannot be instrumented: unsupported_heredoc " \
+                           "(unsupported.rb:1:4 (heredoc predicate <<~TEXT))"] }.each do |name, (bytes, reason)|
       Dir.mktmpdir("branchproof-diagnostic") do |directory|
         path = File.join(directory, name)
         File.write(path, bytes)
