@@ -200,29 +200,59 @@ class TestLoader < Minitest::Test
     end
   end
 
-  def test_diagnostics_report_a_hook_replaced_after_installation
-    loader = Branchproof::Loader.new(inventory: { source_units: [] }, instrumenter: InstrumenterStub.new)
-    assert_equal "installed", loader.install[:status]
-    RubyVM::InstructionSequence.singleton_class.send(:remove_method, :load_iseq)
+  def test_diagnostics_report_a_hook_prepended_after_installation
+    output = run_isolated(<<~RUBY)
+      loader = Branchproof::Loader.new(inventory: { source_units: [] }, instrumenter: Stub.new)
+      abort "install" unless loader.install[:status] == "installed"
+      RubyVM::InstructionSequence.singleton_class.prepend(Module.new { def load_iseq(_path) = nil })
+      diagnostic = loader.diagnostics.last
+      puts [diagnostic[:code], diagnostic[:severity]].join(",")
+    RUBY
 
-    diagnostic = loader.diagnostics.last
+    assert_equal "loader_conflict,error", output
+  end
 
-    assert_equal "loader_conflict", diagnostic[:code]
-    assert_equal "error", diagnostic[:severity]
-  ensure
-    if RubyVM::InstructionSequence.instance_variable_defined?(:@branchproof_load_iseq_owner)
-      RubyVM::InstructionSequence.remove_instance_variable(:@branchproof_load_iseq_owner)
-    end
+  # Mirrors bootsnap 1.26.1+, which prepends its hook when required, before
+  # the application boots.
+  def test_hook_prepended_before_installation_handles_only_unselected_files
+    output = run_isolated(<<~RUBY)
+      selected = File.join(Dir.mktmpdir, "selected.rb")
+      File.write(selected, "VALUE = :original\\n")
+      RubyVM::InstructionSequence.singleton_class.prepend(Module.new { def load_iseq(_path) = :foreign })
+      loader = Branchproof::Loader.new(
+        inventory: { source_units: [{ absolute_path: selected, original_bytes: File.binread(selected) }] },
+        instrumenter: Stub.new({ bytes: ":branchproof\\n", changed: true, diagnostics: [] })
+      )
+      status = loader.install
+      selected_result = RubyVM::InstructionSequence.load_iseq(selected).eval
+      other_result = RubyVM::InstructionSequence.load_iseq("/tmp/other.rb")
+      puts [status[:status], selected_result, other_result, loader.diagnostics.length].join(",")
+    RUBY
+
+    assert_equal "installed,branchproof,foreign,0", output
   end
 
   def teardown
-    if @installed_loader && RubyVM::InstructionSequence.respond_to?(:load_iseq)
-      RubyVM::InstructionSequence.singleton_class.send(:remove_method, :load_iseq)
-    end
-    if RubyVM::InstructionSequence.instance_variable_defined?(:@branchproof_load_iseq_owner)
-      RubyVM::InstructionSequence.remove_instance_variable(:@branchproof_load_iseq_owner)
-    end
-  rescue NameError
-    nil
+    return unless RubyVM::InstructionSequence.instance_variable_defined?(:@branchproof_load_iseq_owner)
+
+    RubyVM::InstructionSequence.remove_instance_variable(:@branchproof_load_iseq_owner)
+  end
+
+  private
+
+  # A prepend cannot be undone, so tests that add foreign hooks run in a
+  # child process to keep this process's hook chain clean.
+  def run_isolated(script)
+    harness = <<~RUBY
+      require "branchproof/loader"
+      require "tmpdir"
+      Stub = Struct.new(:result) do
+        def rewrite(unit:) = result || { bytes: unit[:original_bytes], changed: false, diagnostics: [] }
+      end
+      #{script}
+    RUBY
+    output, error, status = Open3.capture3(RbConfig.ruby, "-I#{File.expand_path("../lib", __dir__)}", "-e", harness)
+    assert status.success?, error
+    output.strip
   end
 end
