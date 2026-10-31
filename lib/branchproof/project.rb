@@ -13,10 +13,11 @@ module Branchproof
       "DISABLE_SPRING" => "1"
     }.freeze
 
-    def initialize(root:, mode: "auto", framework: "auto")
+    def initialize(root:, mode: "auto", framework: "auto", includes: [])
       @root = File.expand_path(root)
       @mode = mode.to_s
       @framework = framework.to_s
+      @includes = resolve_includes(includes)
       raise ArgumentError, "project must be auto, ruby, or rails" unless MODES.include?(@mode)
       raise ArgumentError, "framework must be auto, minitest, or rspec" unless FRAMEWORKS.include?(@framework)
 
@@ -36,6 +37,14 @@ module Branchproof
     end
 
     private
+
+    def resolve_includes(includes)
+      Array(includes).map do |path|
+        raise ArgumentError, "include paths must be nonempty strings" unless path.is_a?(String) && !path.empty?
+
+        File.expand_path(path, @root)
+      end
+    end
 
     def kind
       return "rails" if @mode == "rails"
@@ -87,7 +96,7 @@ module Branchproof
     end
 
     def load_paths
-      [File.join(@root, "lib"), File.join(@root, framework == "rspec" ? "spec" : "test")]
+      [File.join(@root, "lib"), File.join(@root, framework == "rspec" ? "spec" : "test"), *@includes].uniq
     end
 
     def validate_root!

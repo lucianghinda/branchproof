@@ -1,7 +1,17 @@
 ## [Unreleased]
 
+### Added
+
+- Add repeatable `--include` / `-I` paths and an `include` configuration option
+  for test helpers in nested engine and application directories. Doctor reports
+  effective load paths, which are also stored in saved report run metadata.
+
 ### Fixed
 
+- Instrument fallback decisions inside interpolated heredocs without losing
+  callback-entry coverage for the enclosing iteration. Unsupported heredoc
+  predicates now identify their source location and heredoc opener in
+  diagnostics.
 - Keep worker startup diagnostics concise when warnings precede an exception,
   while retaining bounded stdout and stderr tails in JSON details.
 

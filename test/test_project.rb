@@ -92,4 +92,13 @@ class TestProject < Minitest::Test
       assert_equal [File.join(root, "lib"), File.join(root, "test")], project[:load_paths]
     end
   end
+
+  def test_include_paths_are_resolved_from_project_root_after_defaults
+    Dir.mktmpdir do |root|
+      project = Branchproof::Project.new(root: root, mode: "ruby", includes: ["test/dummy/lib", "vendor/lib"]).to_h
+
+      assert_equal [File.join(root, "lib"), File.join(root, "test"), File.join(root, "test/dummy/lib"),
+                    File.join(root, "vendor/lib")], project[:load_paths]
+    end
+  end
 end

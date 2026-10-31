@@ -206,6 +206,7 @@ module Branchproof
 
         framework = @document[:framework]
         ["Project: #{project[:kind]} (#{project[:root]})",
+         "Load paths: #{Array(project[:load_paths]).join(File::PATH_SEPARATOR)}",
          "Framework: #{framework[:name]} #{framework[:version] || "unavailable"} (#{framework[:availability]})"]
       end
 

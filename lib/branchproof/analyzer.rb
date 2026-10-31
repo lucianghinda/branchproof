@@ -120,7 +120,7 @@ module Branchproof
           decision_table: DecisionTable.build(decision: decision, vectors: [], limits: @limits,
                                               reachability: @reachability),
           completeness: { observation: true, attribution: true, analysis: true },
-          diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
+          diagnostics: [unsupported_diagnostic(decision)]
         }
       end
 
@@ -190,7 +190,7 @@ module Branchproof
           conditions: [], alternatives: alternatives(decision), unsupported: true,
           coverage: unsupported_alternative_coverage,
           completeness: { observation: true, attribution: true, analysis: true },
-          diagnostics: [diagnostic("unsupported_decision", "warning", decision_id, nil)]
+          diagnostics: [unsupported_diagnostic(decision)]
         }
       end
 
@@ -676,6 +676,28 @@ module Branchproof
       { code: code, severity: severity, message: code.to_s, source_id: nil,
         decision_id: decision_id, execution_id: nil, test_id: nil,
         details: { vector_id: vector_id } }
+    end
+
+    def unsupported_diagnostic(decision)
+      decision_id = id(decision, :id)
+      reasons = Array(id(decision, :support_reasons))
+      heredoc = reasons.include?("unsupported_heredoc")
+      return diagnostic("unsupported_decision", "warning", decision_id, nil) unless heredoc
+
+      unit = records(@inventory, :source_units).find do |source_unit|
+        id(source_unit, :source_id) == id(decision, :source_id)
+      end
+      path = unit && (id(unit, :relative_path) || id(unit, :absolute_path))
+      line = id(decision, :line)
+      column = id(decision, :column).is_a?(Integer) ? id(decision, :column) + 1 : nil
+      construct = id(decision, :expression).to_s.lines.first.to_s.strip
+      location = [path, line, column].compact.join(":")
+      message = "unsupported_decision: unsupported_heredoc"
+      message += " at #{location} (heredoc predicate #{construct})" unless location.empty?
+      { code: "unsupported_decision", severity: "warning", message: message,
+        source_id: id(decision, :source_id), decision_id: decision_id,
+        execution_id: nil, test_id: nil,
+        details: { path: path, line: line, column: column, construct: construct }.compact }
     end
 
     def add_diagnostic(code, severity, vector_id, decision_id = nil)
