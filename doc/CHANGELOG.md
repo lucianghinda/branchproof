@@ -1,8 +1,23 @@
 ## [Unreleased]
 
+### Added
+
+- Add repeatable `--include` / `-I` paths and an `include` configuration option
+  for test helpers in nested engine and application directories. Doctor reports
+  effective load paths, which are also stored in saved report run metadata.
+
+### Changed
+
 - Clarify that `branchproof doctor` readiness covers static setup checks only.
   Terminal output and JSON identify application boot, dependency loading, and
   test execution as unchecked; run `analyze` to verify those runtime steps.
+
+### Fixed
+
+- Instrument fallback decisions inside interpolated heredocs without losing
+  callback-entry coverage for the enclosing iteration. Unsupported heredoc
+  predicates now identify their source location and heredoc opener in
+  diagnostics.
 
 ## [0.12.1] - 2026-10-06
 

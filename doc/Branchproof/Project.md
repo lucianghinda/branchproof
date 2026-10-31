@@ -18,7 +18,7 @@ Not documented.
 Not documented.
 
 ## Public Instance Methods
-### `initialize(root:, mode: = "auto", framework: = "auto")` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
+### `initialize(root:, mode: = "auto", framework: = "auto", includes: = [])` <a id="method-i-initialize"></a> <a id="initialize-instance_method"></a>
 - **@raise** [ArgumentError]
 - **@return** [Project] a new instance of Project
 
