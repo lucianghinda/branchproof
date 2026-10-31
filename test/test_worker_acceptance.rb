@@ -52,10 +52,10 @@ class WorkerAcceptanceTest < Minitest::Test
     cleanup_project(project)
   end
 
-  def test_loader_redefinition_during_helper_boot_is_a_fatal_conflict
+  def test_loader_displacement_during_helper_boot_is_a_fatal_conflict
     project = build_project
     write_file(project, "test/test_helper.rb", <<~RUBY)
-      RubyVM::InstructionSequence.define_singleton_method(:load_iseq) { |_path| nil }
+      RubyVM::InstructionSequence.singleton_class.prepend(Module.new { def load_iseq(_path) = nil })
       require "minitest/autorun"
     RUBY
     write_test_file(project)
