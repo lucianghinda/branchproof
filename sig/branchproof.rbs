@@ -51,6 +51,7 @@ module Branchproof
 
   class Doctor
     LIMITATIONS: Array[String]
+    NOT_CHECKED: Array[String]
     def initialize: (options: record, ?runtime: { engine: String, version: String }, ?loaded_features: Array[String], ?gem_sources: { activated: Hash[String, untyped], discoverable: ^(String) -> Array[untyped] }) -> void
     def document: (source_files: Array[String], test_files: Array[String]) -> record
     def self.error: (String message) -> record

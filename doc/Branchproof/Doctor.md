@@ -18,6 +18,9 @@ Not documented.
 ### `LIMITATIONS` <a id="constant-LIMITATIONS"></a> <a id="LIMITATIONS-constant"></a>
 Not documented.
 
+### `NOT_CHECKED` <a id="constant-NOT_CHECKED"></a> <a id="NOT_CHECKED-constant"></a>
+Not documented.
+
 ## Public Class Methods
 ### `error(message)` <a id="method-c-error"></a> <a id="error-class_method"></a>
 Not documented.
