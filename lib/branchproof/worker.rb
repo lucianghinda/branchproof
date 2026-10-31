@@ -23,6 +23,7 @@ module Branchproof
       evidence = Branchproof::Evidence.new(inventory: inventory, limits: limits, run_id: payload.fetch("run_id"))
       runtime = Branchproof::Runtime
       runtime.boot(evidence: evidence)
+      preload_bootsnap
       loader = Branchproof::Loader.new(inventory: inventory, instrumenter: Branchproof::Instrumenter.new)
       status = loader.install
       return write_failure(payload, "loader", status) unless status[:status].to_sym == :installed
@@ -107,6 +108,14 @@ module Branchproof
           exit(2)
         end
       end
+    end
+
+    # bootsnap 1.26.1+ prepends its own load_iseq hook when it is required,
+    # even with DISABLE_BOOTSNAP. Require it before the loader so that hook
+    # sits below ours. Only when Bundler already activated it, so this never
+    # picks a different version than the app's bundle.
+    def preload_bootsnap
+      require "bootsnap" if Gem.loaded_specs.key?("bootsnap")
     end
 
     def legacy_project

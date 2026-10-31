@@ -5,13 +5,25 @@ require "digest"
 module Branchproof
   # Owns the process-local CRuby compilation hook when the VM exposes it.
   class Loader
+    # Prepended once per process, because a prepend cannot be undone. It asks
+    # the current owner first and passes other files to any older hook, such
+    # as the one bootsnap 1.26.1+ installs when it is required.
+    module Hook
+      def load_iseq(path)
+        owner = RubyVM::InstructionSequence.instance_variable_get(:@branchproof_load_iseq_owner)
+        iseq = owner&.load_iseq(path)
+        return iseq if iseq
+
+        defined?(super) ? super : nil
+      end
+    end
+
     def initialize(inventory:, instrumenter:)
       @inventory = inventory
       @instrumenter = instrumenter
       @diagnostics = []
       @installed = false
       @units = index_units(inventory)
-      @hook_source_location = nil
     end
 
     def install
@@ -26,13 +38,14 @@ module Branchproof
         return status(:rejected, :loader_conflict)
       end
 
-      @installed = true
-      owner = self
-      RubyVM::InstructionSequence.define_singleton_method(:load_iseq) do |path|
-        owner.load_iseq(path)
+      RubyVM::InstructionSequence.singleton_class.prepend(Hook)
+      unless hook_on_top?
+        add_diagnostic("loader_conflict", "another load_iseq hook takes precedence")
+        return status(:rejected, :loader_conflict)
       end
+
+      @installed = true
       RubyVM::InstructionSequence.instance_variable_set(:@branchproof_load_iseq_owner, self)
-      @hook_source_location = RubyVM::InstructionSequence.method(:load_iseq).source_location
       status(:installed, nil)
     end
 
@@ -109,19 +122,20 @@ module Branchproof
       defined?(RubyVM::InstructionSequence) && RubyVM::InstructionSequence.respond_to?(:compile)
     end
 
+    # Another live loader owns the hook. Older foreign hooks are fine: Hook
+    # runs before them and passes unselected files on.
     def competing_owner?
-      return false unless RubyVM::InstructionSequence.respond_to?(:load_iseq)
-
       owner = RubyVM::InstructionSequence.instance_variable_get(:@branchproof_load_iseq_owner)
-      return false if owner.equal?(self) && hook_owned?
+      !owner.nil? && !owner.equal?(self)
+    end
 
-      true
+    def hook_on_top?
+      RubyVM::InstructionSequence.method(:load_iseq).owner.equal?(Hook)
     end
 
     def hook_owned?
-      RubyVM::InstructionSequence.respond_to?(:load_iseq) &&
-        RubyVM::InstructionSequence.instance_variable_get(:@branchproof_load_iseq_owner).equal?(self) &&
-        RubyVM::InstructionSequence.method(:load_iseq).source_location == @hook_source_location
+      RubyVM::InstructionSequence.instance_variable_get(:@branchproof_load_iseq_owner).equal?(self) &&
+        hook_on_top?
     end
 
     def preloaded_target?

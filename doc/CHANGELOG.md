@@ -8,6 +8,10 @@
 
 ### Fixed
 
+- Keep instrumenting Rails apps that use bootsnap 1.26.1 or newer. That version
+  installs its own `load_iseq` hook when required, even with `DISABLE_BOOTSNAP`,
+  which hid the branchproof hook and left runs `INCOMPLETE`. The loader now
+  prepends its hook above older hooks and passes unselected files on to them.
 - Instrument fallback decisions inside interpolated heredocs without losing
   callback-entry coverage for the enclosing iteration. Unsupported heredoc
   predicates now identify their source location and heredoc opener in

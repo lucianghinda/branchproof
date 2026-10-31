@@ -68,6 +68,10 @@ module Branchproof
   end
 
   class Loader
+    module Hook
+      def load_iseq: (String path) -> untyped
+    end
+
     STATUS_KEYS: Array[Symbol]
     def initialize: (inventory: record, instrumenter: Instrumenter) -> void
     def install: () -> record
