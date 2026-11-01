@@ -10,6 +10,10 @@ chains such as `name || "untitled"` receive alternative coverage.
 The gem and primary command are named `branchproof`. The `mcdc` command and
 `MCDC` namespace remain compatibility aliases with the same behavior.
 
+For AI agents, the [Branchproof skill package](https://github.com/lucianghinda/branchproof-skills)
+provides a find-gap, write-test, and re-run workflow for Branchproof 0.12.1,
+with Codex, Claude Code, and OpenCode installation instructions.
+
 ## Installation
 
 ```sh

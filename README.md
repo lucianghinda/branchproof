@@ -218,6 +218,7 @@ Unsupported syntax and incomplete observations remain visible; they are not sile
 
 ## Reference
 
+- [AI workflow skill for Codex, Claude Code, and OpenCode](https://github.com/lucianghinda/branchproof-skills) (supports Branchproof 0.12.1)
 - [Setup checks and configuration](https://github.com/lucianghinda/branchproof/blob/main/docs/usage.md#check-a-projects-setup)
 - [Coverage criteria and decision tables](https://github.com/lucianghinda/branchproof/blob/main/docs/usage.md#coverage-ladder)
 - [Missing cases and focused reports](https://github.com/lucianghinda/branchproof/blob/main/docs/usage.md#find-missing-cases)
