@@ -236,6 +236,7 @@ Branchproof::CLI.call,Method,Branchproof/CLI.md#method-i-call
 Branchproof::CLI.initialize,Method,Branchproof/CLI.md#method-i-initialize
 Branchproof::Doctor,Class,Branchproof/Doctor.md
 Branchproof::Doctor.LIMITATIONS,Constant,Branchproof/Doctor.md#constant-LIMITATIONS
+Branchproof::Doctor.NOT_CHECKED,Constant,Branchproof/Doctor.md#constant-NOT_CHECKED
 Branchproof::Doctor.FRAMEWORK_GEMS,Constant,Branchproof/Doctor.md#constant-FRAMEWORK_GEMS
 Branchproof::Doctor.ERROR_DOCUMENT,Constant,Branchproof/Doctor.md#constant-ERROR_DOCUMENT
 Branchproof::Doctor.document,Method,Branchproof/Doctor.md#method-i-document
