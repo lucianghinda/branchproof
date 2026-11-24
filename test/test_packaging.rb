@@ -90,6 +90,7 @@ class TestPackaging < Minitest::Test
 
   def test_rbs_and_ci_cover_the_supported_runtime
     rbs = File.read(File.join(ROOT, "sig/branchproof.rbs"))
+    ruby_version = File.read(File.join(ROOT, ".ruby-version")).strip
     workflow = File.read(File.join(ROOT, ".github/workflows/main.yml"))
     workflow_document = YAML.safe_load(workflow, aliases: true)
     ruby_steps = workflow_document.fetch("jobs").values.flat_map { |job| job.fetch("steps") }.select do |step|
@@ -99,7 +100,8 @@ class TestPackaging < Minitest::Test
     assert_includes rbs, "class Source"
     assert_includes rbs, "class Report"
     refute_empty ruby_steps
-    ruby_steps.each { |step| assert_equal "4.0", step.fetch("with").fetch("ruby-version") }
+    assert_equal "4.0.10", ruby_version
+    ruby_steps.each { |step| refute step.fetch("with").key?("ruby-version") }
     assert_includes workflow, "bundle exec rake"
     assert_includes workflow, "BRANCHPROOF_RAILS_INTEGRATION: \"1\""
     assert_includes workflow, "Rails 8.1"
