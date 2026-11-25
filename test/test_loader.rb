@@ -232,6 +232,30 @@ class TestLoader < Minitest::Test
     assert_equal "installed,branchproof,foreign,0", output
   end
 
+  def test_bootsnap_arriving_after_a_foreign_takeover_does_not_reclaim_the_hook
+    output = run_isolated(<<~RUBY)
+      loader = Branchproof::Loader.new(inventory: { source_units: [] }, instrumenter: Stub.new)
+      abort "install" unless loader.install[:status] == "installed"
+      target = RubyVM::InstructionSequence.singleton_class
+      foreign = Module.new { def load_iseq(_path) = :foreign }
+      target.prepend(foreign)
+      module Bootsnap
+        module CompileCache
+          module ISeq
+            module InstructionSequenceMixin
+              def load_iseq(path) = super
+            end
+          end
+        end
+      end
+      target.prepend(Bootsnap::CompileCache::ISeq::InstructionSequenceMixin)
+      puts [RubyVM::InstructionSequence.method(:load_iseq).owner.equal?(Bootsnap::CompileCache::ISeq::InstructionSequenceMixin),
+            loader.diagnostics.last[:code], RubyVM::InstructionSequence.load_iseq("/tmp/other.rb")].join(",")
+    RUBY
+
+    assert_equal "true,loader_conflict,foreign", output
+  end
+
   def teardown
     return unless RubyVM::InstructionSequence.instance_variable_defined?(:@branchproof_load_iseq_owner)
 
