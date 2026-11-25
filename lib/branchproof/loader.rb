@@ -5,9 +5,7 @@ require "digest"
 module Branchproof
   # Owns the process-local CRuby compilation hook when the VM exposes it.
   class Loader
-    # Prepended once per process, because a prepend cannot be undone. It asks
-    # the current owner first and passes other files to any older hook, such
-    # as the one bootsnap 1.26.1+ installs when it is required.
+    # Asks the current owner first and passes other files to the next hook.
     module Hook
       def load_iseq(path)
         owner = RubyVM::InstructionSequence.instance_variable_get(:@branchproof_load_iseq_owner)
@@ -15,6 +13,21 @@ module Branchproof
         return iseq if iseq
 
         defined?(super) ? super : nil
+      end
+    end
+
+    # Bootsnap can install its compile-cache hook after analysis starts.
+    # Keep Branchproof first in that prepend while leaving other hooks alone.
+    module BootsnapPrepend
+      def prepend(*modules)
+        if defined?(::Bootsnap::CompileCache::ISeq::InstructionSequenceMixin) &&
+           modules == [::Bootsnap::CompileCache::ISeq::InstructionSequenceMixin] && !ancestors.include?(modules.first)
+          owner = RubyVM::InstructionSequence.instance_variable_get(:@branchproof_load_iseq_owner)
+          hook = owner&.hook_before_bootsnap
+          return super(hook, *modules) if hook
+        end
+
+        super
       end
     end
 
@@ -38,7 +51,10 @@ module Branchproof
         return status(:rejected, :loader_conflict)
       end
 
-      RubyVM::InstructionSequence.singleton_class.prepend(Hook)
+      @hook = Hook
+      singleton = RubyVM::InstructionSequence.singleton_class
+      singleton.singleton_class.prepend(BootsnapPrepend)
+      singleton.prepend(@hook)
       unless hook_on_top?
         add_diagnostic("loader_conflict", "another load_iseq hook takes precedence")
         return status(:rejected, :loader_conflict)
@@ -47,6 +63,13 @@ module Branchproof
       @installed = true
       RubyVM::InstructionSequence.instance_variable_set(:@branchproof_load_iseq_owner, self)
       status(:installed, nil)
+    end
+
+    def hook_before_bootsnap
+      return unless @installed && hook_owned?
+
+      # An existing prepend cannot move, so give this prepend a fresh hook.
+      @hook = Hook.dup
     end
 
     def load_iseq(path)
@@ -130,7 +153,7 @@ module Branchproof
     end
 
     def hook_on_top?
-      RubyVM::InstructionSequence.method(:load_iseq).owner.equal?(Hook)
+      RubyVM::InstructionSequence.method(:load_iseq).owner.equal?(@hook)
     end
 
     def hook_owned?

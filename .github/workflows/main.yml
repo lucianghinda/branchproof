@@ -85,6 +85,24 @@ jobs:
           cache-version: rails-integration
       - run: bundle exec rake test
 
+  bootsnap-compile-cache:
+    name: Bootsnap ${{ matrix.bootsnap }} compile cache on Ruby 4.0
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        bootsnap: ["1.26.0", "1.26.1"]
+    env:
+      BRANCHPROOF_BOOTSNAP_VERSION: ${{ matrix.bootsnap }}
+      BUNDLE_FROZEN: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          cache-version: bootsnap-compile-cache-${{ matrix.bootsnap }}
+      - run: bundle exec ruby -Itest test/test_bootsnap_acceptance.rb
+
   rspec-rails-integration:
     name: RSpec Rails 8.1 on Ruby 4.0
     runs-on: ubuntu-latest
